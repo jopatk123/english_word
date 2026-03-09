@@ -40,9 +40,12 @@ router.post('/', async (req, res) => {
     if (!wordId || !sentence || !translation) return error(res, '单词ID、例句原文和翻译为必填项');
     const word = await Word.findByPk(wordId);
     if (!word) return error(res, '关联的单词不存在');
+    const trimmedSentence = sentence.trim();
+    const existedExample = await Example.findOne({ where: { wordId, sentence: trimmedSentence } });
+    if (existedExample) return error(res, '该单词下已存在相同例句，请勿重复添加', 400);
     const example = await Example.create({
       wordId,
-      sentence: sentence.trim(),
+      sentence: trimmedSentence,
       translation: translation.trim(),
       remark: remark?.trim(),
     });
@@ -59,8 +62,11 @@ router.put('/:id', async (req, res) => {
     if (!example) return error(res, '例句不存在');
     const { sentence, translation, remark } = req.body;
     if (!sentence || !translation) return error(res, '例句原文和翻译为必填项');
+    const trimmedSentence = sentence.trim();
+    const existedExample = await Example.findOne({ where: { wordId: example.wordId, sentence: trimmedSentence } });
+    if (existedExample && existedExample.id !== example.id) return error(res, '该单词下已存在相同例句，请勿重复保存', 400);
     await example.update({
-      sentence: sentence.trim(),
+      sentence: trimmedSentence,
       translation: translation.trim(),
       remark: remark?.trim(),
     });

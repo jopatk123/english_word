@@ -12,7 +12,7 @@ Word.hasMany(Example, { foreignKey: 'word_id', as: 'examples', onDelete: 'CASCAD
 Example.belongsTo(Word, { foreignKey: 'word_id', as: 'word' });
 
 const initDB = async () => {
-  await sequelize.sync({ alter: true });
+  await sequelize.sync();
   console.log('数据库同步完成');
 };
 

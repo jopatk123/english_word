@@ -5,8 +5,18 @@ const api = axios.create({
   timeout: 10000,
 });
 
+const aiApi = axios.create({
+  baseURL: '/api',
+  timeout: 90000,
+});
+
 // 响应拦截器
 api.interceptors.response.use(
+  (response) => response.data,
+  (err) => Promise.reject(err),
+);
+
+aiApi.interceptors.response.use(
   (response) => response.data,
   (err) => Promise.reject(err),
 );
@@ -31,5 +41,11 @@ export const getExample = (id) => api.get(`/examples/${id}`);
 export const createExample = (data) => api.post('/examples', data);
 export const updateExample = (id, data) => api.put(`/examples/${id}`, data);
 export const deleteExample = (id) => api.delete(`/examples/${id}`);
+
+// ========== AI API ==========
+export const testAiConnection = (config) => aiApi.post('/ai/test', { config });
+export const getAiRootSuggestions = (config) => aiApi.post('/ai/suggest-roots', { config });
+export const getAiWordSuggestions = (rootId, config) => aiApi.post('/ai/suggest-words', { rootId, config });
+export const getAiExampleSuggestions = (wordId, config) => aiApi.post('/ai/suggest-examples', { wordId, config });
 
 export default api;

@@ -75,6 +75,13 @@ body {
   margin-bottom: 16px;
 }
 
+.section-actions,
+.page-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .root-section .section-header h2,
 .detail-view .section-header h3 {
   font-size: 18px;
@@ -178,6 +185,109 @@ body {
   font-size: 14px;
 }
 
+/* ========== AI 页面 ========== */
+.page-breadcrumb {
+  margin-bottom: 20px;
+}
+
+.ai-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ai-card {
+  border-radius: 16px;
+}
+
+.page-heading {
+  display: flex;
+  align-items: center;
+}
+
+.page-heading-between {
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.page-heading h2 {
+  font-size: 22px;
+  color: #303133;
+  margin-bottom: 6px;
+}
+
+.page-heading p {
+  color: #606266;
+  line-height: 1.6;
+}
+
+.ai-form .el-select {
+  width: 100%;
+}
+
+.config-strip {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  color: #606266;
+  margin-bottom: 16px;
+}
+
+.result-alert {
+  margin-bottom: 16px;
+}
+
+.suggestion-table {
+  margin-top: 8px;
+}
+
+.ai-footer-actions {
+  margin-top: 16px;
+}
+
+.ai-debug-card {
+  margin-top: 16px;
+}
+
+.ai-suggestion-list {
+  margin-top: 8px;
+}
+
+.debug-output {
+  margin: 0;
+  padding: 14px;
+  background: #0f172a;
+  color: #dbeafe;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.summary-grid strong {
+  display: block;
+  color: #303133;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.summary-label {
+  display: block;
+  color: #909399;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
 /* ========== 响应式 ========== */
 @media (max-width: 768px) {
   .app-main {
@@ -201,6 +311,14 @@ body {
     gap: 4px;
   }
 
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-heading-between {
+    align-items: flex-start;
+  }
+
   .example-card .el-card__body {
     flex-direction: column;
   }
@@ -220,5 +338,15 @@ body {
     flex-direction: column;
     gap: 8px;
     align-items: flex-start !important;
+  }
+
+  .section-actions,
+  .page-actions {
+    width: 100%;
+  }
+
+  .section-actions .el-button,
+  .page-actions .el-button {
+    margin-left: 0 !important;
   }
 }

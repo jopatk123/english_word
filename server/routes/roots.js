@@ -45,7 +45,10 @@ router.post('/', async (req, res) => {
   try {
     const { name, meaning, remark } = req.body;
     if (!name || !meaning) return error(res, '词根和核心含义为必填项');
-    const root = await Root.create({ name: name.trim(), meaning: meaning.trim(), remark: remark?.trim() });
+    const trimmedName = name.trim();
+    const existedRoot = await Root.findOne({ where: { name: trimmedName } });
+    if (existedRoot) return error(res, '词根已存在，请勿重复添加', 400);
+    const root = await Root.create({ name: trimmedName, meaning: meaning.trim(), remark: remark?.trim() });
     success(res, root, '添加成功');
   } catch (e) {
     error(res, e.message);
@@ -59,7 +62,10 @@ router.put('/:id', async (req, res) => {
     if (!root) return error(res, '词根不存在');
     const { name, meaning, remark } = req.body;
     if (!name || !meaning) return error(res, '词根和核心含义为必填项');
-    await root.update({ name: name.trim(), meaning: meaning.trim(), remark: remark?.trim() });
+    const trimmedName = name.trim();
+    const existedRoot = await Root.findOne({ where: { name: trimmedName } });
+    if (existedRoot && existedRoot.id !== root.id) return error(res, '词根已存在，请勿重复命名', 400);
+    await root.update({ name: trimmedName, meaning: meaning.trim(), remark: remark?.trim() });
     success(res, root, '更新成功');
   } catch (e) {
     error(res, e.message);

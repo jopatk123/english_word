@@ -55,9 +55,12 @@ router.post('/', async (req, res) => {
     if (!rootId || !name || !meaning) return error(res, '词根ID、单词和含义为必填项');
     const root = await Root.findByPk(rootId);
     if (!root) return error(res, '关联的词根不存在');
+    const trimmedName = name.trim();
+    const existedWord = await Word.findOne({ where: { rootId, name: trimmedName } });
+    if (existedWord) return error(res, '该词根下已存在同名单词，请勿重复添加', 400);
     const word = await Word.create({
       rootId,
-      name: name.trim(),
+      name: trimmedName,
       meaning: meaning.trim(),
       phonetic: phonetic?.trim(),
       remark: remark?.trim(),
@@ -75,8 +78,11 @@ router.put('/:id', async (req, res) => {
     if (!word) return error(res, '单词不存在');
     const { name, meaning, phonetic, remark } = req.body;
     if (!name || !meaning) return error(res, '单词和含义为必填项');
+    const trimmedName = name.trim();
+    const existedWord = await Word.findOne({ where: { rootId: word.rootId, name: trimmedName } });
+    if (existedWord && existedWord.id !== word.id) return error(res, '该词根下已存在同名单词，请勿重复命名', 400);
     await word.update({
-      name: name.trim(),
+      name: trimmedName,
       meaning: meaning.trim(),
       phonetic: phonetic?.trim(),
       remark: remark?.trim(),

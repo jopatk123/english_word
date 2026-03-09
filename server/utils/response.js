@@ -1,5 +1,5 @@
 const response = (res, code, data, msg) => {
-  res.status(code === 200 ? 200 : 500).json({ code, data, msg });
+  res.status(code).json({ code, data, msg });
 };
 
 export const success = (res, data = null, msg = 'success') => {

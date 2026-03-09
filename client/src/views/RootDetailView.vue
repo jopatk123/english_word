@@ -21,7 +21,10 @@
     <!-- 单词列表 -->
     <div class="section-header">
       <h3>关联单词（{{ words.length }}）</h3>
-      <el-button type="primary" @click="openWordDialog()">添加单词</el-button>
+      <div class="section-actions">
+        <el-button type="success" @click="$router.push(`/root/${rootId}/ai-words`)">智能添加单词</el-button>
+        <el-button type="primary" @click="openWordDialog()">添加单词</el-button>
+      </div>
     </div>
 
     <el-table :data="words" stripe empty-text="暂无单词" v-loading="wordsLoading">
