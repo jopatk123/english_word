@@ -1,0 +1,81 @@
+import { Router } from 'express';
+import { Op } from 'sequelize';
+import { Root, Word } from '../models/index.js';
+import { success, error } from '../utils/response.js';
+
+const router = Router();
+
+// 获取词根列表（支持模糊搜索）
+router.get('/', async (req, res) => {
+  try {
+    const { keyword } = req.query;
+    const where = keyword ? { name: { [Op.like]: `%${keyword}%` } } : {};
+    const roots = await Root.findAll({
+      where,
+      include: [{ model: Word, as: 'words', attributes: ['id'] }],
+      order: [['create_time', 'DESC']],
+    });
+    const result = roots.map(r => ({
+      ...r.toJSON(),
+      wordCount: r.words ? r.words.length : 0,
+      words: undefined,
+    }));
+    success(res, result);
+  } catch (e) {
+    error(res, e.message);
+  }
+});
+
+// 获取单个词根详情
+router.get('/:id', async (req, res) => {
+  try {
+    const root = await Root.findByPk(req.params.id, {
+      include: [{ model: Word, as: 'words', attributes: ['id'] }],
+    });
+    if (!root) return error(res, '词根不存在');
+    const result = { ...root.toJSON(), wordCount: root.words ? root.words.length : 0, words: undefined };
+    success(res, result);
+  } catch (e) {
+    error(res, e.message);
+  }
+});
+
+// 添加词根
+router.post('/', async (req, res) => {
+  try {
+    const { name, meaning, remark } = req.body;
+    if (!name || !meaning) return error(res, '词根和核心含义为必填项');
+    const root = await Root.create({ name: name.trim(), meaning: meaning.trim(), remark: remark?.trim() });
+    success(res, root, '添加成功');
+  } catch (e) {
+    error(res, e.message);
+  }
+});
+
+// 编辑词根
+router.put('/:id', async (req, res) => {
+  try {
+    const root = await Root.findByPk(req.params.id);
+    if (!root) return error(res, '词根不存在');
+    const { name, meaning, remark } = req.body;
+    if (!name || !meaning) return error(res, '词根和核心含义为必填项');
+    await root.update({ name: name.trim(), meaning: meaning.trim(), remark: remark?.trim() });
+    success(res, root, '更新成功');
+  } catch (e) {
+    error(res, e.message);
+  }
+});
+
+// 删除词根（级联删除）
+router.delete('/:id', async (req, res) => {
+  try {
+    const root = await Root.findByPk(req.params.id);
+    if (!root) return error(res, '词根不存在');
+    await root.destroy();
+    success(res, null, '删除成功');
+  } catch (e) {
+    error(res, e.message);
+  }
+});
+
+export default router;

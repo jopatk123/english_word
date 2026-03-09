@@ -1,0 +1,224 @@
+/* ========== 全局样式 ========== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: #f5f7fa;
+  color: #333;
+}
+
+/* ========== App 布局 ========== */
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  height: 60px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-content {
+  cursor: pointer;
+}
+
+.app-title {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.app-main {
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+/* ========== 首页 ========== */
+.search-section {
+  margin-bottom: 24px;
+}
+
+.search-input {
+  max-width: 500px;
+}
+
+.search-results {
+  margin-bottom: 24px;
+}
+
+.search-results h3 {
+  margin-bottom: 12px;
+  color: #606266;
+  font-size: 16px;
+}
+
+.root-section .section-header,
+.detail-view .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.root-section .section-header h2,
+.detail-view .section-header h3 {
+  font-size: 18px;
+  color: #303133;
+}
+
+/* ========== 详情页 ========== */
+.detail-view .el-breadcrumb {
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.info-card {
+  margin-bottom: 24px;
+}
+
+.card-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.root-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.phonetic {
+  font-size: 16px;
+  color: #909399;
+  font-style: italic;
+}
+
+.root-meaning {
+  font-size: 16px;
+  color: #606266;
+}
+
+.remark-text {
+  color: #606266;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.remark-text.muted {
+  color: #c0c4cc;
+}
+
+/* ========== 例句卡片 ========== */
+.example-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.example-card {
+  transition: transform 0.2s;
+}
+
+.example-card .el-card__body {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.example-content {
+  flex: 1;
+}
+
+.example-sentence {
+  font-size: 15px;
+  color: #303133;
+  line-height: 1.6;
+  margin-bottom: 6px;
+}
+
+.example-translation {
+  font-size: 14px;
+  color: #909399;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.example-remark {
+  margin-top: 4px;
+}
+
+.example-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 4px;
+}
+
+.empty-tip {
+  text-align: center;
+  color: #c0c4cc;
+  padding: 40px 0;
+  font-size: 14px;
+}
+
+/* ========== 响应式 ========== */
+@media (max-width: 768px) {
+  .app-main {
+    padding: 16px 10px;
+  }
+
+  .app-title {
+    font-size: 18px;
+  }
+
+  .search-input {
+    max-width: 100%;
+  }
+
+  .root-name {
+    font-size: 20px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .example-card .el-card__body {
+    flex-direction: column;
+  }
+
+  .example-actions {
+    align-self: flex-end;
+  }
+
+  /* 表格在移动端可横向滚动 */
+  .el-table {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .section-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start !important;
+  }
+}
