@@ -49,8 +49,32 @@ const buildRootPrompt = (roots) => {
     : '无';
 
   return {
-    systemPrompt: '你是英语词根学习助手。你只能返回 JSON，不允许输出 markdown、解释文本或多余字段。',
-    userPrompt: `请基于当前词根库，推荐最多 8 个“还未收录”的常用英语词根。\n\n要求：\n1. 频率要求放宽到“一般常用、对背单词有帮助”即可，不必局限于最顶级高频词根。\n2. 严禁输出任何已存在的词根，也不要输出近似重复词根；如果输出已存在词根，这些结果会被直接丢弃。\n3. 已存在词根名单：${existingRootNames}。请逐项避开。\n4. 优先选择适合词根记忆法、构词能力较强的拉丁或希腊词根。\n5. 如果确实没有可补充项，再返回空数组，并把 hasMore 设为 false。\n6. 不要输出 remark 字段，节省内容长度。\n7. 只返回严格 JSON，格式如下：\n{\n  "message": "给用户的简短说明",\n  "hasMore": true,\n  "items": [\n    {\n      "name": "fer",\n      "meaning": "带来；携带",\n      "reason": "当前库缺少这个常用词根，且构词能力强"\n    }\n  ]\n}\n\n当前已有词根详情：\n${existingRoots}`,
+    systemPrompt: `你是专业英语词根助手。
+**必须只返回合法JSON，绝对不能输出：解释、说明、markdown、代码块、多余文字、思考过程。**
+字段必须严格遵守，不能新增字段，不能少字段。`,
+    userPrompt: `基于现有词根库，推荐最多8个**未收录**的常用英语词根。
+
+规则（必须严格遵守）：
+1. 只推荐一般常用、构词能力强的拉丁/希腊词根。
+2. **绝对不能推荐以下已存在词根**：${existingRootNames}
+3. 不能推荐近似重复词根。
+4. 若无更多可推荐，返回空数组，hasMore: false。
+5. **禁止返回 remark 字段**。
+6. 只返回标准JSON，格式如下：
+{
+  "message": "简短说明",
+  "hasMore": true,
+  "items": [
+    {
+      "name": "fer",
+      "meaning": "带来；携带",
+      "reason": "构词能力强，适合记忆"
+    }
+  ]
+}
+
+已有词根：
+${existingRoots}`,
   };
 };
 
@@ -63,19 +87,73 @@ const buildWordPrompt = (root, words) => {
     : '无';
 
   return {
-    systemPrompt: '你是英语词根背单词助手。你只能返回 JSON，不允许输出 markdown、解释文本或多余字段。',
-    userPrompt: `请围绕词根“${root.name}（${root.meaning}）”推荐最多 10 个还未收录的常用英语单词。\n\n要求：\n1. 只推荐确实适合归到该词根下、一般常用且适合学习的英语单词。\n2. 严禁输出任何已存在的单词；如果输出已存在单词，这些结果会被直接丢弃。\n3. 已存在单词名单：${existingWordNames}。请逐项避开。\n4. 如果已经没有明显适合继续补充的常用单词，再返回空数组，并把 hasMore 设为 false。\n5. 尽量给出简洁中文含义；音标可留空字符串。\n6. 不要输出 remark 字段，节省内容长度。\n7. 只返回严格 JSON，格式如下：\n{\n  "message": "给用户的简短说明",\n  "hasMore": true,\n  "items": [\n    {\n      "name": "inspect",\n      "meaning": "检查；视察",\n      "phonetic": "/ɪnˈspekt/",\n      "reason": "由 in + spect 构成，符合词根语义"\n    }\n  ]\n}\n\n当前词根：${root.name} - ${root.meaning}\n当前已有单词详情：\n${existingWords}`,
+    systemPrompt: `你是专业英语单词助手。
+**必须只返回合法JSON，绝对不能输出：解释、说明、markdown、代码块、多余文字、思考过程。**
+字段必须严格遵守，不能新增字段，不能少字段。`,
+    userPrompt: `围绕词根【${root.name}（${root.meaning}）】推荐最多10个**未收录**的常用单词。
+
+规则（必须严格遵守）：
+1. 必须属于该词根，常用、适合学习。
+2. **绝对不能推荐以下已存在单词**：${existingWordNames}
+3. 若无更多可推荐，返回空数组，hasMore: false。
+4. **禁止返回 remark 字段**。
+5. 只返回标准JSON，格式如下：
+{
+  "message": "简短说明",
+  "hasMore": true,
+  "items": [
+    {
+      "name": "inspect",
+      "meaning": "检查；视察",
+      "phonetic": "/ɪnˈspekt/",
+      "reason": "由 in + spect 构成"
+    }
+  ]
+}
+
+已有单词：
+${existingWords}`,
   };
 };
 
 const buildExamplePrompt = (word, examples) => {
   const existingExamples = examples.length
-    ? examples.map((example) => `- ${example.sentence} | ${example.translation}`).join('\n')
+    ? examples.map((example) => `- ${example.sentence}`).join('\n')
     : '当前该单词下还没有任何例句。';
 
   return {
-    systemPrompt: '你是英语例句学习助手。你只能返回 JSON，不允许输出 markdown、解释文本或多余字段。',
-    userPrompt: `请围绕英语单词“${word.name}”生成最多 6 条还未收录的高质量英文例句，并给出中文翻译。\n\n单词信息：\n- 单词：${word.name}\n- 含义：${word.meaning}\n- 音标：${word.phonetic || '无'}\n- 词根：${word.root?.name || '无'}（${word.root?.meaning || '无'}）\n\n要求：\n1. 例句必须自然、常见、语法正确，能体现这个单词的一般常用用法。\n2. 严禁输出与已有例句相同或高度相似的句子。\n3. 如果当前已经没有明显值得补充的常用例句，再返回空数组，并把 hasMore 设为 false。\n4. 不要输出 remark 字段，节省内容长度。\n5. 只返回严格 JSON，格式如下：\n{\n  "message": "给用户的简短说明",\n  "hasMore": true,\n  "items": [\n    {\n      "sentence": "The team will launch the project next month.",\n      "translation": "团队将于下个月启动这个项目。",\n      "reason": "体现 project 的常见名词用法"\n    }\n  ]\n}\n\n当前已有例句：\n${existingExamples}`,
+    systemPrompt: `你是专业英语例句助手。
+**必须只返回合法JSON，绝对不能输出：解释、说明、markdown、代码块、多余文字、思考过程。**
+字段必须严格遵守，不能新增字段，不能少字段。`,
+    userPrompt: `为单词【${word.name}】生成最多6条**全新、不重复**的高质量英文例句+中文翻译。
+
+单词信息：
+- 单词：${word.name}
+- 含义：${word.meaning}
+- 音标：${word.phonetic || '无'}
+- 词根：${word.root?.name || '无'}
+
+规则（必须严格遵守）：
+1. 句子自然、常用、语法正确。
+2. **绝对不能与以下例句相同或高度相似**：
+${existingExamples}
+3. 若无更多可推荐，返回空数组，hasMore: false。
+4. **禁止返回 remark 字段**。
+5. 只返回标准JSON，格式如下：
+{
+  "message": "简短说明",
+  "hasMore": true,
+  "items": [
+    {
+      "sentence": "She inspected the room carefully.",
+      "translation": "她仔细检查了房间。",
+      "reason": "体现 inspect 常见用法"
+    }
+  ]
+}
+
+已有例句（必须避开）：
+${existingExamples}`,
   };
 };
 
