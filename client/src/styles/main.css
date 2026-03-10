@@ -288,6 +288,44 @@ body {
   margin-bottom: 6px;
 }
 
+/* ========== 语音播放按钮 ========== */
+.speak-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #909399;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.speak-btn:hover {
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+}
+
+.speak-btn.is-speaking {
+  color: #667eea;
+  animation: speak-pulse 1s ease-in-out infinite;
+}
+
+@keyframes speak-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+.cell-with-speak {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* ========== 响应式 ========== */
 @media (max-width: 768px) {
   .app-main {

@@ -20,7 +20,14 @@
     <div v-if="searchKeyword && wordResults.length" class="search-results">
       <h3>单词搜索结果</h3>
       <el-table :data="wordResults" stripe>
-        <el-table-column prop="name" label="单词" min-width="120" />
+        <el-table-column prop="name" label="单词" min-width="120">
+          <template #default="{ row }">
+            <div class="cell-with-speak">
+              <span>{{ row.name }}</span>
+              <SpeakButton :text="row.name" />
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="meaning" label="含义" min-width="150" />
         <el-table-column label="所属词根" min-width="120">
           <template #default="{ row }">
@@ -51,9 +58,12 @@
       <el-table :data="roots" stripe v-loading="loading" empty-text="暂无词根，点击「添加词根」开始吧">
         <el-table-column prop="name" label="词根" min-width="120">
           <template #default="{ row }">
-            <el-link type="primary" @click="$router.push(`/root/${row.id}`)">
-              <strong>{{ row.name }}</strong>
-            </el-link>
+            <div class="cell-with-speak">
+              <el-link type="primary" @click="$router.push(`/root/${row.id}`)">
+                <strong>{{ row.name }}</strong>
+              </el-link>
+              <SpeakButton :text="row.name" />
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="meaning" label="核心含义" min-width="150" />
@@ -94,6 +104,7 @@ import { ref, onMounted } from 'vue';
 import { Search } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getRoots, createRoot, updateRoot, deleteRoot, getWords } from '../api/index.js';
+import SpeakButton from '../components/SpeakButton.vue';
 
 const roots = ref([]);
 const loading = ref(false);

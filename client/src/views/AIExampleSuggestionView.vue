@@ -59,6 +59,7 @@
               <p v-if="item.reason" class="remark-text">推荐理由：{{ item.reason }}</p>
             </div>
             <div class="example-actions">
+              <SpeakButton :text="item.sentence" />
               <el-checkbox :model-value="selectedMap[item.sentence]" @change="toggleSelection(item)">选择</el-checkbox>
             </div>
           </el-card>
@@ -85,6 +86,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { createExample, getAiExampleSuggestions, getExamples, getWord } from '../api/index.js';
+import SpeakButton from '../components/SpeakButton.vue';
 import { getProviderById } from '../constants/aiProviders.js';
 import { isAiSettingsReady, loadAiSettings } from '../utils/aiSettings.js';
 

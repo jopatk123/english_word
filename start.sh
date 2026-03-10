@@ -44,8 +44,26 @@ stop_existing_process() {
   local port_pid
   port_pid="$(lsof -ti tcp:"$PORT" -sTCP:LISTEN 2>/dev/null || true)"
   if [ -n "$port_pid" ]; then
-    echo "端口 $PORT 已被占用，无法启动。请先释放端口。"
-    exit 1
+    echo "端口 $PORT 已被占用，尝试清理进程 $port_pid..."
+    # 尝试终止监听该端口的进程
+    if kill "$port_pid" >/dev/null 2>&1; then
+      echo "已发送终止信号给进程 $port_pid，等待端口释放..."
+      # 等待端口关闭，最多 5 秒
+      for i in {1..5}; do
+        sleep 1
+        if ! lsof -ti tcp:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+          break
+        fi
+      done
+    else
+      echo "无法终止进程 $port_pid，请手动释放端口 $PORT 并重试。"
+      exit 1
+    fi
+    # 如果在尝试后端口仍然被占用，则直接报错
+    if lsof -ti tcp:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+      echo "端口 $PORT 仍被占用，无法启动。请手动处理。"
+      exit 1
+    fi
   fi
 }
 

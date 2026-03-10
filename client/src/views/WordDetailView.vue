@@ -15,6 +15,7 @@
         <div class="card-header">
           <span class="root-name">{{ word?.name }}</span>
           <span v-if="word?.phonetic" class="phonetic">{{ word.phonetic }}</span>
+          <SpeakButton v-if="word?.name" :text="word.name" />
           <span class="root-meaning">— {{ word?.meaning }}</span>
         </div>
       </template>
@@ -55,6 +56,7 @@
           </p>
         </div>
         <div class="example-actions">
+          <SpeakButton :text="example.sentence" />
           <el-button link type="primary" @click="openExampleDialog(example)">编辑</el-button>
           <el-button link type="danger" @click="handleDeleteExample(example)">删除</el-button>
         </div>
@@ -87,6 +89,7 @@ import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getWord, getExamples, createExample, updateExample, deleteExample } from '../api/index.js';
+import SpeakButton from '../components/SpeakButton.vue';
 
 const props = defineProps({ id: String });
 const route = useRoute();

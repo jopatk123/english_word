@@ -11,6 +11,7 @@
       <template #header>
         <div class="card-header">
           <span class="root-name">{{ root?.name }}</span>
+          <SpeakButton v-if="root?.name" :text="root.name" />
           <span class="root-meaning">— {{ root?.meaning }}</span>
         </div>
       </template>
@@ -30,9 +31,12 @@
     <el-table :data="words" stripe empty-text="暂无单词" v-loading="wordsLoading">
       <el-table-column prop="name" label="单词" min-width="120">
         <template #default="{ row }">
-          <el-link type="primary" @click="$router.push(`/word/${row.id}`)">
-            <strong>{{ row.name }}</strong>
-          </el-link>
+          <div class="cell-with-speak">
+            <el-link type="primary" @click="$router.push(`/word/${row.id}`)">
+              <strong>{{ row.name }}</strong>
+            </el-link>
+            <SpeakButton :text="row.name" />
+          </div>
         </template>
       </el-table-column>
       <el-table-column prop="meaning" label="含义" min-width="150" />
@@ -76,6 +80,7 @@ import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getRoot, getWords, createWord, updateWord, deleteWord } from '../api/index.js';
+import SpeakButton from '../components/SpeakButton.vue';
 
 const props = defineProps({ id: String });
 const route = useRoute();

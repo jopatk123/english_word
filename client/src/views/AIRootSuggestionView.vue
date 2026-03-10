@@ -53,7 +53,14 @@
           @selection-change="handleSelectionChange"
         >
           <el-table-column type="selection" width="55" />
-          <el-table-column prop="name" label="词根" min-width="120" />
+          <el-table-column prop="name" label="词根" min-width="120">
+            <template #default="{ row }">
+              <div class="cell-with-speak">
+                <span>{{ row.name }}</span>
+                <SpeakButton :text="row.name" />
+              </div>
+            </template>
+          </el-table-column>
           <el-table-column prop="meaning" label="核心含义" min-width="150" />
           <el-table-column prop="remark" label="备注" min-width="180" show-overflow-tooltip />
           <el-table-column prop="reason" label="推荐理由" min-width="180" show-overflow-tooltip />
@@ -79,6 +86,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { createRoot, getAiRootSuggestions } from '../api/index.js';
+import SpeakButton from '../components/SpeakButton.vue';
 import { getProviderById } from '../constants/aiProviders.js';
 import { isAiSettingsReady, loadAiSettings } from '../utils/aiSettings.js';
 
