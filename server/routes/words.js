@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
     const words = await Word.findAll({
       where,
       include: [
-        { model: Root, as: 'root', attributes: ['id', 'name', 'meaning'] },
+        { model: Root, as: 'root', attributes: ['id', 'name', 'meaning'], where: { userId: req.userId }, required: true },
         { model: Example, as: 'examples', attributes: ['id'] },
       ],
       order: [['create_time', 'DESC']],
@@ -36,7 +36,7 @@ router.get('/:id', async (req, res) => {
   try {
     const word = await Word.findByPk(req.params.id, {
       include: [
-        { model: Root, as: 'root', attributes: ['id', 'name', 'meaning'] },
+        { model: Root, as: 'root', attributes: ['id', 'name', 'meaning'], where: { userId: req.userId }, required: true },
         { model: Example, as: 'examples', attributes: ['id'] },
       ],
     });
@@ -54,7 +54,7 @@ router.post('/', async (req, res) => {
     const { rootId, name, meaning, phonetic, remark } = req.body;
     if (!rootId || !name || !meaning) return error(res, '词根ID、单词和含义为必填项');
     const root = await Root.findByPk(rootId);
-    if (!root) return error(res, '关联的词根不存在');
+    if (!root || root.userId !== req.userId) return error(res, '关联的词根不存在');
     const trimmedName = name.trim();
     const existedWord = await Word.findOne({ where: { rootId, name: trimmedName } });
     if (existedWord) return error(res, '该词根下已存在同名单词，请勿重复添加', 400);
@@ -74,8 +74,10 @@ router.post('/', async (req, res) => {
 // 编辑单词
 router.put('/:id', async (req, res) => {
   try {
-    const word = await Word.findByPk(req.params.id);
-    if (!word) return error(res, '单词不存在');
+    const word = await Word.findByPk(req.params.id, {
+      include: [{ model: Root, as: 'root', attributes: ['id', 'userId'] }],
+    });
+    if (!word || word.root?.userId !== req.userId) return error(res, '单词不存在');
     const { name, meaning, phonetic, remark } = req.body;
     if (!name || !meaning) return error(res, '单词和含义为必填项');
     const trimmedName = name.trim();
@@ -96,8 +98,10 @@ router.put('/:id', async (req, res) => {
 // 删除单词（级联删除例句）
 router.delete('/:id', async (req, res) => {
   try {
-    const word = await Word.findByPk(req.params.id);
-    if (!word) return error(res, '单词不存在');
+    const word = await Word.findByPk(req.params.id, {
+      include: [{ model: Root, as: 'root', attributes: ['id', 'userId'] }],
+    });
+    if (!word || word.root?.userId !== req.userId) return error(res, '单词不存在');
     await word.destroy();
     success(res, null, '删除成功');
   } catch (e) {

@@ -1,38 +1,28 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 
-const Root = sequelize.define('Root', {
+const User = sequelize.define('User', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true,
   },
-  name: {
+  username: {
     type: DataTypes.STRING,
     allowNull: false,
-    comment: '词根',
+    unique: true,
+    comment: '用户名',
   },
-  meaning: {
+  password: {
     type: DataTypes.STRING,
     allowNull: false,
-    comment: '核心含义',
-  },
-  remark: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-    comment: '备注',
-  },
-  userId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    field: 'user_id',
-    comment: '所属用户ID',
+    comment: '密码哈希',
   },
 }, {
-  tableName: 'roots',
+  tableName: 'users',
   timestamps: true,
   createdAt: 'create_time',
   updatedAt: 'update_time',
 });
 
-export default Root;
+export default User;

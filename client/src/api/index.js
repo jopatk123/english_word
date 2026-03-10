@@ -10,16 +10,36 @@ const aiApi = axios.create({
   timeout: 90000,
 });
 
-// 响应拦截器
-api.interceptors.response.use(
-  (response) => response.data,
-  (err) => Promise.reject(err),
-);
+// 请求拦截器 - 添加 token
+const addAuthHeader = (config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+};
 
-aiApi.interceptors.response.use(
-  (response) => response.data,
-  (err) => Promise.reject(err),
-);
+api.interceptors.request.use(addAuthHeader);
+aiApi.interceptors.request.use(addAuthHeader);
+
+// 响应拦截器 - 处理 401
+const handleResponse = (response) => response.data;
+const handleError = (err) => {
+  if (err.response?.status === 401) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+  }
+  return Promise.reject(err);
+};
+
+api.interceptors.response.use(handleResponse, handleError);
+aiApi.interceptors.response.use(handleResponse, handleError);
+
+// ========== 认证 API ==========
+export const login = (data) => api.post('/auth/login', data);
+export const register = (data) => api.post('/auth/register', data);
+export const getMe = () => api.get('/auth/me');
 
 // ========== 词根 API ==========
 export const getRoots = (keyword) => api.get('/roots', { params: { keyword } });

@@ -183,7 +183,7 @@ router.post('/suggest-roots', async (req, res) => {
     const validatedConfig = validateAiConfig(config);
     const debugInfo = createDebugInfo(req, validatedConfig, startedAt);
     logAiInfo('suggest-roots.start', debugInfo);
-    const roots = await Root.findAll({ order: [['name', 'ASC']] });
+    const roots = await Root.findAll({ where: { userId: req.userId }, order: [['name', 'ASC']] });
     const payload = await requestAiJson(validatedConfig, buildRootPrompt(roots));
     const rawCount = Array.isArray(payload?.items) ? payload.items.length : 0;
     const items = sanitizeRootSuggestions(payload?.items, roots.map((item) => item.name));
@@ -220,7 +220,7 @@ router.post('/suggest-words', async (req, res) => {
     logAiInfo('suggest-words.start', debugInfo, { rootId });
 
     const root = await Root.findByPk(rootId);
-    if (!root) return error(res, '词根不存在', 404);
+    if (!root || root.userId !== req.userId) return error(res, '词根不存在', 404);
 
     const words = await Word.findAll({
       where: { rootId },
@@ -271,9 +271,9 @@ router.post('/suggest-examples', async (req, res) => {
     logAiInfo('suggest-examples.start', debugInfo, { wordId });
 
     const word = await Word.findByPk(wordId, {
-      include: [{ model: Root, as: 'root', attributes: ['id', 'name', 'meaning'] }],
+      include: [{ model: Root, as: 'root', attributes: ['id', 'name', 'meaning', 'userId'] }],
     });
-    if (!word) return error(res, '单词不存在', 404);
+    if (!word || word.root?.userId !== req.userId) return error(res, '单词不存在', 404);
 
     const examples = await Example.findAll({
       where: { wordId },

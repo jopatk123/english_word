@@ -3,6 +3,8 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { initDB } from './models/index.js';
+import { authMiddleware } from './middleware/auth.js';
+import authRouter from './routes/auth.js';
 import rootsRouter from './routes/roots.js';
 import wordsRouter from './routes/words.js';
 import examplesRouter from './routes/examples.js';
@@ -17,11 +19,14 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// API路由
-app.use('/api/roots', rootsRouter);
-app.use('/api/words', wordsRouter);
-app.use('/api/examples', examplesRouter);
-app.use('/api/ai', aiRouter);
+// 认证路由（无需登录）
+app.use('/api/auth', authRouter);
+
+// 需要登录的 API 路由
+app.use('/api/roots', authMiddleware, rootsRouter);
+app.use('/api/words', authMiddleware, wordsRouter);
+app.use('/api/examples', authMiddleware, examplesRouter);
+app.use('/api/ai', authMiddleware, aiRouter);
 
 // 托管前端静态资源
 const clientDist = path.resolve(__dirname, '../client/dist');

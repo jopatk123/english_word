@@ -1,6 +1,6 @@
 services:
   english-word:
-    # 替换 build: . 为 image: 指定已有镜像
+    build: .
     image: english_word-english-word:latest
     container_name: english-word-app
     ports:
@@ -14,3 +14,4 @@ services:
 
 volumes:
   english-word-db:
+    driver: local
