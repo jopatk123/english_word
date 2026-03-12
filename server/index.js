@@ -9,6 +9,7 @@ import rootsRouter from './routes/roots.js';
 import wordsRouter from './routes/words.js';
 import examplesRouter from './routes/examples.js';
 import aiRouter from './routes/ai.js';
+import reviewRouter from './routes/review.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -27,6 +28,7 @@ app.use('/api/roots', authMiddleware, rootsRouter);
 app.use('/api/words', authMiddleware, wordsRouter);
 app.use('/api/examples', authMiddleware, examplesRouter);
 app.use('/api/ai', authMiddleware, aiRouter);
+app.use('/api/review', authMiddleware, reviewRouter);
 
 // 托管前端静态资源
 const clientDist = path.resolve(__dirname, '../client/dist');

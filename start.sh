@@ -98,22 +98,17 @@ cleanup() {
 
 trap cleanup INT TERM
 
-for _ in $(seq 1 30); do
-  if curl -fsS "http://$HOST:$PORT/api/roots" >/dev/null 2>&1; then
-    echo "服务已启动: http://$HOST:$PORT"
-    wait "$server_pid"
-    exit 0
-  fi
-
+# wait for the server to respond; no hard timeout
+# the loop will only exit if the process dies or the endpoint becomes available
+while ! curl -fsS "http://$HOST:$PORT/api/roots" >/dev/null 2>&1; do
   if ! kill -0 "$server_pid" >/dev/null 2>&1; then
     echo "服务启动失败。"
     rm -f "$PID_FILE"
     exit 1
   fi
-
   sleep 1
 done
 
-echo "服务启动超时。"
-cleanup
-exit 1
+echo "服务已启动: http://$HOST:$PORT"
+wait "$server_pid"
+exit 0

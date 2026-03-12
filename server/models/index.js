@@ -3,6 +3,7 @@ import User from './User.js';
 import Root from './Root.js';
 import Word from './Word.js';
 import Example from './Example.js';
+import WordReview from './WordReview.js';
 
 // 用户 -> 词根 (一对多)
 User.hasMany(Root, { foreignKey: 'user_id', as: 'roots', onDelete: 'CASCADE' });
@@ -15,6 +16,14 @@ Word.belongsTo(Root, { foreignKey: 'root_id', as: 'root' });
 // 单词 -> 例句 (一对多)
 Word.hasMany(Example, { foreignKey: 'word_id', as: 'examples', onDelete: 'CASCADE' });
 Example.belongsTo(Word, { foreignKey: 'word_id', as: 'word' });
+
+// 用户 -> 学习记录 (一对多)
+User.hasMany(WordReview, { foreignKey: 'user_id', as: 'reviews', onDelete: 'CASCADE' });
+WordReview.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+// 单词 -> 学习记录 (一对多)
+Word.hasMany(WordReview, { foreignKey: 'word_id', as: 'reviews', onDelete: 'CASCADE' });
+WordReview.belongsTo(Word, { foreignKey: 'word_id', as: 'word' });
 
 const initDB = async () => {
   await sequelize.sync();
@@ -33,4 +42,4 @@ const initDB = async () => {
   console.log('数据库同步完成');
 };
 
-export { sequelize, User, Root, Word, Example, initDB };
+export { sequelize, User, Root, Word, Example, WordReview, initDB };

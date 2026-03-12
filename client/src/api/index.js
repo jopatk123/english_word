@@ -62,6 +62,15 @@ export const createExample = (data) => api.post('/examples', data);
 export const updateExample = (id, data) => api.put(`/examples/${id}`, data);
 export const deleteExample = (id) => api.delete(`/examples/${id}`);
 
+// ========== 背单词 API ==========
+export const getReviewDue = () => api.get('/review/due');
+export const getReviewStats = () => api.get('/review/stats');
+export const enqueueRoot = (rootId) => api.post('/review/enqueue', { rootId });
+export const submitReviewResult = (wordId, quality) => api.post(`/review/${wordId}/result`, { quality });
+export const getRootsProgress = () => api.get('/review/roots-progress');
+export const resetWordReview = (wordId) => api.post(`/review/${wordId}/reset`);
+export const removeWordReview = (wordId) => api.delete(`/review/${wordId}`);
+
 // ========== AI API ==========
 export const testAiConnection = (config) => aiApi.post('/ai/test', { config });
 export const getAiRootSuggestions = (config) => aiApi.post('/ai/suggest-roots', { config });

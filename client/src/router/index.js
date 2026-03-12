@@ -7,6 +7,8 @@ import AISettingsView from '../views/AISettingsView.vue';
 import AIRootSuggestionView from '../views/AIRootSuggestionView.vue';
 import AIWordSuggestionView from '../views/AIWordSuggestionView.vue';
 import AIExampleSuggestionView from '../views/AIExampleSuggestionView.vue';
+import StudyDashboardView from '../views/StudyDashboardView.vue';
+import StudySessionView from '../views/StudySessionView.vue';
 
 const routes = [
   { path: '/login', name: 'Login', component: LoginView, meta: { guest: true } },
@@ -15,6 +17,8 @@ const routes = [
   { path: '/ai/roots', name: 'AIRootSuggestion', component: AIRootSuggestionView },
   { path: '/root/:id/ai-words', name: 'AIWordSuggestion', component: AIWordSuggestionView, props: true },
   { path: '/word/:id/ai-examples', name: 'AIExampleSuggestion', component: AIExampleSuggestionView, props: true },
+  { path: '/study', name: 'StudyDashboard', component: StudyDashboardView },
+  { path: '/study/session', name: 'StudySession', component: StudySessionView },
   { path: '/root/:id', name: 'RootDetail', component: RootDetailView, props: true },
   { path: '/word/:id', name: 'WordDetail', component: WordDetailView, props: true },
 ];

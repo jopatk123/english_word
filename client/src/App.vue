@@ -4,6 +4,9 @@
       <div class="header-content" @click="$router.push('/')">
         <h1 class="app-title">📖 词根背单词</h1>
       </div>
+      <div v-if="user" class="header-nav">
+        <el-button class="nav-btn" link @click="$router.push('/study')">📝 背单词</el-button>
+      </div>
       <div v-if="user" class="header-user">
         <span class="username">{{ user.username }}</span>
         <el-button link @click="handleLogout">退出</el-button>
