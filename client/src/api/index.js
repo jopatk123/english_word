@@ -25,7 +25,13 @@ aiApi.interceptors.request.use(addAuthHeader);
 // 响应拦截器 - 处理 401
 const handleResponse = (response) => response.data;
 const handleError = (err) => {
-  if (err.response?.status === 401) {
+  // for most 401 errors we clear auth and redirect to login page
+  // but avoid redirecting when user is already trying to log in/register;
+  // otherwise the page reloads before our handler can show message
+  const status = err.response?.status;
+  const url = err.config?.url || '';
+  const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register');
+  if (status === 401 && !isAuthEndpoint) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     window.location.href = '/login';
