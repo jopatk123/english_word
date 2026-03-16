@@ -29,14 +29,16 @@ ensure_dependencies() {
 
 stop_existing_process() {
   if [ -f "$PID_FILE" ]; then
-    local existing_pid
-    existing_pid="$(cat "$PID_FILE")"
+    local existing_pids
+    existing_pids="$(cat "$PID_FILE")"
 
-    if kill -0 "$existing_pid" >/dev/null 2>&1; then
-      echo "停止旧服务进程: $existing_pid"
-      kill "$existing_pid"
-      wait "$existing_pid" 2>/dev/null || true
-    fi
+    for existing_pid in $existing_pids; do
+      if kill -0 "$existing_pid" >/dev/null 2>&1; then
+        echo "停止旧服务进程: $existing_pid"
+        kill "$existing_pid"
+        wait "$existing_pid" 2>/dev/null || true
+      fi
+    done
 
     rm -f "$PID_FILE"
   fi
@@ -74,25 +76,34 @@ require_command lsof
 ensure_dependencies "$CLIENT_DIR"
 ensure_dependencies "$SERVER_DIR"
 
-echo "构建前端..."
-npm --prefix "$CLIENT_DIR" run build
-
+# 启动后端 & 前端开发服务器（支持热重载）
 stop_existing_process
 
-echo "启动后端服务..."
+echo "启动后端服务（dev 模式，支持热重载）..."
 (
   cd "$SERVER_DIR"
-  PORT="$PORT" HOST="$HOST" node index.js
+  PORT="$PORT" HOST="$HOST" npm run dev
 ) &
 
 server_pid=$!
-echo "$server_pid" > "$PID_FILE"
+
+echo "启动前端服务（Vite dev server）..."
+(
+  cd "$CLIENT_DIR"
+  npm run dev
+) &
+
+client_pid=$!
+
+echo "$server_pid $client_pid" > "$PID_FILE"
 
 cleanup() {
-  if kill -0 "$server_pid" >/dev/null 2>&1; then
-    kill "$server_pid" >/dev/null 2>&1 || true
-    wait "$server_pid" 2>/dev/null || true
-  fi
+  for pid in $server_pid $client_pid; do
+    if kill -0 "$pid" >/dev/null 2>&1; then
+      kill "$pid" >/dev/null 2>&1 || true
+      wait "$pid" 2>/dev/null || true
+    fi
+  done
   rm -f "$PID_FILE"
 }
 
@@ -109,6 +120,8 @@ while ! curl -fsS "http://$HOST:$PORT/api/roots" >/dev/null 2>&1; do
   sleep 1
 done
 
-echo "服务已启动: http://$HOST:$PORT"
-wait "$server_pid"
+echo "后端已启动: http://$HOST:$PORT"
+echo "前端已启动 (Vite dev server)，默认地址: http://localhost:5173"
+
+wait "$server_pid" "$client_pid"
 exit 0

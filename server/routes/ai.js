@@ -318,4 +318,228 @@ router.post('/suggest-examples', async (req, res) => {
   }
 });
 
+// ========== 搜索分析：单词 ==========
+const buildAnalyzeWordPrompt = (word) => ({
+  systemPrompt: `你是专业英语词根助手。
+**必须只返回合法JSON，绝对不能输出：解释、说明、markdown、代码块、多余文字、思考过程。**
+字段必须严格遵守，不能新增字段，不能少字段。`,
+  userPrompt: `分析英语单词【${word}】，返回其含义、音标、词根信息和1-3条常用例句。
+
+规则（必须严格遵守）：
+1. 返回该单词最常用的中文含义和音标。
+2. 如果该单词有词根，返回词根名称和词根含义；如果没有明确词根，root 字段设为 null。
+3. 生成1-3条高质量英文例句+中文翻译。
+4. 只返回标准JSON，格式如下：
+{
+  "word": "${word}",
+  "meaning": "中文含义",
+  "phonetic": "/音标/",
+  "root": {
+    "name": "词根名",
+    "meaning": "词根含义"
+  },
+  "examples": [
+    {
+      "sentence": "英文例句",
+      "translation": "中文翻译"
+    }
+  ]
+}
+
+如果没有词根，root 为 null：
+{
+  "word": "${word}",
+  "meaning": "中文含义",
+  "phonetic": "/音标/",
+  "root": null,
+  "examples": [...]
+}`,
+});
+
+const sanitizeAnalyzeWordResult = (parsed, word) => {
+  if (!parsed || typeof parsed !== 'object') return null;
+
+  const result = {
+    word: (parsed.word || word).trim().toLowerCase().slice(0, 60),
+    meaning: (parsed.meaning || '').trim().slice(0, 200),
+    phonetic: (parsed.phonetic || '').trim().slice(0, 80),
+    root: null,
+    examples: [],
+  };
+
+  if (parsed.root && typeof parsed.root === 'object' && parsed.root.name) {
+    const rootName = parsed.root.name.trim().toLowerCase().slice(0, 40);
+    const rootMeaning = (parsed.root.meaning || '').trim().slice(0, 80);
+    if (/^[a-z-]{2,40}$/.test(rootName) && rootMeaning) {
+      result.root = { name: rootName, meaning: rootMeaning };
+    }
+  }
+
+  const items = Array.isArray(parsed.examples) ? parsed.examples : [];
+  for (const item of items) {
+    const sentence = (item?.sentence || '').trim().slice(0, 400);
+    const translation = (item?.translation || '').trim().slice(0, 240);
+    if (sentence && translation && sentence.length >= 5) {
+      result.examples.push({ sentence, translation });
+      if (result.examples.length >= 3) break;
+    }
+  }
+
+  return result.meaning ? result : null;
+};
+
+router.post('/analyze-word', async (req, res) => {
+  const startedAt = Date.now();
+  try {
+    const { word, config = {} } = req.body || {};
+    if (!word || typeof word !== 'string' || !/^[a-zA-Z-]+$/.test(word.trim())) {
+      return error(res, '请输入合法的英文单词（仅支持字母和连字符）', 400);
+    }
+    const trimmedWord = word.trim().toLowerCase();
+
+    const validatedConfig = validateAiConfig(config);
+    const debugInfo = createDebugInfo(req, validatedConfig, startedAt);
+    logAiInfo('analyze-word.start', debugInfo, { word: trimmedWord });
+
+    // 检查单词是否已存在
+    const existingWord = await Word.findOne({
+      where: { name: trimmedWord },
+      include: [
+        { model: Root, as: 'root', attributes: ['id', 'name', 'meaning', 'userId'], where: { userId: req.userId }, required: true },
+      ],
+    });
+
+    // 调用 AI 分析
+    const payload = await requestAiJson(validatedConfig, buildAnalyzeWordPrompt(trimmedWord));
+    const analysis = sanitizeAnalyzeWordResult(payload, trimmedWord);
+    if (!analysis) {
+      return error(res, 'AI 返回的分析结果无效，请重试', 400);
+    }
+
+    // 检查词根是否已存在
+    let existingRoot = null;
+    if (analysis.root) {
+      existingRoot = await Root.findOne({
+        where: { name: analysis.root.name, userId: req.userId },
+      });
+    }
+
+    logAiInfo('analyze-word.success', debugInfo, {
+      word: trimmedWord,
+      wordExists: !!existingWord,
+      rootExists: !!existingRoot,
+      rootName: analysis.root?.name,
+      exampleCount: analysis.examples.length,
+    });
+
+    success(res, {
+      analysis,
+      existingWord: existingWord ? {
+        id: existingWord.id,
+        name: existingWord.name,
+        meaning: existingWord.meaning,
+        rootId: existingWord.root?.id,
+        rootName: existingWord.root?.name,
+      } : null,
+      existingRoot: existingRoot ? {
+        id: existingRoot.id,
+        name: existingRoot.name,
+        meaning: existingRoot.meaning,
+      } : null,
+      debug: withDuration(debugInfo),
+    });
+  } catch (e) {
+    const debugInfo = createDebugInfo(req, req.body?.config || {}, startedAt);
+    logAiError('analyze-word.error', debugInfo, e);
+    error(res, `${e.message} [requestId=${debugInfo.requestId}]`, 400);
+  }
+});
+
+// ========== 搜索分析：句子 ==========
+const buildAnalyzeSentencePrompt = (sentence) => ({
+  systemPrompt: `你是专业英语教学助手。
+**必须只返回合法JSON，绝对不能输出：解释、说明、markdown、代码块、多余文字、思考过程。**
+字段必须严格遵守，不能新增字段，不能少字段。`,
+  userPrompt: `分析以下英文句子，帮助用户学习理解：
+
+句子：${sentence}
+
+规则（必须严格遵守）：
+1. 提供中文翻译
+2. 分析句子的语法结构
+3. 列出1-5个关键词汇及其含义
+4. 只返回标准JSON，格式如下：
+{
+  "sentence": "原句",
+  "translation": "中文翻译",
+  "grammar": "语法结构分析（中文说明）",
+  "vocabulary": [
+    {
+      "word": "单词",
+      "meaning": "中文含义",
+      "phonetic": "/音标/"
+    }
+  ]
+}`,
+});
+
+const sanitizeAnalyzeSentenceResult = (parsed, sentence) => {
+  if (!parsed || typeof parsed !== 'object') return null;
+
+  const result = {
+    sentence: (parsed.sentence || sentence).trim().slice(0, 500),
+    translation: (parsed.translation || '').trim().slice(0, 500),
+    grammar: (parsed.grammar || '').trim().slice(0, 1000),
+    vocabulary: [],
+  };
+
+  const items = Array.isArray(parsed.vocabulary) ? parsed.vocabulary : [];
+  for (const item of items) {
+    const w = (item?.word || '').trim().slice(0, 60);
+    const m = (item?.meaning || '').trim().slice(0, 120);
+    const p = (item?.phonetic || '').trim().slice(0, 80);
+    if (w && m) {
+      result.vocabulary.push({ word: w, meaning: m, phonetic: p });
+      if (result.vocabulary.length >= 8) break;
+    }
+  }
+
+  return result.translation ? result : null;
+};
+
+router.post('/analyze-sentence', async (req, res) => {
+  const startedAt = Date.now();
+  try {
+    const { sentence, config = {} } = req.body || {};
+    if (!sentence || typeof sentence !== 'string' || sentence.trim().length < 2) {
+      return error(res, '请输入合法的英文句子', 400);
+    }
+    const trimmedSentence = sentence.trim().slice(0, 500);
+
+    const validatedConfig = validateAiConfig(config);
+    const debugInfo = createDebugInfo(req, validatedConfig, startedAt);
+    logAiInfo('analyze-sentence.start', debugInfo, { sentenceLength: trimmedSentence.length });
+
+    const payload = await requestAiJson(validatedConfig, buildAnalyzeSentencePrompt(trimmedSentence));
+    const analysis = sanitizeAnalyzeSentenceResult(payload, trimmedSentence);
+    if (!analysis) {
+      return error(res, 'AI 返回的分析结果无效，请重试', 400);
+    }
+
+    logAiInfo('analyze-sentence.success', debugInfo, {
+      sentenceLength: trimmedSentence.length,
+      vocabularyCount: analysis.vocabulary.length,
+    });
+
+    success(res, {
+      analysis,
+      debug: withDuration(debugInfo),
+    });
+  } catch (e) {
+    const debugInfo = createDebugInfo(req, req.body?.config || {}, startedAt);
+    logAiError('analyze-sentence.error', debugInfo, e);
+    error(res, `${e.message} [requestId=${debugInfo.requestId}]`, 400);
+  }
+});
+
 export default router;

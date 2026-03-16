@@ -32,6 +32,7 @@
     <div class="section-header">
       <h3>例句（{{ examples.length }}）</h3>
       <div class="section-actions">
+        <el-button type="info" @click="$router.push(`/root/${word?.root?.id}`)">返回词根</el-button>
         <el-button type="success" @click="$router.push(`/word/${wordId}/ai-examples`)">智能添加例句</el-button>
         <el-button type="primary" @click="openExampleDialog()">添加例句</el-button>
       </div>
