@@ -94,6 +94,18 @@
           <div class="root-meaning" style="margin-top: 8px">{{ wordResult.analysis.meaning }}</div>
         </div>
 
+        <!-- 词性分析 -->
+        <template v-if="wordResult.analysis.partOfSpeech?.length">
+          <el-divider />
+          <h3 style="margin-bottom: 12px">词性分析</h3>
+          <div class="pos-list">
+            <div v-for="(pos, idx) in wordResult.analysis.partOfSpeech" :key="idx" class="pos-item">
+              <el-tag type="warning" size="small" class="pos-tag">{{ pos.type }}</el-tag>
+              <span class="pos-meaning">{{ pos.meaning }}</span>
+            </div>
+          </div>
+        </template>
+
         <!-- 词根信息 -->
         <el-divider />
         <div v-if="wordResult.analysis.root" class="root-info-section">
@@ -316,6 +328,13 @@ const clearResults = () => {
   errorMsg.value = '';
 };
 
+const formatMeaning = (analysis) => {
+  if (analysis.partOfSpeech?.length) {
+    return analysis.partOfSpeech.map((p) => `${p.type} ${p.meaning}`).join('  ');
+  }
+  return analysis.meaning;
+};
+
 const handleSearch = async () => {
   const input = searchInput.value.trim();
   if (!input) {
@@ -375,7 +394,7 @@ const handleSave = async () => {
       const wordRes = await createWord({
         rootId,
         name: wordResult.value.analysis.word,
-        meaning: wordResult.value.analysis.meaning,
+        meaning: formatMeaning(wordResult.value.analysis),
         phonetic: wordResult.value.analysis.phonetic,
       });
       wordId = wordRes.data.id;
@@ -470,5 +489,31 @@ const handleSave = async () => {
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
+}
+
+.pos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pos-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pos-tag {
+  flex-shrink: 0;
+  font-style: italic;
+  font-weight: 600;
+  min-width: 42px;
+  text-align: center;
+}
+
+.pos-meaning {
+  color: #303133;
+  font-size: 14px;
+  line-height: 1.5;
 }
 </style>

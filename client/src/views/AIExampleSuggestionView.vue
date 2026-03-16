@@ -53,10 +53,7 @@
             <div class="example-content">
               <p class="example-sentence">{{ item.sentence }}</p>
               <p class="example-translation">{{ item.translation }}</p>
-              <p v-if="item.remark" class="example-remark">
-                <el-tag size="small" type="info">{{ item.remark }}</el-tag>
-              </p>
-              <p v-if="item.reason" class="remark-text">推荐理由：{{ item.reason }}</p>
+
             </div>
             <div class="example-actions">
               <SpeakButton :text="item.sentence" />

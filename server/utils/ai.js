@@ -197,6 +197,8 @@ export const requestAiJson = async (config, prompts) => {
   return parsed;
 };
 
+const VALID_POS_TYPES = new Set(['n.', 'v.', 'adj.', 'adv.', 'prep.', 'pron.', 'conj.', 'interj.', 'num.', 'art.', 'aux.']);
+
 export const sanitizeRootSuggestions = (items, existingNames = []) => {
   const nameSet = new Set(existingNames.map((name) => name.trim().toLowerCase()));
   const result = [];
@@ -204,8 +206,6 @@ export const sanitizeRootSuggestions = (items, existingNames = []) => {
   for (const item of Array.isArray(items) ? items : []) {
     const name = trimText(item?.name, 40).toLowerCase();
     const meaning = trimText(item?.meaning, 80);
-    const remark = trimText(item?.remark || '', 200);
-    const reason = trimText(item?.reason || '', 160);
 
     if (!/^[a-z-]{2,40}$/.test(name) || !meaning) {
       continue;
@@ -215,7 +215,7 @@ export const sanitizeRootSuggestions = (items, existingNames = []) => {
     }
 
     nameSet.add(name);
-    result.push({ name, meaning, remark, reason });
+    result.push({ name, meaning });
     if (result.length >= 10) break;
   }
 
@@ -230,8 +230,6 @@ export const sanitizeWordSuggestions = (items, existingNames = []) => {
     const name = trimText(item?.name, 60).toLowerCase();
     const meaning = trimText(item?.meaning, 120);
     const phonetic = trimText(item?.phonetic || '', 80);
-    const remark = trimText(item?.remark || '', 200);
-    const reason = trimText(item?.reason || '', 160);
 
     if (!/^[a-z][a-z-]{1,59}$/.test(name) || !meaning) {
       continue;
@@ -240,8 +238,19 @@ export const sanitizeWordSuggestions = (items, existingNames = []) => {
       continue;
     }
 
+    const posItems = Array.isArray(item?.partOfSpeech) ? item.partOfSpeech : [];
+    const partOfSpeech = [];
+    for (const pos of posItems) {
+      const type = (pos?.type || '').trim().toLowerCase();
+      const posMeaning = trimText(pos?.meaning || '', 160);
+      if (VALID_POS_TYPES.has(type) && posMeaning) {
+        partOfSpeech.push({ type, meaning: posMeaning });
+        if (partOfSpeech.length >= 8) break;
+      }
+    }
+
     nameSet.add(name);
-    result.push({ name, meaning, phonetic, remark, reason });
+    result.push({ name, meaning, phonetic, partOfSpeech });
     if (result.length >= 12) break;
   }
 
@@ -255,8 +264,6 @@ export const sanitizeExampleSuggestions = (items, existingSentences = []) => {
   for (const item of Array.isArray(items) ? items : []) {
     const sentence = trimText(item?.sentence, 400);
     const translation = trimText(item?.translation, 240);
-    const remark = trimText(item?.remark || '', 200);
-    const reason = trimText(item?.reason || '', 160);
     const normalizedSentence = sentence.toLowerCase();
 
     if (!sentence || !translation || sentence.length < 8) {
@@ -267,7 +274,7 @@ export const sanitizeExampleSuggestions = (items, existingSentences = []) => {
     }
 
     sentenceSet.add(normalizedSentence);
-    result.push({ sentence, translation, remark, reason });
+    result.push({ sentence, translation });
     if (result.length >= 8) break;
   }
 

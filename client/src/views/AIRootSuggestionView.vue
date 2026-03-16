@@ -62,8 +62,6 @@
             </template>
           </el-table-column>
           <el-table-column prop="meaning" label="核心含义" min-width="150" />
-          <el-table-column prop="remark" label="备注" min-width="180" show-overflow-tooltip />
-          <el-table-column prop="reason" label="推荐理由" min-width="180" show-overflow-tooltip />
         </el-table>
 
         <div v-if="suggestions.length" class="page-actions ai-footer-actions">
@@ -161,7 +159,6 @@ const handleSaveSelected = async () => {
       selectedRows.value.map((item) => createRoot({
         name: item.name,
         meaning: item.meaning,
-        remark: item.remark,
       }))
     );
 

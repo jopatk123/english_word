@@ -49,7 +49,7 @@ const buildRootPrompt = (roots) => {
     : '无';
 
   return {
-    systemPrompt: `你是专业英语词根助手。
+    systemPrompt: `你是专业英语学习助手。
 **必须只返回合法JSON，绝对不能输出：解释、说明、markdown、代码块、多余文字、思考过程。**
 字段必须严格遵守，不能新增字段，不能少字段。`,
     userPrompt: `基于现有词根库，推荐最多3个**未收录**的常用英语词根。
@@ -59,7 +59,7 @@ const buildRootPrompt = (roots) => {
 2. **绝对不能推荐以下已存在词根**：${existingRootNames}
 3. 不能推荐近似重复词根。
 4. 若无更多可推荐，返回空数组，hasMore: false。
-5. **禁止返回 remark 字段**。
+5. **禁止返回 reason 和 remark 字段**。
 6. 只返回标准JSON，格式如下：
 {
   "message": "简短说明",
@@ -67,8 +67,7 @@ const buildRootPrompt = (roots) => {
   "items": [
     {
       "name": "fer",
-      "meaning": "带来；携带",
-      "reason": "构词能力强，适合记忆"
+      "meaning": "带来；携带"
     }
   ]
 }
@@ -87,7 +86,7 @@ const buildWordPrompt = (root, words) => {
     : '无';
 
   return {
-    systemPrompt: `你是专业英语单词助手。
+    systemPrompt: `你是专业英语学习助手。
 **必须只返回合法JSON，绝对不能输出：解释、说明、markdown、代码块、多余文字、思考过程。**
 字段必须严格遵守，不能新增字段，不能少字段。`,
     userPrompt: `围绕词根【${root.name}（${root.meaning}）】推荐最多3个**未收录**的常用单词。
@@ -96,8 +95,9 @@ const buildWordPrompt = (root, words) => {
 1. 必须属于该词根，日常常用、适合学习。
 2. **绝对不能推荐以下已存在单词**：${existingWordNames}
 3. 若无更多可推荐，返回空数组，hasMore: false。
-4. **禁止返回 remark 字段**。
-5. 只返回标准JSON，格式如下：
+4. 每个单词必须返回词性信息（partOfSpeech），词性类型只能使用标准缩写（n./v./adj./adv./prep./pron./conj./interj./num./art./aux.）。
+5. **禁止返回 reason 和 remark 字段**。
+6. 只返回标准JSON，格式如下：
 {
   "message": "简短说明",
   "hasMore": true,
@@ -106,7 +106,10 @@ const buildWordPrompt = (root, words) => {
       "name": "inspect",
       "meaning": "检查；视察",
       "phonetic": "/ɪnˈspekt/",
-      "reason": "由 in + spect 构成"
+      "partOfSpeech": [
+        { "type": "v.", "meaning": "检查；视察" },
+        { "type": "n.", "meaning": "检察官；视察人员" }
+      ]
     }
   ]
 }
@@ -122,10 +125,10 @@ const buildExamplePrompt = (word, examples) => {
     : '当前该单词下还没有任何例句。';
 
   return {
-    systemPrompt: `你是专业英语例句助手。
+    systemPrompt: `你是专业英语学习助手。
 **必须只返回合法JSON，绝对不能输出：解释、说明、markdown、代码块、多余文字、思考过程。**
 字段必须严格遵守，不能新增字段，不能少字段。`,
-    userPrompt: `为单词【${word.name}】生成最多3条**全新、不重复**的高质量英文例句+中文翻译。
+    userPrompt: `为单词【${word.name}】生成1-3条**全新、不重复**的高质量英文例句+中文翻译。
 
 单词信息：
 - 单词：${word.name}
@@ -134,11 +137,11 @@ const buildExamplePrompt = (word, examples) => {
 - 词根：${word.root?.name || '无'}
 
 规则（必须严格遵守）：
-1. 句子中的单词常用、自然、不生硬，且能体现该单词的典型用法和语境。
+1. 句子简短且其中的单词常用、简单、易学，能体现该单词的日常用法和语境。
 2. **绝对不能与以下例句相同或高度相似**：
 ${existingExamples}
 3. 若无更多可推荐，返回空数组，hasMore: false。
-4. **禁止返回 remark 字段**。
+4. **禁止返回 reason 和 remark 字段**。
 5. 只返回标准JSON，格式如下：
 {
   "message": "简短说明",
@@ -146,8 +149,7 @@ ${existingExamples}
   "items": [
     {
       "sentence": "She inspected the room carefully.",
-      "translation": "她仔细检查了房间。",
-      "reason": "体现 inspect 常见用法"
+      "translation": "她仔细检查了房间。"
     }
   ]
 }
@@ -320,20 +322,25 @@ router.post('/suggest-examples', async (req, res) => {
 
 // ========== 搜索分析：单词 ==========
 const buildAnalyzeWordPrompt = (word) => ({
-  systemPrompt: `你是专业英语词根助手。
+  systemPrompt: `你是专业英语学习助手。
 **必须只返回合法JSON，绝对不能输出：解释、说明、markdown、代码块、多余文字、思考过程。**
 字段必须严格遵守，不能新增字段，不能少字段。`,
-  userPrompt: `分析英语单词【${word}】，返回其含义、音标、词根信息和1-3条常用例句。
+  userPrompt: `分析英语单词【${word}】，返回其词性、含义、音标、词根信息和1-3条常用例句。
 
 规则（必须严格遵守）：
-1. 返回该单词最常用的中文含义和音标。
-2. 如果该单词有词根，返回词根名称和词根含义；如果没有明确词根，root 字段设为 null。
-3. 生成1-3条高质量英文例句+中文翻译。
-4. 只返回标准JSON，格式如下：
+1. 返回该单词所有常见词性及每种词性对应的中文含义，词性类型只能使用标准缩写（n./v./adj./adv./prep./pron./conj./interj./num./art./aux.）。
+2. meaning 字段填写综合所有词性的主要中文含义（一句话简短概括）。
+3. 如果该单词有词根，返回词根名称和词根含义；如果没有词根（比如go,run,see等），root 字段设为 null。
+4. 生成1-3条日常常用英文例句+中文翻译，每条例句体现不同词性或典型用法。
+5. 只返回标准JSON，格式如下：
 {
   "word": "${word}",
-  "meaning": "中文含义",
+  "meaning": "综合中文含义",
   "phonetic": "/音标/",
+  "partOfSpeech": [
+    { "type": "v.", "meaning": "动词含义" },
+    { "type": "n.", "meaning": "名词含义" }
+  ],
   "root": {
     "name": "词根名",
     "meaning": "词根含义"
@@ -346,15 +353,10 @@ const buildAnalyzeWordPrompt = (word) => ({
   ]
 }
 
-如果没有词根，root 为 null：
-{
-  "word": "${word}",
-  "meaning": "中文含义",
-  "phonetic": "/音标/",
-  "root": null,
-  "examples": [...]
-}`,
+如果没有词根，root 为 null；如果单词只有一种词性，partOfSpeech 只需一个元素。`,
 });
+
+const VALID_POS_TYPES = new Set(['n.', 'v.', 'adj.', 'adv.', 'prep.', 'pron.', 'conj.', 'interj.', 'num.', 'art.', 'aux.']);
 
 const sanitizeAnalyzeWordResult = (parsed, word) => {
   if (!parsed || typeof parsed !== 'object') return null;
@@ -363,9 +365,20 @@ const sanitizeAnalyzeWordResult = (parsed, word) => {
     word: (parsed.word || word).trim().toLowerCase().slice(0, 60),
     meaning: (parsed.meaning || '').trim().slice(0, 200),
     phonetic: (parsed.phonetic || '').trim().slice(0, 80),
+    partOfSpeech: [],
     root: null,
     examples: [],
   };
+
+  const posItems = Array.isArray(parsed.partOfSpeech) ? parsed.partOfSpeech : [];
+  for (const item of posItems) {
+    const type = (item?.type || '').trim().toLowerCase();
+    const meaning = (item?.meaning || '').trim().slice(0, 160);
+    if (VALID_POS_TYPES.has(type) && meaning) {
+      result.partOfSpeech.push({ type, meaning });
+      if (result.partOfSpeech.length >= 8) break;
+    }
+  }
 
   if (parsed.root && typeof parsed.root === 'object' && parsed.root.name) {
     const rootName = parsed.root.name.trim().toLowerCase().slice(0, 40);
@@ -397,17 +410,46 @@ router.post('/analyze-word', async (req, res) => {
     }
     const trimmedWord = word.trim().toLowerCase();
 
-    const validatedConfig = validateAiConfig(config);
-    const debugInfo = createDebugInfo(req, validatedConfig, startedAt);
-    logAiInfo('analyze-word.start', debugInfo, { word: trimmedWord });
-
-    // 检查单词是否已存在
+    // 检查单词是否已存在（所属词根必须归当前用户所有）
     const existingWord = await Word.findOne({
       where: { name: trimmedWord },
       include: [
         { model: Root, as: 'root', attributes: ['id', 'name', 'meaning', 'userId'], where: { userId: req.userId }, required: true },
       ],
     });
+
+    if (existingWord) {
+      // 如果单词已存在，则直接返回已有信息，避免调用 AI 节省时间
+      const analysis = {
+        word: existingWord.name,
+        meaning: existingWord.meaning,
+        phonetic: existingWord.phonetic || '',
+        partOfSpeech: [],
+        root: existingWord.root ? { name: existingWord.root.name, meaning: existingWord.root.meaning } : null,
+        examples: [],
+      };
+
+      const existingRoot = existingWord.root
+        ? { id: existingWord.root.id, name: existingWord.root.name, meaning: existingWord.root.meaning }
+        : null;
+
+      return success(res, {
+        analysis,
+        existingWord: {
+          id: existingWord.id,
+          name: existingWord.name,
+          meaning: existingWord.meaning,
+          rootId: existingWord.root?.id,
+          rootName: existingWord.root?.name,
+        },
+        existingRoot,
+        debug: withDuration(createDebugInfo(req, config || {}, startedAt)),
+      });
+    }
+
+    const validatedConfig = validateAiConfig(config);
+    const debugInfo = createDebugInfo(req, validatedConfig, startedAt);
+    logAiInfo('analyze-word.start', debugInfo, { word: trimmedWord });
 
     // 调用 AI 分析
     const payload = await requestAiJson(validatedConfig, buildAnalyzeWordPrompt(trimmedWord));
@@ -426,7 +468,7 @@ router.post('/analyze-word', async (req, res) => {
 
     logAiInfo('analyze-word.success', debugInfo, {
       word: trimmedWord,
-      wordExists: !!existingWord,
+      wordExists: false,
       rootExists: !!existingRoot,
       rootName: analysis.root?.name,
       exampleCount: analysis.examples.length,
@@ -434,13 +476,7 @@ router.post('/analyze-word', async (req, res) => {
 
     success(res, {
       analysis,
-      existingWord: existingWord ? {
-        id: existingWord.id,
-        name: existingWord.name,
-        meaning: existingWord.meaning,
-        rootId: existingWord.root?.id,
-        rootName: existingWord.root?.name,
-      } : null,
+      existingWord: null,
       existingRoot: existingRoot ? {
         id: existingRoot.id,
         name: existingRoot.name,
@@ -466,8 +502,8 @@ const buildAnalyzeSentencePrompt = (sentence) => ({
 
 规则（必须严格遵守）：
 1. 提供中文翻译
-2. 分析句子的语法结构
-3. 列出1-5个关键词汇及其含义
+2. 简单分析句子的语法结构
+3. 列出关键词汇及其含义
 4. 只返回标准JSON，格式如下：
 {
   "sentence": "原句",

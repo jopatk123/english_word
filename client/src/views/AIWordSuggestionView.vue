@@ -64,10 +64,18 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column prop="meaning" label="含义" min-width="180" />
+          <el-table-column label="含义 / 词性" min-width="240">
+            <template #default="{ row }">
+              <template v-if="row.partOfSpeech?.length">
+                <div v-for="(pos, idx) in row.partOfSpeech" :key="idx" class="pos-row">
+                  <el-tag type="warning" size="small" class="pos-tag">{{ pos.type }}</el-tag>
+                  <span class="pos-meaning">{{ pos.meaning }}</span>
+                </div>
+              </template>
+              <span v-else>{{ row.meaning }}</span>
+            </template>
+          </el-table-column>
           <el-table-column prop="phonetic" label="音标" min-width="140" />
-          <el-table-column prop="remark" label="备注" min-width="160" show-overflow-tooltip />
-          <el-table-column prop="reason" label="推荐理由" min-width="180" show-overflow-tooltip />
         </el-table>
 
         <div v-if="suggestions.length" class="page-actions ai-footer-actions">
@@ -175,6 +183,13 @@ const generateSuggestions = async () => {
   }
 };
 
+const formatMeaning = (item) => {
+  if (item.partOfSpeech?.length) {
+    return item.partOfSpeech.map((p) => `${p.type} ${p.meaning}`).join('  ');
+  }
+  return item.meaning;
+};
+
 const handleSaveSelected = async () => {
   if (!selectedRows.value.length) {
     return ElMessage.warning('请先选择至少一个单词');
@@ -186,9 +201,8 @@ const handleSaveSelected = async () => {
       selectedRows.value.map((item) => createWord({
         rootId,
         name: item.name,
-        meaning: item.meaning,
+        meaning: formatMeaning(item),
         phonetic: item.phonetic,
-        remark: item.remark,
       }))
     );
 
@@ -222,3 +236,30 @@ onMounted(async () => {
   }
 });
 </script>
+
+<style scoped>
+.pos-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.pos-row:last-child {
+  margin-bottom: 0;
+}
+
+.pos-tag {
+  flex-shrink: 0;
+  font-style: italic;
+  font-weight: 600;
+  min-width: 38px;
+  text-align: center;
+}
+
+.pos-meaning {
+  font-size: 13px;
+  color: #303133;
+  line-height: 1.4;
+}
+</style>
