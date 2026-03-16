@@ -23,6 +23,7 @@
     <div class="section-header">
       <h3>关联单词（{{ words.length }}）</h3>
       <div class="section-actions">
+        <el-button type="info" @click="$router.push('/')">返回词根列表</el-button>
         <el-button type="success" @click="$router.push(`/root/${rootId}/ai-words`)">智能添加单词</el-button>
         <el-button type="primary" @click="openWordDialog()">添加单词</el-button>
       </div>

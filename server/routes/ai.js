@@ -52,7 +52,7 @@ const buildRootPrompt = (roots) => {
     systemPrompt: `你是专业英语词根助手。
 **必须只返回合法JSON，绝对不能输出：解释、说明、markdown、代码块、多余文字、思考过程。**
 字段必须严格遵守，不能新增字段，不能少字段。`,
-    userPrompt: `基于现有词根库，推荐最多8个**未收录**的常用英语词根。
+    userPrompt: `基于现有词根库，推荐最多3个**未收录**的常用英语词根。
 
 规则（必须严格遵守）：
 1. 只推荐一般常用、构词能力强的拉丁/希腊词根。
@@ -90,10 +90,10 @@ const buildWordPrompt = (root, words) => {
     systemPrompt: `你是专业英语单词助手。
 **必须只返回合法JSON，绝对不能输出：解释、说明、markdown、代码块、多余文字、思考过程。**
 字段必须严格遵守，不能新增字段，不能少字段。`,
-    userPrompt: `围绕词根【${root.name}（${root.meaning}）】推荐最多10个**未收录**的常用单词。
+    userPrompt: `围绕词根【${root.name}（${root.meaning}）】推荐最多3个**未收录**的常用单词。
 
 规则（必须严格遵守）：
-1. 必须属于该词根，常用、适合学习。
+1. 必须属于该词根，日常常用、适合学习。
 2. **绝对不能推荐以下已存在单词**：${existingWordNames}
 3. 若无更多可推荐，返回空数组，hasMore: false。
 4. **禁止返回 remark 字段**。
@@ -125,7 +125,7 @@ const buildExamplePrompt = (word, examples) => {
     systemPrompt: `你是专业英语例句助手。
 **必须只返回合法JSON，绝对不能输出：解释、说明、markdown、代码块、多余文字、思考过程。**
 字段必须严格遵守，不能新增字段，不能少字段。`,
-    userPrompt: `为单词【${word.name}】生成最多6条**全新、不重复**的高质量英文例句+中文翻译。
+    userPrompt: `为单词【${word.name}】生成最多3条**全新、不重复**的高质量英文例句+中文翻译。
 
 单词信息：
 - 单词：${word.name}
@@ -134,7 +134,7 @@ const buildExamplePrompt = (word, examples) => {
 - 词根：${word.root?.name || '无'}
 
 规则（必须严格遵守）：
-1. 句子自然、常用、语法正确。
+1. 句子中的单词常用、自然、不生硬，且能体现该单词的典型用法和语境。
 2. **绝对不能与以下例句相同或高度相似**：
 ${existingExamples}
 3. 若无更多可推荐，返回空数组，hasMore: false。
