@@ -65,11 +65,13 @@ router.get('/due', async (req, res) => {
     const today = todayStr(req.query.tz);
     const limit = parseInt(req.query.limit) || 0; // 0 = 不限制
     const offset = parseInt(req.query.offset) || 0;
+    const advance = Math.min(parseInt(req.query.advance) || 0, 30); // 最多提前30天
+    const dueDeadline = advance > 0 ? addDays(today, advance) : today;
 
     const queryOpts = {
       where: {
         userId: req.userId,
-        dueDate: { [Op.lte]: today },
+        dueDate: { [Op.lte]: dueDeadline },
         paused: false,
       },
       include: [{

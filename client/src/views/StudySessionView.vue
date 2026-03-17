@@ -11,6 +11,16 @@
 
     <!-- 模式选择（学习开始前） -->
     <div v-else-if="!modeSelected && queue.length > 0" class="mode-select">
+      <!-- 断点续学提示 -->
+      <div v-if="resumeInfo" class="resume-banner">
+        <el-alert type="info" :closable="false" show-icon>
+          <template #default>
+            检测到上次未完成记录（第 <strong>{{ resumeInfo.index + 1 }}</strong>/{{ queue.length }} 个，{{ modeNames[resumeInfo.mode] || resumeInfo.mode }} 模式）
+            <el-button size="small" type="primary" style="margin-left: 12px" @click="applyResume">继续上次</el-button>
+            <el-button size="small" style="margin-left: 6px" @click="dismissResume">重新开始</el-button>
+          </template>
+        </el-alert>
+      </div>
       <h2>选择学习模式</h2>
       <div class="mode-options">
         <div class="mode-card" @click="selectMode('flashcard')">
@@ -64,6 +74,8 @@
       </div>
       <div class="complete-actions">
         <el-button type="primary" @click="$router.push('/study')">返回仪表盘</el-button>
+        <el-button @click="replayWithNewMode">换模式再来一遍</el-button>
+        <el-button v-if="hasAgainWords" type="warning" plain @click="replayAgainWords">重练错误单词（{{ againWordCount }} 个）</el-button>
         <el-button @click="$router.push('/')">回到首页</el-button>
       </div>
     </div>
@@ -77,6 +89,9 @@
 
       <div class="flashcard" :class="{ flipped: showAnswer }" @click="!showAnswer && flipCard()">
         <div class="card-front">
+          <div v-if="againCountMap[currentCard.wordId] > 0" class="again-badge">
+            第 {{ againCountMap[currentCard.wordId] + 1 }} 次复习
+          </div>
           <div class="card-word">{{ currentCard.word.name }}</div>
           <div v-if="currentCard.word.phonetic" class="card-phonetic">{{ currentCard.word.phonetic }}</div>
           <SpeakButton :text="currentCard.word.name" />
@@ -106,6 +121,7 @@
       </div>
       <div v-else class="flip-action">
         <el-button type="primary" size="large" @click="flipCard">显示答案</el-button>
+        <div class="keyboard-hint">快捷键：<kbd>空格</kbd> 翻牌，翻牌后按 <kbd>1</kbd>-<kbd>4</kbd> 评分</div>
       </div>
     </div>
 
@@ -238,13 +254,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { getReviewDue, submitReviewResult, getQuizChoices } from '../api/index.js';
 import SpeakButton from '../components/SpeakButton.vue';
+import { useSpeech } from '../utils/speech.js';
+
+const route = useRoute();
 
 const loading = ref(true);
 const queue = ref([]);
+const originalQueue = ref([]); // 保存初始队列，供重播功能使用
 const currentIndex = ref(0);
 const showAnswer = ref(false);
 const submitting = ref(false);
@@ -252,10 +273,12 @@ const finished = ref(false);
 const sessionStats = ref({ total: 0, again: 0, hard: 0, good: 0, easy: 0 });
 const MAX_AGAIN_PER_WORD = 3;
 const againCountMap = ref({});
+const resumeInfo = ref(null); // 断点续学信息
 
 // 学习模式
 const studyMode = ref('flashcard'); // flashcard | choice | spelling | listening
 const modeSelected = ref(false);
+const modeNames = { flashcard: '闪卡', choice: '选择题', spelling: '拼写', listening: '听力' };
 
 // 选择题状态
 const choiceOptions = ref([]);
@@ -269,6 +292,8 @@ const spellingCorrect = ref(false);
 const spellingHintLevel = ref(0);
 const spellingInputRef = ref(null);
 const listeningInputRef = ref(null);
+
+const { speak } = useSpeech();
 
 const spellingHint = computed(() => {
   if (!currentCard.value) return '输入单词...';
@@ -284,6 +309,32 @@ const currentCard = computed(() => {
   }
   return null;
 });
+
+// 自动朗读：进入卡片时朗读一次，翻牌时再朗读一次
+watch(
+  [currentCard, studyMode, modeSelected],
+  ([card, mode, selected], previousValues = []) => {
+    const [prevCard, prevMode, prevSelected] = previousValues;
+
+    if (!card) return;
+    if (mode !== 'flashcard' || !selected) return;
+
+    const isNewCard = card !== prevCard;
+    const justEnteredFlashcard = mode === 'flashcard' && prevMode !== 'flashcard';
+    const justStarted = selected && !prevSelected;
+
+    if (isNewCard || justEnteredFlashcard || justStarted) {
+      nextTick(() => {
+        speak(card.word.name);
+      });
+    }
+  },
+  { immediate: true }
+);
+
+const againWordIds = computed(() => Object.keys(againCountMap.value).map(Number));
+const hasAgainWords = computed(() => againWordIds.value.length > 0);
+const againWordCount = computed(() => againWordIds.value.length);
 
 const selectMode = (mode) => {
   studyMode.value = mode;
@@ -301,24 +352,19 @@ const selectMode = (mode) => {
 const fetchDue = async () => {
   loading.value = true;
   try {
-    // 尝试恢复断点
     const saved = localStorage.getItem('study-session-progress');
-    const res = await getReviewDue();
+    const advanceDays = Math.min(parseInt(route.query.advance) || 0, 30);
+    const res = await getReviewDue(advanceDays > 0 ? { advance: advanceDays } : {});
     queue.value = res.data || [];
+    originalQueue.value = [...queue.value]; // 保存初始队列
 
     if (saved && queue.value.length > 0) {
       try {
         const progress = JSON.parse(saved);
-        // 验证队列是否匹配（简单通过首个词ID比对）
         if (progress.queueIds && queue.value.length > 0) {
           const currentIds = queue.value.map(r => r.wordId).join(',');
-          if (progress.queueIds === currentIds && progress.index < queue.value.length) {
-            currentIndex.value = progress.index;
-            sessionStats.value = progress.stats || sessionStats.value;
-            againCountMap.value = progress.againMap || {};
-            studyMode.value = progress.mode || 'flashcard';
-            modeSelected.value = true;
-            if (studyMode.value === 'choice') loadChoices();
+          if (progress.queueIds === currentIds && progress.index > 0 && progress.index < queue.value.length) {
+            resumeInfo.value = progress; // 待用户选择是否续学
           }
         }
       } catch { /* ignore corrupt data */ }
@@ -332,6 +378,51 @@ const fetchDue = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+// 断点续学操作
+const applyResume = () => {
+  const progress = resumeInfo.value;
+  resumeInfo.value = null;
+  currentIndex.value = progress.index;
+  sessionStats.value = progress.stats || sessionStats.value;
+  againCountMap.value = progress.againMap || {};
+  studyMode.value = progress.mode || 'flashcard';
+  modeSelected.value = true;
+  if (studyMode.value === 'choice') loadChoices();
+  if (studyMode.value === 'spelling' || studyMode.value === 'listening') {
+    nextTick(() => {
+      (spellingInputRef.value || listeningInputRef.value)?.focus();
+    });
+  }
+};
+
+const dismissResume = () => {
+  resumeInfo.value = null;
+  clearProgress();
+};
+
+// 完成后重播功能
+const replayWithNewMode = () => {
+  queue.value = [...originalQueue.value];
+  currentIndex.value = 0;
+  finished.value = false;
+  modeSelected.value = false;
+  showAnswer.value = false;
+  sessionStats.value = { total: 0, again: 0, hard: 0, good: 0, easy: 0 };
+  againCountMap.value = {};
+};
+
+const replayAgainWords = () => {
+  const ids = new Set(againWordIds.value);
+  queue.value = originalQueue.value.filter(item => ids.has(item.wordId));
+  originalQueue.value = [...queue.value];
+  currentIndex.value = 0;
+  finished.value = false;
+  modeSelected.value = false;
+  showAnswer.value = false;
+  sessionStats.value = { total: 0, again: 0, hard: 0, good: 0, easy: 0 };
+  againCountMap.value = {};
 };
 
 // 保存进度
@@ -352,6 +443,9 @@ const clearProgress = () => {
 
 const flipCard = () => {
   showAnswer.value = true;
+  if (currentCard.value) {
+    speak(currentCard.value.word.name);
+  }
 };
 
 const advanceCard = () => {
@@ -458,7 +552,7 @@ const checkSpelling = async () => {
   spellingAnswered.value = true;
   spellingCorrect.value = spellingInput.value.trim().toLowerCase() === currentCard.value.word.name.toLowerCase();
 
-  const quality = spellingCorrect.value ? 4 : 1;
+  const quality = spellingCorrect.value ? 3 : 1; // 拼写正确等同「认识」（good），而非「很熟悉」（easy）
   submitting.value = true;
   try {
     await submitReviewResult(currentCard.value.wordId, quality);
@@ -489,5 +583,29 @@ const spellingNext = () => {
   advanceCard();
 };
 
-onMounted(() => fetchDue());
+// 键盘快捷键
+const handleKeyDown = (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (studyMode.value === 'flashcard' && modeSelected.value && !finished.value && currentCard.value) {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (!showAnswer.value) flipCard();
+    }
+    if (showAnswer.value && !submitting.value) {
+      if (e.key === '1') submitRating(1);
+      else if (e.key === '2') submitRating(2);
+      else if (e.key === '3') submitRating(3);
+      else if (e.key === '4') submitRating(4);
+    }
+  }
+};
+
+onMounted(() => {
+  fetchDue();
+  window.addEventListener('keydown', handleKeyDown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown);
+});
 </script>

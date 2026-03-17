@@ -11,7 +11,7 @@
         <div class="stat-number">{{ stats.due }}</div>
         <div class="stat-label">今日待复习</div>
       </div>
-      <div class="stat-card stat-overdue">
+      <div class="stat-card stat-overdue" :class="{ clickable: stats.overdue > 0 }" @click="stats.overdue > 0 && startStudy()">
         <div class="stat-number">{{ stats.overdue }}</div>
         <div class="stat-label">超期未复习</div>
       </div>
@@ -48,15 +48,21 @@
       <el-button
         type="primary"
         size="large"
-        :disabled="stats.due === 0"
-        @click="startStudy"
+        :disabled="stats.due === 0 && stats.weekDue === 0"
+        @click="stats.due > 0 ? startStudy() : startAdvanceStudy()"
       >
-        {{ stats.due > 0 ? `开始复习（${stats.due} 个）` : '暂无待复习单词' }}
+        {{ stats.due > 0 ? `开始复习（${stats.due} 个）` : stats.weekDue > 0 ? `提前复习（${stats.weekDue} 个）` : '暂无待复习单词' }}
       </el-button>
       <el-button size="large" @click="$router.push('/study/report')">
         学习报表
       </el-button>
     </div>
+    <p v-if="stats.due === 0 && stats.weekDue > 0" class="advance-hint">
+      🎉 今日任务已完成！本周还有 <strong>{{ stats.weekDue }}</strong> 个单词可提前复习。
+    </p>
+    <p v-else-if="stats.due === 0 && stats.weekDue === 0 && stats.total > 0" class="advance-hint">
+      ✅ 近期暂无待复习单词，继续保持！
+    </p>
 
     <!-- 词根列表（管理学习队列） -->
     <div class="root-section">
@@ -175,6 +181,10 @@ const startStudy = () => {
   if (stats.value.due > 0) {
     router.push('/study/session');
   }
+};
+
+const startAdvanceStudy = () => {
+  router.push({ path: '/study/session', query: { advance: 7 } });
 };
 
 onMounted(() => {

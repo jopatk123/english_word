@@ -25,7 +25,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await sequelize.close();
+  // 连接由最后一个测试文件关闭，此处不调用 sequelize.close()
+  // 防止提前关闭导致后续测试文件无法使用共享连接
 });
 
 // ======================== ensureDefaultRoot ========================
@@ -155,33 +156,36 @@ describe('默认词根保护（不可删除）', () => {
 
 describe('SRS 算法 getNextReview', () => {
   /**
-   * 复制路由中的 SRS 纯函数进行测试
+   * 与 server/routes/review.js 中的实际 SRS 算法保持同步
    */
   function getNextReview(quality, currentInterval, easeFactor) {
     let newInterval;
     let newEase = easeFactor;
+    const isNew = currentInterval < 1;
 
     if (quality === 1) {
-      newInterval = 1;
+      newInterval = 0; // again ：当日内再复习
       newEase = Math.max(1.3, easeFactor - 0.2);
     } else if (quality === 2) {
-      newInterval = currentInterval < 1 ? 1 : Math.max(1, Math.ceil(currentInterval * 1.2));
+      newInterval = isNew ? 1 : Math.max(1, Math.ceil(currentInterval * 1.2));
       newEase = Math.max(1.3, easeFactor - 0.15);
     } else if (quality === 3) {
-      newInterval = currentInterval < 1 ? 1 : Math.ceil(currentInterval * easeFactor);
+      newInterval = isNew ? 3 : Math.ceil(currentInterval * easeFactor);
       newEase = easeFactor;
     } else {
-      newInterval = currentInterval < 1 ? 4 : Math.ceil(currentInterval * easeFactor * 1.3);
+      newInterval = isNew ? 7 : Math.ceil(currentInterval * easeFactor * 1.3);
       newEase = easeFactor + 0.15;
     }
 
-    const status = quality === 1 ? 'learning' : newInterval >= 21 ? 'known' : 'review';
+    const MAX_INTERVAL = 365;
+    newInterval = Math.min(newInterval, MAX_INTERVAL);
+    const status = quality === 1 ? 'learning' : (newInterval >= 21 ? 'known' : 'review');
     return { interval: newInterval, easeFactor: newEase, status };
   }
 
-  it('quality=1(again) 重置为 1 天并降低 ease', () => {
+  it('quality=1(again) interval=0 且降低 ease', () => {
     const result = getNextReview(1, 10, 2.5);
-    expect(result.interval).toBe(1);
+    expect(result.interval).toBe(0);
     expect(result.status).toBe('learning');
     expect(result.easeFactor).toBeLessThan(2.5);
   });
@@ -197,9 +201,9 @@ describe('SRS 算法 getNextReview', () => {
     expect(result.status).toBe('known');
   });
 
-  it('首次复习（interval=0）quality=3 时 interval 变为 1', () => {
+  it('首次复习（interval=0）quality=3 时 interval 变为 3', () => {
     const result = getNextReview(3, 0, 2.5);
-    expect(result.interval).toBe(1);
+    expect(result.interval).toBe(3);
   });
 
   it('ease factor 不会低于 1.3', () => {

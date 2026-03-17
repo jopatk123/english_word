@@ -503,6 +503,10 @@ body {
   border-left: 4px solid #f56c6c;
 }
 
+.stat-card.clickable {
+  cursor: pointer;
+}
+
 .stat-week {
   border-left: 4px solid #b37feb;
 }
@@ -522,7 +526,15 @@ body {
 
 .start-section {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 8px;
+}
+
+.advance-hint {
+  text-align: center;
+  color: #606266;
+  font-size: 14px;
+  margin-bottom: 24px;
+  margin-top: 8px;
 }
 
 .incentive-section {
@@ -783,6 +795,22 @@ body {
   margin-top: 24px;
 }
 
+.keyboard-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #c0c4cc;
+}
+
+.keyboard-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid #dcdfe6;
+  border-radius: 3px;
+  background: #f5f7fa;
+  color: #909399;
+  font-size: 11px;
+}
+
 .flip-action .el-button {
   min-width: 200px;
   height: 44px;
@@ -794,6 +822,24 @@ body {
 .session-complete {
   text-align: center;
   padding: 48px 20px;
+}
+
+/* 断点续学提示 */
+.resume-banner {
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+/* 再来一遍次数徽标 */
+.again-badge {
+  display: inline-block;
+  background: #fef0f0;
+  color: #f56c6c;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 10px;
+  margin-bottom: 12px;
 }
 
 /* 模式选择页 */
@@ -1012,6 +1058,7 @@ body {
 
 .complete-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   justify-content: center;
 }
