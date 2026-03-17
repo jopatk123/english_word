@@ -57,6 +57,12 @@ const WordReview = sequelize.define('WordReview', {
     field: 'last_reviewed_at',
     comment: '最近一次复习时间',
   },
+  paused: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    comment: '是否暂停学习',
+  },
 }, {
   tableName: 'word_reviews',
   timestamps: true,

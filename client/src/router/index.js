@@ -10,6 +10,7 @@ import AIExampleSuggestionView from '../views/AIExampleSuggestionView.vue';
 import SearchView from '../views/SearchView.vue';
 import StudyDashboardView from '../views/StudyDashboardView.vue';
 import StudySessionView from '../views/StudySessionView.vue';
+import StudyReportView from '../views/StudyReportView.vue';
 
 const routes = [
   { path: '/login', name: 'Login', component: LoginView, meta: { guest: true } },
@@ -21,6 +22,7 @@ const routes = [
   { path: '/search', name: 'Search', component: SearchView },
   { path: '/study', name: 'StudyDashboard', component: StudyDashboardView },
   { path: '/study/session', name: 'StudySession', component: StudySessionView },
+  { path: '/study/report', name: 'StudyReport', component: StudyReportView },
   { path: '/root/:id', name: 'RootDetail', component: RootDetailView, props: true },
   { path: '/word/:id', name: 'WordDetail', component: WordDetailView, props: true },
 ];

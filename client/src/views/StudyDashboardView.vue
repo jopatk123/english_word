@@ -11,9 +11,17 @@
         <div class="stat-number">{{ stats.due }}</div>
         <div class="stat-label">今日待复习</div>
       </div>
+      <div class="stat-card stat-overdue">
+        <div class="stat-number">{{ stats.overdue }}</div>
+        <div class="stat-label">超期未复习</div>
+      </div>
       <div class="stat-card stat-today">
         <div class="stat-number">{{ stats.todayReviewed }}</div>
         <div class="stat-label">今日已复习</div>
+      </div>
+      <div class="stat-card stat-week">
+        <div class="stat-number">{{ stats.weekDue }}</div>
+        <div class="stat-label">本周待复习</div>
       </div>
       <div class="stat-card stat-learning">
         <div class="stat-number">{{ stats.learning + stats.new }}</div>
@@ -22,6 +30,16 @@
       <div class="stat-card stat-known">
         <div class="stat-number">{{ stats.known }}</div>
         <div class="stat-label">已掌握</div>
+      </div>
+    </div>
+
+    <!-- 学习激励 -->
+    <div class="incentive-section" v-if="streak > 0 || totalReviews30d > 0">
+      <div class="incentive-item" v-if="streak > 0">
+        🔥 连续学习 <strong>{{ streak }}</strong> 天
+      </div>
+      <div class="incentive-item" v-if="totalReviews30d > 0">
+        📊 近30天共复习 <strong>{{ totalReviews30d }}</strong> 次
       </div>
     </div>
 
@@ -34,6 +52,9 @@
         @click="startStudy"
       >
         {{ stats.due > 0 ? `开始复习（${stats.due} 个）` : '暂无待复习单词' }}
+      </el-button>
+      <el-button size="large" @click="$router.push('/study/report')">
+        学习报表
       </el-button>
     </div>
 
@@ -95,21 +116,28 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { getReviewStats, getRootsProgress, enqueueRoot } from '../api/index.js';
+import { getReviewStats, getRootsProgress, enqueueRoot, getReviewHistorySummary } from '../api/index.js';
 
 const router = useRouter();
 
-const stats = ref({ total: 0, due: 0, new: 0, learning: 0, known: 0, todayReviewed: 0 });
+const stats = ref({ total: 0, due: 0, new: 0, learning: 0, known: 0, todayReviewed: 0, overdue: 0, weekDue: 0 });
 const statsLoading = ref(false);
 const rootsProgress = ref([]);
 const rootsLoading = ref(false);
 const enqueuingId = ref(null);
+const streak = ref(0);
+const totalReviews30d = ref(0);
 
 const fetchStats = async () => {
   statsLoading.value = true;
   try {
-    const res = await getReviewStats();
-    stats.value = res.data;
+    const [statsRes, summaryRes] = await Promise.all([
+      getReviewStats(),
+      getReviewHistorySummary(30),
+    ]);
+    stats.value = statsRes.data;
+    streak.value = summaryRes.data.streak || 0;
+    totalReviews30d.value = summaryRes.data.totalReviews || 0;
   } catch {
     ElMessage.error('获取学习统计失败');
   } finally {

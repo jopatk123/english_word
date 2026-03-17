@@ -462,7 +462,7 @@ body {
 
 .stats-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -499,6 +499,14 @@ body {
   border-left: 4px solid #67c23a;
 }
 
+.stat-overdue {
+  border-left: 4px solid #f56c6c;
+}
+
+.stat-week {
+  border-left: 4px solid #b37feb;
+}
+
 .stat-number {
   font-size: 32px;
   font-weight: 700;
@@ -515,6 +523,23 @@ body {
 .start-section {
   text-align: center;
   margin-bottom: 32px;
+}
+
+.incentive-section {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.incentive-item {
+  font-size: 15px;
+  color: #606266;
+  background: #fff;
+  padding: 8px 20px;
+  border-radius: 20px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
 }
 
 .start-section .el-button {
@@ -771,6 +796,167 @@ body {
   padding: 48px 20px;
 }
 
+/* 模式选择页 */
+.mode-select {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.mode-select h2 {
+  font-size: 24px;
+  color: #303133;
+  margin-bottom: 32px;
+}
+
+.mode-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  max-width: 500px;
+  margin: 0 auto 24px;
+}
+
+.mode-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px 16px;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 2px solid transparent;
+}
+
+.mode-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  border-color: #667eea;
+}
+
+.mode-icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+
+.mode-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 4px;
+}
+
+.mode-desc {
+  font-size: 13px;
+  color: #909399;
+}
+
+.mode-count {
+  font-size: 14px;
+  color: #909399;
+}
+
+/* 选择题模式 */
+.choice-card {
+  cursor: default;
+}
+
+.choice-options {
+  width: 100%;
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.choice-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 2px solid #e4e7ed;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.choice-option:hover {
+  border-color: #409eff;
+  background: #f3f8ff;
+}
+
+.choice-correct {
+  border-color: #67c23a !important;
+  background: #f0f9eb !important;
+}
+
+.choice-wrong {
+  border-color: #f56c6c !important;
+  background: #fef0f0 !important;
+}
+
+.choice-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f0f2f5;
+  font-weight: 600;
+  font-size: 14px;
+  color: #606266;
+  flex-shrink: 0;
+}
+
+.choice-text {
+  font-size: 15px;
+  color: #303133;
+}
+
+.choice-result-actions {
+  margin-top: 20px;
+  text-align: center;
+}
+
+/* 拼写 & 听力模式 */
+.spelling-card {
+  cursor: default;
+  align-items: center;
+}
+
+.spelling-input-area {
+  width: 100%;
+  max-width: 400px;
+  margin: 16px auto 0;
+}
+
+.spelling-input-area .el-input {
+  font-size: 18px;
+  text-align: center;
+}
+
+.spelling-feedback {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.spelling-correct {
+  color: #67c23a;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.spelling-wrong {
+  color: #f56c6c;
+  font-size: 16px;
+}
+
+.spelling-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
 .complete-icon {
   font-size: 64px;
   margin-bottom: 16px;
@@ -881,5 +1067,202 @@ body {
 
   .header-nav .nav-btn {
     font-size: 13px;
+  }
+}
+
+/* ========== 学习报表页 ========== */
+.study-report .el-breadcrumb {
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.report-header h2 {
+  font-size: 20px;
+  color: #303133;
+}
+
+.report-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.report-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.summary-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.summary-number {
+  font-size: 28px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.summary-label {
+  font-size: 13px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.report-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.report-section h3 {
+  font-size: 16px;
+  color: #303133;
+  margin-bottom: 20px;
+}
+
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  min-height: 160px;
+  padding: 0 4px;
+  overflow-x: auto;
+}
+
+.bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 20px;
+}
+
+.bar-stack {
+  display: flex;
+  flex-direction: column-reverse;
+  width: 100%;
+  max-width: 24px;
+}
+
+.bar {
+  width: 100%;
+  min-height: 0;
+  transition: height 0.3s;
+}
+
+.bar-good { background: #67c23a; border-radius: 3px 3px 0 0; }
+.bar-hard { background: #e6a23c; }
+.bar-again { background: #f56c6c; border-radius: 0 0 3px 3px; }
+
+.bar-label {
+  font-size: 10px;
+  color: #909399;
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
+.bar-value {
+  font-size: 10px;
+  color: #606266;
+  font-weight: 600;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.mastery-distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mastery-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mastery-label {
+  width: 60px;
+  font-size: 14px;
+  color: #606266;
+  text-align: right;
+}
+
+.mastery-bar-bg {
+  flex: 1;
+  height: 20px;
+  background: #f0f2f5;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.mastery-bar {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.5s ease;
+  min-width: 0;
+}
+
+.mastery-count {
+  width: 40px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.report-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #909399;
+}
+
+.report-empty p {
+  margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+  .report-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .bar-chart {
+    gap: 1px;
+  }
+
+  .mode-options {
+    grid-template-columns: 1fr;
   }
 }
