@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Op } from 'sequelize';
-import { Root, Word } from '../models/index.js';
+import { Root, Word, Example } from '../models/index.js';
 import { success, error } from '../utils/response.js';
 import { ensureDefaultRoot } from '../utils/defaultRoot.js';
 
@@ -31,8 +31,8 @@ router.get('/', async (req, res) => {
     const roots = await Root.findAll({
       where,
       include: [{ model: Word, as: 'words', attributes: ['id'] }],
-      // 默认词根排在最后，其余按创建时间倒序
-      order: [['is_default', 'ASC'], ['create_time', 'DESC']],
+      // 「未分类」默认词根排在最前，其余词根按词根名称首字母升序排列
+      order: [['is_default', 'DESC'], ['name', 'ASC']],
     });
     const result = roots.map(r => {
       const json = r.toJSON();
@@ -101,6 +101,15 @@ router.delete('/:id', async (req, res) => {
     const root = await Root.findByPk(req.params.id);
     if (!root || root.userId !== req.userId) return error(res, '词根不存在');
     if (root.isDefault) return error(res, '「未分类」词根不能删除，它用于存放无词根的单词', 400);
+
+    // SQLite may not enforce ON DELETE CASCADE for existing schemas, so delete related data explicitly
+    const words = await Word.findAll({ where: { rootId: root.id }, attributes: ['id'] });
+    const wordIds = words.map(w => w.id);
+    if (wordIds.length) {
+      await Example.destroy({ where: { wordId: wordIds } });
+      await Word.destroy({ where: { id: wordIds } });
+    }
+
     await root.destroy();
     success(res, null, '删除成功');
   } catch (e) {

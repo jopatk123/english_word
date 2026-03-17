@@ -112,7 +112,11 @@ router.delete('/:id', async (req, res) => {
       include: [{ model: Root, as: 'root', attributes: ['id', 'userId'] }],
     });
     if (!word || word.root?.userId !== req.userId) return error(res, '单词不存在');
+
+    // SQLite may not enforce ON DELETE CASCADE for existing schemas, so delete examples explicitly
+    await Example.destroy({ where: { wordId: word.id } });
     await word.destroy();
+
     success(res, null, '删除成功');
   } catch (e) {
     error(res, e.message);
