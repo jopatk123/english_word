@@ -63,6 +63,12 @@
                 <strong>{{ row.name }}</strong>
               </el-link>
               <SpeakButton :text="row.name" />
+              <el-tag
+                v-if="row.isDefault"
+                type="info"
+                size="small"
+                style="margin-left: 6px; vertical-align: middle"
+              >未分类</el-tag>
             </div>
           </template>
         </el-table-column>
@@ -71,8 +77,8 @@
         <el-table-column prop="remark" label="备注" min-width="150" show-overflow-tooltip />
         <el-table-column label="操作" width="140" align="center">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openRootDialog(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDeleteRoot(row)">删除</el-button>
+            <el-button link type="primary" @click="openRootDialog(row)" :disabled="row.isDefault">编辑</el-button>
+            <el-button link type="danger" @click="handleDeleteRoot(row)" :disabled="row.isDefault">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -182,6 +188,9 @@ const handleSaveRoot = async () => {
 };
 
 const handleDeleteRoot = async (root) => {
+  if (root.isDefault) {
+    return ElMessage.warning('「未分类」词根不能删除，它用于存放无词根的单词');
+  }
   try {
     await ElMessageBox.confirm(
       `确定删除词根「${root.name}」？关联的单词和例句将一并删除。`,

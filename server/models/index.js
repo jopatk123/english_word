@@ -39,6 +39,15 @@ const initDB = async () => {
     console.log('已为 roots 表添加 user_id 列');
   }
 
+  if (!tableInfo.is_default) {
+    await queryInterface.addColumn('roots', 'is_default', {
+      type: sequelize.constructor.DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    });
+    console.log('已为 roots 表添加 is_default 列');
+  }
+
   console.log('数据库同步完成');
 };
 

@@ -134,7 +134,12 @@
           </div>
         </div>
         <div v-else>
-          <el-alert type="info" :closable="false" title="该单词没有明确的词根来源" show-icon />
+          <el-alert type="info" :closable="false" show-icon>
+            <template #title>
+              该单词没有明确的词根来源，保存后将归入
+              <strong>「未分类」</strong>词根分组
+            </template>
+          </el-alert>
         </div>
 
         <!-- 添加单词选项 -->
@@ -143,6 +148,12 @@
           <div>
             <el-checkbox v-model="addWord" :disabled="addExamples">
               添加单词「{{ wordResult.analysis.word }}」
+              <el-tag
+                v-if="!wordResult.analysis.root"
+                type="info"
+                size="small"
+                style="margin-left: 6px; vertical-align: middle"
+              >→ 未分类</el-tag>
             </el-checkbox>
           </div>
         </template>
@@ -271,14 +282,15 @@ const sentenceResult = ref(null);
 // 判断输入是单词还是句子
 const isWord = (input) => /^[a-zA-Z-]+$/.test(input.trim());
 
-// 能否添加单词（需要词根已存在或勾选添加词根）
+// 能否添加单词
+// · 有词根：需要词根已存在 or 勾选添加词根
+// · 无词根：直接允许（将自动归入「未分类」词根）
 const canAddWord = computed(() => {
   if (!wordResult.value) return false;
-  // 有词根且（词根已存在 或 勾选添加词根）
   if (wordResult.value.analysis.root) {
     return wordResult.value.existingRoot || addRoot.value;
   }
-  return false;
+  return true; // 无词根时直接允许添加
 });
 
 // 能否添加例句（需要单词可添加且勾选添加单词）
@@ -297,20 +309,24 @@ const showSaveButton = computed(() => {
 const saveSummary = computed(() => {
   const parts = [];
   if (addRoot.value && !wordResult.value?.existingRoot) parts.push('词根');
-  if (addWord.value) parts.push('单词');
+  if (addWord.value) {
+    const noRoot = !wordResult.value?.analysis.root;
+    parts.push(noRoot ? '单词（→未分类）' : '单词');
+  }
   if (selectedExamples.value.length) parts.push(`${selectedExamples.value.length} 条例句`);
   return parts.length ? `将保存: ${parts.join('、')}` : '';
 });
 
-// 勾选/取消例句时自动勾选单词和词根
+// 勾选/取消例句时自动勾选单词（有词根时也自动勾选词根）
 const toggleExample = (idx, checked) => {
   if (checked) {
     if (!selectedExamples.value.includes(idx)) {
       selectedExamples.value.push(idx);
     }
-    // 添加例句必然添加单词和词根
+    // 添加例句必然添加单词
     addWord.value = true;
-    if (!wordResult.value?.existingRoot) {
+    // 只有在有词根信息且词根未存在时才自动勾选添加词根
+    if (wordResult.value?.analysis.root && !wordResult.value?.existingRoot) {
       addRoot.value = true;
     }
   } else {
@@ -390,13 +406,15 @@ const handleSave = async () => {
 
     // 2. 添加单词
     let wordId = null;
-    if (addWord.value && rootId) {
-      const wordRes = await createWord({
-        rootId,
+    if (addWord.value) {
+      const wordData = {
         name: wordResult.value.analysis.word,
         meaning: formatMeaning(wordResult.value.analysis),
         phonetic: wordResult.value.analysis.phonetic,
-      });
+      };
+      // 有词根时才传 rootId；无词根时由后端自动归入「未分类」
+      if (rootId) wordData.rootId = rootId;
+      const wordRes = await createWord(wordData);
       wordId = wordRes.data.id;
       ElMessage.success(`单词「${wordResult.value.analysis.word}」添加成功`);
     }
@@ -433,7 +451,7 @@ const handleSave = async () => {
         id: wordId,
         name: wordResult.value.analysis.word,
         rootId,
-        rootName: wordResult.value.analysis.root?.name,
+        rootName: wordResult.value.analysis.root?.name || '未分类',
       };
       addWord.value = false;
       selectedExamples.value = [];

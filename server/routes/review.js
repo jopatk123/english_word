@@ -207,6 +207,7 @@ router.get('/roots-progress', async (req, res) => {
         id: r.id,
         name: r.name,
         meaning: r.meaning,
+        isDefault: r.isDefault,
         wordCount,
         enrolled,
         known,

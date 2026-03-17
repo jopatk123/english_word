@@ -50,6 +50,7 @@ export const getMe = () => api.get('/auth/me');
 // ========== 词根 API ==========
 export const getRoots = (keyword) => api.get('/roots', { params: { keyword } });
 export const getRoot = (id) => api.get(`/roots/${id}`);
+export const getDefaultRoot = () => api.get('/roots/default');
 export const createRoot = (data) => api.post('/roots', data);
 export const updateRoot = (id, data) => api.put(`/roots/${id}`, data);
 export const deleteRoot = (id) => api.delete(`/roots/${id}`);

@@ -49,6 +49,12 @@
             <el-link type="primary" @click="$router.push(`/root/${row.id}`)">
               <strong>{{ row.name }}</strong>
             </el-link>
+            <el-tag
+              v-if="row.isDefault"
+              type="info"
+              size="small"
+              style="display: block; margin-top: 4px; width: fit-content"
+            >未分类</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="meaning" label="含义" min-width="120" />

@@ -28,6 +28,13 @@ const Root = sequelize.define('Root', {
     field: 'user_id',
     comment: '所属用户ID',
   },
+  isDefault: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'is_default',
+    comment: '是否为「未分类」默认词根（不可删除）',
+  },
 }, {
   tableName: 'roots',
   timestamps: true,

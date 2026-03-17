@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { Op } from 'sequelize';
 import { Word, Root, Example } from '../models/index.js';
 import { success, error } from '../utils/response.js';
+import { ensureDefaultRoot } from '../utils/defaultRoot.js';
 
 const router = Router();
 
@@ -48,13 +49,22 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// 添加单词
+// 添加单词（rootId 可选；不传时自动归入「未分类」词根）
 router.post('/', async (req, res) => {
   try {
-    const { rootId, name, meaning, phonetic, remark } = req.body;
-    if (!rootId || !name || !meaning) return error(res, '词根ID、单词和含义为必填项');
-    const root = await Root.findByPk(rootId);
-    if (!root || root.userId !== req.userId) return error(res, '关联的词根不存在');
+    const { rootId: rawRootId, name, meaning, phonetic, remark } = req.body;
+    if (!name || !meaning) return error(res, '单词和含义为必填项');
+
+    let rootId = rawRootId ? Number(rawRootId) : null;
+    if (rootId) {
+      const root = await Root.findByPk(rootId);
+      if (!root || root.userId !== req.userId) return error(res, '关联的词根不存在');
+    } else {
+      // 无词根：自动使用「未分类」默认词根
+      const defaultRoot = await ensureDefaultRoot(req.userId);
+      rootId = defaultRoot.id;
+    }
+
     const trimmedName = name.trim();
     const existedWord = await Word.findOne({ where: { rootId, name: trimmedName } });
     if (existedWord) return error(res, '该词根下已存在同名单词，请勿重复添加', 400);
