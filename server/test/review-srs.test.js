@@ -5,42 +5,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { initDB, sequelize, Word, User, WordReview } from '../models/index.js';
 import { ensureDefaultRoot } from '../utils/defaultRoot.js';
-
-// ============================================================
-// 复制 server/routes/review.js 中的纯函数（与生产代码保持同步）
-// ============================================================
-
-const MAX_INTERVAL = 365;
-
-function getNextReview(quality, currentInterval, easeFactor) {
-  let newInterval;
-  let newEase = easeFactor;
-  const isNew = currentInterval < 1;
-
-  if (quality === 1) {
-    newInterval = 0;
-    newEase = Math.max(1.3, easeFactor - 0.2);
-  } else if (quality === 2) {
-    newInterval = isNew ? 1 : Math.max(1, Math.ceil(currentInterval * 1.2));
-    newEase = Math.max(1.3, easeFactor - 0.15);
-  } else if (quality === 3) {
-    newInterval = isNew ? 3 : Math.ceil(currentInterval * easeFactor);
-    newEase = easeFactor;
-  } else {
-    newInterval = isNew ? 7 : Math.ceil(currentInterval * easeFactor * 1.3);
-    newEase = easeFactor + 0.15;
-  }
-
-  newInterval = Math.min(newInterval, MAX_INTERVAL);
-  const status = quality === 1 ? 'learning' : (newInterval >= 21 ? 'known' : 'review');
-  return { interval: newInterval, easeFactor: newEase, status };
-}
-
-function addDays(dateStr, days) {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+import { getNextReview, addDays, MAX_INTERVAL } from '../utils/srs.js';
 
 // ============================================================
 beforeAll(async () => {

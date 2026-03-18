@@ -1,0 +1,152 @@
+/* ========== 背单词仪表盘 ========== */
+.study-dashboard .el-breadcrumb {
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.stats-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: default;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.stat-due {
+  cursor: pointer;
+  border-left: 4px solid #e6a23c;
+}
+
+.stat-today {
+  border-left: 4px solid #409eff;
+}
+
+.stat-learning {
+  border-left: 4px solid #909399;
+}
+
+.stat-known {
+  border-left: 4px solid #67c23a;
+}
+
+.stat-overdue {
+  border-left: 4px solid #f56c6c;
+}
+
+.stat-card.clickable {
+  cursor: pointer;
+}
+
+.stat-week {
+  border-left: 4px solid #b37feb;
+}
+
+.stat-number {
+  font-size: 32px;
+  font-weight: 700;
+  color: #303133;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.start-section {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.advance-hint {
+  text-align: center;
+  color: #606266;
+  font-size: 14px;
+  margin-bottom: 24px;
+  margin-top: 8px;
+}
+
+.incentive-section {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.incentive-item {
+  font-size: 15px;
+  color: #606266;
+  background: #fff;
+  padding: 8px 20px;
+  border-radius: 20px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+}
+
+.start-section .el-button {
+  min-width: 220px;
+  font-size: 16px;
+  height: 48px;
+  border-radius: 24px;
+}
+
+.study-dashboard .root-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.study-dashboard .root-section .section-header h3 {
+  font-size: 18px;
+  color: #303133;
+}
+
+.progress-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-info .el-progress {
+  flex: 1;
+}
+
+.known-badge {
+  font-size: 12px;
+  color: #67c23a;
+  white-space: nowrap;
+}
+
+/* ========== 响应式 - 仪表盘 ========== */
+@media (max-width: 768px) {
+  .stats-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .stat-number {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

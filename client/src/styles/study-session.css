@@ -1,0 +1,514 @@
+/* ========== 闪卡学习页 ========== */
+.study-session .el-breadcrumb {
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.session-loading {
+  min-height: 300px;
+}
+
+.session-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.progress-text {
+  font-size: 14px;
+  color: #909399;
+  white-space: nowrap;
+}
+
+.session-progress .el-progress {
+  flex: 1;
+}
+
+/* 闪卡 */
+.flashcard-container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.flashcard {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px 24px;
+  min-height: 280px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: box-shadow 0.3s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.flashcard:hover {
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+}
+
+.flashcard.flipped {
+  cursor: default;
+}
+
+.card-front {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.card-word {
+  font-size: 36px;
+  font-weight: 700;
+  color: #303133;
+  letter-spacing: 1px;
+}
+
+.card-phonetic {
+  font-size: 16px;
+  color: #909399;
+  font-style: italic;
+}
+
+.card-root-tag {
+  font-size: 13px;
+  color: #909399;
+  background: #f4f4f5;
+  padding: 4px 12px;
+  border-radius: 12px;
+  margin-top: 8px;
+}
+
+.card-hint {
+  font-size: 13px;
+  color: #c0c4cc;
+  margin-top: 16px;
+}
+
+.flashcard.flipped .card-hint {
+  display: none;
+}
+
+.card-back {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.card-divider {
+  height: 1px;
+  background: #ebeef5;
+  margin: 16px 0;
+}
+
+.card-meaning {
+  font-size: 20px;
+  font-weight: 600;
+  color: #303133;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.card-remark {
+  font-size: 14px;
+  color: #606266;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.card-examples {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card-example {
+  background: #f9fafb;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border-left: 3px solid #667eea;
+}
+
+.card-example .example-en {
+  font-size: 14px;
+  color: #303133;
+  line-height: 1.6;
+  margin-bottom: 4px;
+}
+
+.card-example .example-zh {
+  font-size: 13px;
+  color: #909399;
+  line-height: 1.5;
+}
+
+/* 评分按钮 */
+.rating-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.rate-btn {
+  flex: 1;
+  min-width: 80px;
+  height: 44px;
+  border-radius: 12px !important;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.rate-again {
+  --el-button-bg-color: #f56c6c !important;
+  --el-button-border-color: #f56c6c !important;
+  --el-button-text-color: #fff !important;
+  --el-button-hover-bg-color: #f89898 !important;
+  --el-button-hover-border-color: #f89898 !important;
+  --el-button-hover-text-color: #fff !important;
+}
+
+.rate-hard {
+  --el-button-bg-color: #e6a23c !important;
+  --el-button-border-color: #e6a23c !important;
+  --el-button-text-color: #fff !important;
+  --el-button-hover-bg-color: #eebe77 !important;
+  --el-button-hover-border-color: #eebe77 !important;
+  --el-button-hover-text-color: #fff !important;
+}
+
+.rate-good {
+  --el-button-bg-color: #409eff !important;
+  --el-button-border-color: #409eff !important;
+  --el-button-text-color: #fff !important;
+  --el-button-hover-bg-color: #79bbff !important;
+  --el-button-hover-border-color: #79bbff !important;
+  --el-button-hover-text-color: #fff !important;
+}
+
+.rate-easy {
+  --el-button-bg-color: #67c23a !important;
+  --el-button-border-color: #67c23a !important;
+  --el-button-text-color: #fff !important;
+  --el-button-hover-bg-color: #95d475 !important;
+  --el-button-hover-border-color: #95d475 !important;
+  --el-button-hover-text-color: #fff !important;
+}
+
+.flip-action {
+  text-align: center;
+  margin-top: 24px;
+}
+
+.keyboard-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #c0c4cc;
+}
+
+.keyboard-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid #dcdfe6;
+  border-radius: 3px;
+  background: #f5f7fa;
+  color: #909399;
+  font-size: 11px;
+}
+
+.flip-action .el-button {
+  min-width: 200px;
+  height: 44px;
+  border-radius: 22px;
+  font-size: 16px;
+}
+
+/* 学习完成页 */
+.session-complete {
+  text-align: center;
+  padding: 48px 20px;
+}
+
+.complete-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.session-complete h2 {
+  font-size: 24px;
+  color: #303133;
+  margin-bottom: 24px;
+}
+
+.complete-stats {
+  margin-bottom: 32px;
+}
+
+.complete-stats p {
+  font-size: 16px;
+  color: #606266;
+  margin-bottom: 16px;
+}
+
+.result-bars {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.result-label {
+  font-size: 13px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  color: #fff;
+  font-weight: 500;
+}
+
+.result-again { background: #f56c6c; }
+.result-hard { background: #e6a23c; }
+.result-good { background: #409eff; }
+.result-easy { background: #67c23a; }
+
+.result-count {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.complete-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.session-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #909399;
+}
+
+.session-empty p {
+  margin-bottom: 16px;
+  font-size: 16px;
+}
+
+/* 断点续学提示 */
+.resume-banner {
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+/* 再来一遍次数徽标 */
+.again-badge {
+  display: inline-block;
+  background: #fef0f0;
+  color: #f56c6c;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+/* 模式选择页 */
+.mode-select {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.mode-select h2 {
+  font-size: 24px;
+  color: #303133;
+  margin-bottom: 32px;
+}
+
+.mode-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  max-width: 500px;
+  margin: 0 auto 24px;
+}
+
+.mode-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px 16px;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 2px solid transparent;
+}
+
+.mode-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  border-color: #667eea;
+}
+
+.mode-icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+
+.mode-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 4px;
+}
+
+.mode-desc {
+  font-size: 13px;
+  color: #909399;
+}
+
+.mode-count {
+  font-size: 14px;
+  color: #909399;
+}
+
+/* 选择题模式 */
+.choice-card {
+  cursor: default;
+}
+
+.choice-options {
+  width: 100%;
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.choice-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 2px solid #e4e7ed;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.choice-option:hover {
+  border-color: #409eff;
+  background: #f3f8ff;
+}
+
+.choice-correct {
+  border-color: #67c23a !important;
+  background: #f0f9eb !important;
+}
+
+.choice-wrong {
+  border-color: #f56c6c !important;
+  background: #fef0f0 !important;
+}
+
+.choice-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f0f2f5;
+  font-weight: 600;
+  font-size: 14px;
+  color: #606266;
+  flex-shrink: 0;
+}
+
+.choice-text {
+  font-size: 15px;
+  color: #303133;
+}
+
+.choice-result-actions {
+  margin-top: 20px;
+  text-align: center;
+}
+
+/* 拼写 & 听力模式 */
+.spelling-card {
+  cursor: default;
+  align-items: center;
+}
+
+.spelling-input-area {
+  width: 100%;
+  max-width: 400px;
+  margin: 16px auto 0;
+}
+
+.spelling-input-area .el-input {
+  font-size: 18px;
+  text-align: center;
+}
+
+.spelling-feedback {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.spelling-correct {
+  color: #67c23a;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.spelling-wrong {
+  color: #f56c6c;
+  font-size: 16px;
+}
+
+.spelling-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+/* ========== 响应式 - 学习会话 ========== */
+@media (max-width: 768px) {
+  .card-word {
+    font-size: 28px;
+  }
+
+  .card-meaning {
+    font-size: 18px;
+  }
+
+  .rating-buttons {
+    gap: 8px;
+  }
+
+  .rate-btn {
+    min-width: 70px;
+    font-size: 13px;
+  }
+
+  .mode-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .flashcard {
+    padding: 24px 16px;
+  }
+}

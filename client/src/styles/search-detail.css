@@ -1,0 +1,180 @@
+/* ========== 首页 ========== */
+.search-section {
+  margin-bottom: 24px;
+}
+
+.search-input {
+  max-width: 500px;
+}
+
+.search-results {
+  margin-bottom: 24px;
+}
+
+.search-results h3 {
+  margin-bottom: 12px;
+  color: #606266;
+  font-size: 16px;
+}
+
+.root-section .section-header,
+.detail-view .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-actions,
+.page-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.root-section .section-header h2,
+.detail-view .section-header h3 {
+  font-size: 18px;
+  color: #303133;
+}
+
+/* ========== 详情页 ========== */
+.detail-view .el-breadcrumb {
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.info-card {
+  margin-bottom: 24px;
+}
+
+.card-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.root-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.phonetic {
+  font-size: 16px;
+  color: #909399;
+  font-style: italic;
+}
+
+.root-meaning {
+  font-size: 16px;
+  color: #606266;
+}
+
+.remark-text {
+  color: #606266;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.remark-text.muted {
+  color: #c0c4cc;
+}
+
+/* ========== 例句卡片 ========== */
+.example-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.example-card {
+  transition: transform 0.2s;
+}
+
+.example-card .el-card__body {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.example-content {
+  flex: 1;
+}
+
+.example-sentence {
+  font-size: 15px;
+  color: #303133;
+  line-height: 1.6;
+  margin-bottom: 6px;
+}
+
+.example-translation {
+  font-size: 14px;
+  color: #909399;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.example-remark {
+  margin-top: 4px;
+}
+
+.example-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 4px;
+}
+
+/* ========== 面包屑 ========== */
+.page-breadcrumb {
+  margin-bottom: 20px;
+}
+
+/* ========== 响应式 - 搜索 & 详情 ========== */
+@media (max-width: 768px) {
+  .search-input {
+    max-width: 100%;
+  }
+
+  .root-name {
+    font-size: 20px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .example-card .el-card__body {
+    flex-direction: column;
+  }
+
+  .example-actions {
+    align-self: flex-end;
+  }
+
+  .el-table {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .section-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start !important;
+  }
+
+  .section-actions,
+  .page-actions {
+    width: 100%;
+  }
+
+  .section-actions .el-button,
+  .page-actions .el-button {
+    margin-left: 0 !important;
+  }
+}
