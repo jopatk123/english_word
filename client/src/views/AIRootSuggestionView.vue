@@ -13,6 +13,7 @@
             <p>AI 会分析当前已有词根，推荐尚未收录的高频常用词根。</p>
           </div>
           <div class="page-actions">
+            <el-button @click="$router.push('/')">返回</el-button>
             <el-button @click="$router.push('/ai/settings')">修改配置</el-button>
             <el-button type="primary" :loading="loading" @click="generateSuggestions">重新生成</el-button>
           </div>
@@ -69,12 +70,6 @@
           <el-button type="primary" :loading="saving" @click="handleSaveSelected">保存选中词根</el-button>
         </div>
 
-        <el-card v-if="debugText" class="ai-debug-card">
-          <template #header>
-            <span>调试输出</span>
-          </template>
-          <pre class="debug-output">{{ debugText }}</pre>
-        </el-card>
       </template>
     </el-card>
   </div>
@@ -99,7 +94,6 @@ const selectedRows = ref([]);
 const resultMessage = ref('');
 const tableRef = ref(null);
 const debugSummary = ref(null);
-const debugText = ref('');
 
 const allSelected = computed(() => suggestions.value.length > 0 && selectedRows.value.length === suggestions.value.length);
 
@@ -122,26 +116,14 @@ const generateSuggestions = async () => {
   selectedRows.value = [];
   resultMessage.value = '';
   debugSummary.value = null;
-  debugText.value = '';
 
   try {
     const res = await getAiRootSuggestions(settings.value);
     suggestions.value = res.data.items || [];
     resultMessage.value = res.data.message || '建议生成完成';
     debugSummary.value = res.data.debug || null;
-    debugText.value = JSON.stringify({
-      ...res.data.debug,
-      suggestedCount: res.data.items?.length || 0,
-      hasMore: res.data.hasMore,
-      message: res.data.message,
-    }, null, 2);
   } catch (e) {
     resultMessage.value = '';
-    debugText.value = JSON.stringify({
-      message: e?.response?.data?.msg || e?.message || '生成词根建议失败',
-      code: e?.code || '',
-      status: e?.response?.status || '',
-    }, null, 2);
     ElMessage.error(e?.response?.data?.msg || (e?.code === 'ECONNABORTED' ? 'AI 请求超时，请稍后重试' : '生成词根建议失败'));
   } finally {
     loading.value = false;

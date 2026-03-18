@@ -80,12 +80,6 @@
       </div>
     </el-card>
 
-    <el-card v-if="debugText" class="ai-card ai-summary-card">
-      <template #header>
-        <span>调试输出</span>
-      </template>
-      <pre class="debug-output">{{ debugText }}</pre>
-    </el-card>
   </div>
 </template>
 
@@ -100,7 +94,6 @@ const providers = AI_PROVIDERS;
 const form = ref(loadAiSettings());
 const saving = ref(false);
 const testing = ref(false);
-const debugText = ref('');
 
 const currentProvider = computed(() => getProviderById(form.value.providerId));
 const maskedKey = computed(() => maskApiKey(form.value.apiKey));
@@ -135,15 +128,9 @@ const handleTest = async () => {
   try {
     const normalized = saveAiSettings(form.value);
     form.value = normalized;
-    const res = await testAiConnection(normalized);
-    debugText.value = JSON.stringify(res.data?.debug || { ok: true }, null, 2);
+    await testAiConnection(normalized);
     ElMessage.success('AI 连接测试成功');
   } catch (e) {
-    debugText.value = JSON.stringify({
-      message: e?.response?.data?.msg || e?.message || 'AI 连接测试失败',
-      code: e?.code || '',
-      status: e?.response?.status || '',
-    }, null, 2);
     ElMessage.error(e?.response?.data?.msg || (e?.code === 'ECONNABORTED' ? 'AI 请求超时，请稍后重试' : 'AI 连接测试失败'));
   } finally {
     testing.value = false;

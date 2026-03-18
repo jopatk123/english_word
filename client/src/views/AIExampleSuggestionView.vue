@@ -67,12 +67,6 @@
           <el-button type="primary" :loading="saving" @click="handleSaveSelected">保存选中例句</el-button>
         </div>
 
-        <el-card v-if="debugText" class="ai-debug-card">
-          <template #header>
-            <span>调试输出</span>
-          </template>
-          <pre class="debug-output">{{ debugText }}</pre>
-        </el-card>
       </template>
     </el-card>
   </div>
@@ -103,7 +97,6 @@ const selectedRows = ref([]);
 const selectedMap = ref({});
 const resultMessage = ref('');
 const debugSummary = ref(null);
-const debugText = ref('');
 
 const allSelected = computed(() => suggestions.value.length > 0 && selectedRows.value.length === suggestions.value.length);
 
@@ -151,28 +144,14 @@ const generateSuggestions = async () => {
   selectedMap.value = {};
   resultMessage.value = '';
   debugSummary.value = null;
-  debugText.value = '';
 
   try {
     const res = await getAiExampleSuggestions(wordId, settings.value);
     suggestions.value = res.data.items || [];
     resultMessage.value = res.data.message || '建议生成完成';
     debugSummary.value = res.data.debug || null;
-    debugText.value = JSON.stringify({
-      ...res.data.debug,
-      wordId,
-      suggestedCount: res.data.items?.length || 0,
-      hasMore: res.data.hasMore,
-      message: res.data.message,
-    }, null, 2);
   } catch (e) {
     resultMessage.value = '';
-    debugText.value = JSON.stringify({
-      wordId,
-      message: e?.response?.data?.msg || e?.message || '生成例句建议失败',
-      code: e?.code || '',
-      status: e?.response?.status || '',
-    }, null, 2);
     ElMessage.error(e?.response?.data?.msg || (e?.code === 'ECONNABORTED' ? 'AI 请求超时，请稍后重试' : '生成例句建议失败'));
   } finally {
     loading.value = false;

@@ -3,3 +3,4 @@ data/*.db
 client/dist
 .DS_Store
 *.pid
+.VSCodeCounter
