@@ -10,7 +10,7 @@
         <div class="page-heading">
           <div>
             <h2>AI 配置</h2>
-            <p>API Key 只保存在当前浏览器的本地存储中，不会写入数据库。</p>
+            <p>API Key 只保存在当前浏览器的本地存储中，不会写入数据库。您可以为不同的 AI 厂商分别配置不同的 API Key，切换厂商时会自动加载已保存的 Key。</p>
           </div>
         </div>
       </template>
@@ -88,7 +88,7 @@ import { computed, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { testAiConnection } from '../api/index.js';
 import { AI_PROVIDERS, getProviderById } from '../constants/aiProviders.js';
-import { loadAiSettings, maskApiKey, saveAiSettings } from '../utils/aiSettings.js';
+import { loadAiSettings, maskApiKey, saveAiSettings, setCurrentProviderId, loadProviderSettings } from '../utils/aiSettings.js';
 
 const providers = AI_PROVIDERS;
 const form = ref(loadAiSettings());
@@ -99,10 +99,11 @@ const currentProvider = computed(() => getProviderById(form.value.providerId));
 const maskedKey = computed(() => maskApiKey(form.value.apiKey));
 
 const handleProviderChange = (providerId) => {
-  const provider = getProviderById(providerId);
-  form.value.providerType = provider.providerType;
-  form.value.baseUrl = provider.baseUrl;
-  form.value.model = provider.models[0];
+  // 更新当前提供者ID
+  setCurrentProviderId(providerId);
+  
+  // 加载该提供者的已保存配置（如果有），否则使用默认值
+  form.value = loadProviderSettings(providerId);
 };
 
 const handleSave = async () => {
