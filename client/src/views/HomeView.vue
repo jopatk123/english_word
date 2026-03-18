@@ -31,9 +31,12 @@
         <el-table-column prop="meaning" label="含义" min-width="150" />
         <el-table-column label="所属词根" min-width="120">
           <template #default="{ row }">
-            <el-link type="primary" @click="$router.push(`/root/${row.root?.id}`)">
-              {{ row.root?.name }}
-            </el-link>
+            <template v-for="(root, idx) in (row.roots || [])" :key="root.id">
+              <el-link type="primary" @click="$router.push(`/root/${root.id}`)">
+                {{ root.name }}
+              </el-link>
+              <span v-if="idx < row.roots.length - 1">、</span>
+            </template>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="80">

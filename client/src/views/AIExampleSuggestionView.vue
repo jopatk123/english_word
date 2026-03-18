@@ -2,7 +2,7 @@
   <div class="ai-page">
     <el-breadcrumb separator="/" class="page-breadcrumb">
       <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-      <el-breadcrumb-item v-if="word?.root" :to="{ path: `/root/${word.root.id}` }">词根详情</el-breadcrumb-item>
+      <el-breadcrumb-item v-if="word?.roots?.length === 1" :to="{ path: `/root/${word.roots[0].id}` }">词根详情</el-breadcrumb-item>
       <el-breadcrumb-item :to="{ path: `/word/${wordId}` }">单词详情</el-breadcrumb-item>
       <el-breadcrumb-item>智能添加例句</el-breadcrumb-item>
     </el-breadcrumb>

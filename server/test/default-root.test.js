@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { initDB, sequelize, Root, Word, User } from '../models/index.js';
+import { initDB, sequelize, Root, Word, User, WordRoot } from '../models/index.js';
 import {
   ensureDefaultRoot,
   DEFAULT_ROOT_NAME,
@@ -76,15 +76,17 @@ describe('Word 无 rootId 自动归入默认词根', () => {
     const user = await User.findOne({ where: { username: 'testuser1' } });
     const defaultRoot = await ensureDefaultRoot(user.id);
 
-    // 模拟后端路由逻辑：无 rootId 时使用 defaultRoot.id
+    // 模拟后端路由逻辑：无 rootIds 时使用 defaultRoot，通过 junction 表关联
     const word = await Word.create({
-      rootId: defaultRoot.id,
       name: 'run',
       meaning: '跑；运行',
       phonetic: '/rʌn/',
     });
+    await word.addRoot(defaultRoot);
 
-    expect(word.rootId).toBe(defaultRoot.id);
+    const roots = await word.getRoots();
+    expect(roots.length).toBe(1);
+    expect(roots[0].id).toBe(defaultRoot.id);
     expect(word.name).toBe('run');
   });
 
@@ -92,7 +94,7 @@ describe('Word 无 rootId 自动归入默认词根', () => {
     const user = await User.findOne({ where: { username: 'testuser1' } });
     const defaultRoot = await ensureDefaultRoot(user.id);
 
-    const words = await Word.findAll({ where: { rootId: defaultRoot.id } });
+    const words = await defaultRoot.getWords();
     expect(words.length).toBeGreaterThan(0);
     expect(words.some((w) => w.name === 'run')).toBe(true);
   });

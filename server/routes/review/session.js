@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Op, literal } from 'sequelize';
-import { Word, Root, WordReview, ReviewHistory } from '../../models/index.js';
+import { Word, Root, WordRoot, WordReview, ReviewHistory } from '../../models/index.js';
 import { success, error } from '../../utils/response.js';
 import { getNextReview, todayStr, addDays } from '../../utils/srs.js';
 
@@ -15,7 +15,7 @@ router.post('/enqueue', async (req, res) => {
     const root = await Root.findByPk(rootId);
     if (!root || root.userId !== req.userId) return error(res, '词根不存在', 404);
 
-    const words = await Word.findAll({ where: { rootId } });
+    const words = await root.getWords();
     if (words.length === 0) return error(res, '该词根下没有单词', 400);
 
     const today = todayStr(req.body.tz);

@@ -24,7 +24,7 @@ router.get('/due', async (req, res) => {
         model: Word,
         as: 'word',
         include: [
-          { model: Root, as: 'root', attributes: ['id', 'name', 'meaning'] },
+          { model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'name', 'meaning'] },
           { model: Example, as: 'examples', attributes: ['id', 'sentence', 'translation'] },
         ],
       }],

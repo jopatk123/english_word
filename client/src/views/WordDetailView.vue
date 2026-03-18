@@ -3,9 +3,10 @@
     <!-- 面包屑导航 -->
     <el-breadcrumb separator="/">
       <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-      <el-breadcrumb-item :to="{ path: `/root/${word?.root?.id}` }">
-        词根：{{ word?.root?.name }}
+      <el-breadcrumb-item v-if="word?.roots?.length === 1" :to="{ path: `/root/${word.roots[0].id}` }">
+        词根：{{ word.roots[0].name }}
       </el-breadcrumb-item>
+      <el-breadcrumb-item v-else>单词详情</el-breadcrumb-item>
       <el-breadcrumb-item>单词：{{ word?.name }}</el-breadcrumb-item>
     </el-breadcrumb>
 
@@ -21,9 +22,13 @@
       </template>
       <p class="remark-text">
         所属词根：
-        <el-link type="primary" @click="$router.push(`/root/${word?.root?.id}`)">
-          {{ word?.root?.name }}（{{ word?.root?.meaning }}）
-        </el-link>
+        <template v-for="(root, idx) in (word?.roots || [])" :key="root.id">
+          <el-link type="primary" @click="$router.push(`/root/${root.id}`)">
+            {{ root.name }}（{{ root.meaning }}）
+          </el-link>
+          <span v-if="idx < word.roots.length - 1">、</span>
+        </template>
+        <span v-if="!word?.roots?.length">无</span>
       </p>
       <p v-if="word?.remark" class="remark-text">备注：{{ word.remark }}</p>
     </el-card>
@@ -32,7 +37,8 @@
     <div class="section-header">
       <h3>例句（{{ examples.length }}）</h3>
       <div class="section-actions">
-        <el-button type="info" @click="$router.push(`/root/${word?.root?.id}`)">返回词根</el-button>
+        <el-button v-if="word?.roots?.length === 1" type="info" @click="$router.push(`/root/${word.roots[0].id}`)">返回词根</el-button>
+        <el-button v-else type="info" @click="$router.push('/')">返回首页</el-button>
         <el-button type="success" @click="$router.push(`/word/${wordId}/ai-examples`)">智能添加例句</el-button>
         <el-button type="primary" @click="openExampleDialog()">添加例句</el-button>
       </div>

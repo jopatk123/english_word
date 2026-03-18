@@ -146,11 +146,12 @@ describe('WordReview 学习队列数据库操作', () => {
     testUserId = user.id;
     const root = await ensureDefaultRoot(testUserId);
     // 避免重复创建
-    const existing = await Word.findOne({ where: { rootId: root.id, name: 'srs_test_word' } });
-    if (existing) {
-      testWordId = existing.id;
+    const existingWords = await root.getWords({ where: { name: 'srs_test_word' } });
+    if (existingWords.length) {
+      testWordId = existingWords[0].id;
     } else {
-      const word = await Word.create({ rootId: root.id, name: 'srs_test_word', meaning: 'SRS测试单词' });
+      const word = await Word.create({ name: 'srs_test_word', meaning: 'SRS测试单词' });
+      await word.addRoot(root);
       testWordId = word.id;
     }
     // 确保无残留记录

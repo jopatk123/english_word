@@ -11,7 +11,7 @@
         <div v-if="card.word.phonetic" class="card-phonetic">{{ card.word.phonetic }}</div>
         <SpeakButton :text="card.word.name" />
         <div class="card-root-tag">
-          词根：{{ card.word.root?.name }}（{{ card.word.root?.meaning }}）
+          词根：{{ (card.word.roots || []).map(r => `${r.name}（${r.meaning}）`).join('、') || '无' }}
         </div>
         <div class="card-hint">点击卡片显示答案</div>
       </div>

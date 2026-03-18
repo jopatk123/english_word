@@ -7,12 +7,6 @@ const Word = sequelize.define('Word', {
     primaryKey: true,
     autoIncrement: true,
   },
-  rootId: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    field: 'root_id',
-    comment: '关联词根ID',
-  },
   name: {
     type: DataTypes.STRING,
     allowNull: false,

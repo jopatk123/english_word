@@ -1,31 +1,68 @@
 import { Router } from 'express';
 import { Op } from 'sequelize';
-import { Word, Root, Example } from '../models/index.js';
+import { Word, Root, WordRoot, Example } from '../models/index.js';
 import { success, error } from '../utils/response.js';
 import { ensureDefaultRoot } from '../utils/defaultRoot.js';
 
 const router = Router();
 
-// 获取指定词根下的单词列表
+// 获取单词列表（可按词根筛选，支持关键字搜索）
 router.get('/', async (req, res) => {
   try {
     const { rootId, keyword } = req.query;
     const where = {};
-    if (rootId) where.rootId = rootId;
     if (keyword) where.name = { [Op.like]: `%${keyword}%` };
+
+    const rootInclude = {
+      model: Root,
+      as: 'roots',
+      through: { attributes: [] },
+      attributes: ['id', 'name', 'meaning'],
+      where: { userId: req.userId },
+      required: true,
+    };
+
+    // 若指定了 rootId，限制必须关联该词根
+    if (rootId) {
+      rootInclude.where = { ...rootInclude.where, id: rootId };
+    }
+
     const words = await Word.findAll({
       where,
       include: [
-        { model: Root, as: 'root', attributes: ['id', 'name', 'meaning'], where: { userId: req.userId }, required: true },
+        rootInclude,
         { model: Example, as: 'examples', attributes: ['id'] },
       ],
       order: [['create_time', 'DESC']],
     });
-    const result = words.map(w => ({
-      ...w.toJSON(),
-      exampleCount: w.examples ? w.examples.length : 0,
-      examples: undefined,
-    }));
+
+    // 若按 rootId 筛选，查询结果的 roots 只含该词根；补充完整词根列表
+    let result;
+    if (rootId) {
+      const wordIds = words.map(w => w.id);
+      const allRoots = wordIds.length ? await WordRoot.findAll({
+        where: { wordId: wordIds },
+        include: [{ model: Root, as: 'root', attributes: ['id', 'name', 'meaning'] }],
+      }) : [];
+      const rootsByWord = {};
+      for (const wr of allRoots) {
+        if (!rootsByWord[wr.wordId]) rootsByWord[wr.wordId] = [];
+        if (wr.root) rootsByWord[wr.wordId].push({ id: wr.root.id, name: wr.root.name, meaning: wr.root.meaning });
+      }
+      result = words.map(w => ({
+        ...w.toJSON(),
+        roots: rootsByWord[w.id] || w.roots?.map(r => ({ id: r.id, name: r.name, meaning: r.meaning })) || [],
+        exampleCount: w.examples ? w.examples.length : 0,
+        examples: undefined,
+      }));
+    } else {
+      result = words.map(w => ({
+        ...w.toJSON(),
+        roots: w.roots?.map(r => ({ id: r.id, name: r.name, meaning: r.meaning })) || [],
+        exampleCount: w.examples ? w.examples.length : 0,
+        examples: undefined,
+      }));
+    }
     success(res, result);
   } catch (e) {
     error(res, e.message);
@@ -37,84 +74,149 @@ router.get('/:id', async (req, res) => {
   try {
     const word = await Word.findByPk(req.params.id, {
       include: [
-        { model: Root, as: 'root', attributes: ['id', 'name', 'meaning'], where: { userId: req.userId }, required: true },
+        { model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'name', 'meaning'], where: { userId: req.userId }, required: true },
         { model: Example, as: 'examples', attributes: ['id'] },
       ],
     });
     if (!word) return error(res, '单词不存在');
-    const result = { ...word.toJSON(), exampleCount: word.examples ? word.examples.length : 0, examples: undefined };
+    const result = {
+      ...word.toJSON(),
+      roots: word.roots?.map(r => ({ id: r.id, name: r.name, meaning: r.meaning })) || [],
+      exampleCount: word.examples ? word.examples.length : 0,
+      examples: undefined,
+    };
     success(res, result);
   } catch (e) {
     error(res, e.message);
   }
 });
 
-// 添加单词（rootId 可选；不传时自动归入「未分类」词根）
+// 添加单词（支持 rootIds 数组或 rootId 单值；不传时自动归入「未分类」词根）
+// 若同名单词已存在，则自动追加新的词根关联
 router.post('/', async (req, res) => {
   try {
-    const { rootId: rawRootId, name, meaning, phonetic, remark } = req.body;
+    const { rootId: rawRootId, rootIds: rawRootIds, name, meaning, phonetic, remark } = req.body;
     if (!name || !meaning) return error(res, '单词和含义为必填项');
 
-    let rootId = rawRootId ? Number(rawRootId) : null;
-    if (rootId) {
-      const root = await Root.findByPk(rootId);
-      if (!root || root.userId !== req.userId) return error(res, '关联的词根不存在');
+    // 合并 rootId 和 rootIds
+    let rootIds = [];
+    if (Array.isArray(rawRootIds)) rootIds = rawRootIds.map(Number).filter(Boolean);
+    if (rawRootId) rootIds.push(Number(rawRootId));
+    rootIds = [...new Set(rootIds)];
+
+    // 验证所有词根是否属于当前用户
+    if (rootIds.length) {
+      const validRoots = await Root.findAll({ where: { id: rootIds, userId: req.userId } });
+      if (validRoots.length !== rootIds.length) return error(res, '部分关联的词根不存在');
     } else {
-      // 无词根：自动使用「未分类」默认词根
       const defaultRoot = await ensureDefaultRoot(req.userId);
-      rootId = defaultRoot.id;
+      rootIds = [defaultRoot.id];
     }
 
-    const trimmedName = name.trim();
-    const existedWord = await Word.findOne({ where: { rootId, name: trimmedName } });
-    if (existedWord) return error(res, '该词根下已存在同名单词，请勿重复添加', 400);
+    const trimmedName = name.trim().toLowerCase();
+
+    // 检查该用户是否已有同名单词
+    const existingWord = await Word.findOne({
+      where: { name: trimmedName },
+      include: [{ model: Root, as: 'roots', through: { attributes: [] }, where: { userId: req.userId }, required: true }],
+    });
+
+    if (existingWord) {
+      // 单词已存在：追加新的词根关联
+      const existingRootIds = existingWord.roots.map(r => r.id);
+      const newRootIds = rootIds.filter(id => !existingRootIds.includes(id));
+      if (newRootIds.length === 0) {
+        return error(res, '该单词已存在且已关联相同词根，请勿重复添加', 400);
+      }
+      for (const rid of newRootIds) {
+        await WordRoot.findOrCreate({ where: { wordId: existingWord.id, rootId: rid } });
+      }
+      const updatedWord = await Word.findByPk(existingWord.id, {
+        include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'name', 'meaning'] }],
+      });
+      return success(res, updatedWord, `单词已存在，已追加 ${newRootIds.length} 个新词根关联`);
+    }
+
+    // 创建新单词
     const word = await Word.create({
-      rootId,
       name: trimmedName,
       meaning: meaning.trim(),
       phonetic: phonetic?.trim(),
       remark: remark?.trim(),
     });
-    success(res, word, '添加成功');
+
+    // 创建词根关联
+    for (const rid of rootIds) {
+      await WordRoot.create({ wordId: word.id, rootId: rid });
+    }
+
+    const fullWord = await Word.findByPk(word.id, {
+      include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'name', 'meaning'] }],
+    });
+    success(res, fullWord, '添加成功');
   } catch (e) {
     error(res, e.message);
   }
 });
 
-// 编辑单词
+// 编辑单词（支持更新词根关联）
 router.put('/:id', async (req, res) => {
   try {
     const word = await Word.findByPk(req.params.id, {
-      include: [{ model: Root, as: 'root', attributes: ['id', 'userId'] }],
+      include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'userId'] }],
     });
-    if (!word || word.root?.userId !== req.userId) return error(res, '单词不存在');
-    const { name, meaning, phonetic, remark } = req.body;
+    if (!word || !word.roots?.some(r => r.userId === req.userId)) return error(res, '单词不存在');
+
+    const { name, meaning, phonetic, remark, rootIds: rawRootIds } = req.body;
     if (!name || !meaning) return error(res, '单词和含义为必填项');
-    const trimmedName = name.trim();
-    const existedWord = await Word.findOne({ where: { rootId: word.rootId, name: trimmedName } });
-    if (existedWord && existedWord.id !== word.id) return error(res, '该词根下已存在同名单词，请勿重复命名', 400);
+
+    const trimmedName = name.trim().toLowerCase();
+
+    // 检查同名单词
+    const existingWord = await Word.findOne({
+      where: { name: trimmedName },
+      include: [{ model: Root, as: 'roots', through: { attributes: [] }, where: { userId: req.userId }, required: true }],
+    });
+    if (existingWord && existingWord.id !== word.id) {
+      return error(res, '已存在同名单词，请勿重复命名', 400);
+    }
+
     await word.update({
       name: trimmedName,
       meaning: meaning.trim(),
       phonetic: phonetic?.trim(),
       remark: remark?.trim(),
     });
-    success(res, word, '更新成功');
+
+    // 更新词根关联（如果提供了 rootIds）
+    if (Array.isArray(rawRootIds)) {
+      const rootIds = rawRootIds.map(Number).filter(Boolean);
+      if (rootIds.length) {
+        const validRoots = await Root.findAll({ where: { id: rootIds, userId: req.userId } });
+        if (validRoots.length !== rootIds.length) return error(res, '部分关联的词根不存在');
+        await word.setRoots(rootIds);
+      }
+    }
+
+    const updatedWord = await Word.findByPk(word.id, {
+      include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'name', 'meaning'] }],
+    });
+    success(res, updatedWord, '更新成功');
   } catch (e) {
     error(res, e.message);
   }
 });
 
-// 删除单词（级联删除例句）
+// 删除单词（级联删除例句和关联）
 router.delete('/:id', async (req, res) => {
   try {
     const word = await Word.findByPk(req.params.id, {
-      include: [{ model: Root, as: 'root', attributes: ['id', 'userId'] }],
+      include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'userId'] }],
     });
-    if (!word || word.root?.userId !== req.userId) return error(res, '单词不存在');
+    if (!word || !word.roots?.some(r => r.userId === req.userId)) return error(res, '单词不存在');
 
-    // SQLite may not enforce ON DELETE CASCADE for existing schemas, so delete examples explicitly
     await Example.destroy({ where: { wordId: word.id } });
+    await WordRoot.destroy({ where: { wordId: word.id } });
     await word.destroy();
 
     success(res, null, '删除成功');

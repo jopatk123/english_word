@@ -59,195 +59,11 @@
       @close="errorMsg = ''"
     />
 
-    <!-- ========== 单词分析结果 ========== -->
-    <template v-if="searchMode === 'word' && wordResult">
-      <!-- 单词已存在提示 -->
-      <el-card v-if="wordResult.existingWord" class="ai-card" style="margin-top: 16px">
-        <el-alert type="success" :closable="false" show-icon>
-          <template #title>
-            单词 <strong>{{ wordResult.existingWord.name }}</strong> 已存在于词根
-            <el-link type="primary" @click="$router.push(`/root/${wordResult.existingWord.rootId}`)">
-              {{ wordResult.existingWord.rootName }}
-            </el-link> 下，
-            <el-link type="primary" @click="$router.push(`/word/${wordResult.existingWord.id}`)">
-              点击查看详情
-            </el-link>
-          </template>
-        </el-alert>
-      </el-card>
+    <!-- 单词分析结果 -->
+    <WordAnalysisResult v-if="searchMode === 'word' && wordResult" :wordResult="wordResult" />
 
-      <!-- AI 分析 -->
-      <el-card class="ai-card" style="margin-top: 16px">
-        <template #header>
-          <div class="page-heading page-heading-between">
-            <h2>AI 分析结果</h2>
-          </div>
-        </template>
-
-        <!-- 单词基础信息 -->
-        <div class="word-analysis-header">
-          <div class="card-header">
-            <span class="root-name">{{ wordResult.analysis.word }}</span>
-            <SpeakButton :text="wordResult.analysis.word" />
-            <span class="phonetic">{{ wordResult.analysis.phonetic }}</span>
-          </div>
-          <div class="root-meaning" style="margin-top: 8px">{{ wordResult.analysis.meaning }}</div>
-        </div>
-
-        <!-- 词性分析 -->
-        <template v-if="wordResult.analysis.partOfSpeech?.length">
-          <el-divider />
-          <h3 style="margin-bottom: 12px">词性分析</h3>
-          <div class="pos-list">
-            <div v-for="(pos, idx) in wordResult.analysis.partOfSpeech" :key="idx" class="pos-item">
-              <el-tag type="warning" size="small" class="pos-tag">{{ pos.type }}</el-tag>
-              <span class="pos-meaning">{{ pos.meaning }}</span>
-            </div>
-          </div>
-        </template>
-
-        <!-- 词根信息 -->
-        <el-divider />
-        <div v-if="wordResult.analysis.root" class="root-info-section">
-          <h3 style="margin-bottom: 12px">词根信息</h3>
-          <div class="cell-with-speak" style="margin-bottom: 8px">
-            <el-tag type="primary" size="large">{{ wordResult.analysis.root.name }}</el-tag>
-            <SpeakButton :text="wordResult.analysis.root.name" />
-            <span style="margin-left: 8px; color: #606266">{{ wordResult.analysis.root.meaning }}</span>
-          </div>
-
-          <div v-if="wordResult.existingRoot" style="margin-top: 8px">
-            <el-alert type="info" :closable="false" show-icon>
-              <template #title>
-                词根 <strong>{{ wordResult.existingRoot.name }}</strong> 已存在，
-                <el-link type="primary" @click="$router.push(`/root/${wordResult.existingRoot.id}`)">
-                  点击查看
-                </el-link>
-              </template>
-            </el-alert>
-          </div>
-
-          <div v-if="!wordResult.existingRoot && !wordResult.existingWord" style="margin-top: 8px">
-            <el-checkbox v-model="addRoot" :disabled="addExamples">
-              添加词根「{{ wordResult.analysis.root.name }}」到我的词根库
-            </el-checkbox>
-          </div>
-        </div>
-        <div v-else>
-          <el-alert type="info" :closable="false" show-icon>
-            <template #title>
-              该单词没有明确的词根来源，保存后将归入
-              <strong>「未分类」</strong>词根分组
-            </template>
-          </el-alert>
-        </div>
-
-        <!-- 添加单词选项 -->
-        <template v-if="!wordResult.existingWord && canAddWord">
-          <el-divider />
-          <div>
-            <el-checkbox v-model="addWord" :disabled="addExamples">
-              添加单词「{{ wordResult.analysis.word }}」
-              <el-tag
-                v-if="!wordResult.analysis.root"
-                type="info"
-                size="small"
-                style="margin-left: 6px; vertical-align: middle"
-              >→ 未分类</el-tag>
-            </el-checkbox>
-          </div>
-        </template>
-
-        <!-- 例句 -->
-        <template v-if="wordResult.analysis.examples.length">
-          <el-divider />
-          <h3 style="margin-bottom: 12px">常用例句</h3>
-          <div class="example-list">
-            <el-card
-              v-for="(ex, idx) in wordResult.analysis.examples"
-              :key="idx"
-              shadow="hover"
-              class="example-card"
-            >
-              <div class="example-content">
-                <div class="example-sentence">
-                  <div class="cell-with-speak">
-                    <span>{{ ex.sentence }}</span>
-                    <SpeakButton :text="ex.sentence" />
-                  </div>
-                </div>
-                <div class="example-translation">{{ ex.translation }}</div>
-              </div>
-              <div v-if="canAddExamples" class="example-actions">
-                <el-checkbox
-                  :model-value="selectedExamples.includes(idx)"
-                  @change="(val) => toggleExample(idx, val)"
-                >
-                  添加例句
-                </el-checkbox>
-              </div>
-            </el-card>
-          </div>
-        </template>
-
-        <!-- 操作按钮 -->
-        <div v-if="showSaveButton" class="page-actions ai-footer-actions">
-          <el-button type="primary" :loading="saving" @click="handleSave">
-            保存选中内容
-          </el-button>
-          <span v-if="saveSummary" style="color: #909399; font-size: 13px; margin-left: 8px">
-            {{ saveSummary }}
-          </span>
-        </div>
-      </el-card>
-    </template>
-
-    <!-- ========== 句子分析结果 ========== -->
-    <template v-if="searchMode === 'sentence' && sentenceResult">
-      <el-card class="ai-card" style="margin-top: 16px">
-        <template #header>
-          <div class="page-heading page-heading-between">
-            <h2>句子分析</h2>
-          </div>
-        </template>
-
-        <!-- 原句 + 朗读 -->
-        <div class="sentence-original">
-          <div class="cell-with-speak">
-            <span class="sentence-text">{{ sentenceResult.analysis.sentence }}</span>
-            <SpeakButton :text="sentenceResult.analysis.sentence" />
-          </div>
-        </div>
-
-        <!-- 翻译 -->
-        <el-divider />
-        <h3 style="margin-bottom: 8px">中文翻译</h3>
-        <p class="sentence-translation">{{ sentenceResult.analysis.translation }}</p>
-
-        <!-- 语法分析 -->
-        <el-divider />
-        <h3 style="margin-bottom: 8px">语法结构分析</h3>
-        <p class="grammar-text">{{ sentenceResult.analysis.grammar }}</p>
-
-        <!-- 关键词汇 -->
-        <template v-if="sentenceResult.analysis.vocabulary.length">
-          <el-divider />
-          <h3 style="margin-bottom: 12px">关键词汇</h3>
-          <el-table :data="sentenceResult.analysis.vocabulary" stripe>
-            <el-table-column prop="word" label="单词" min-width="120">
-              <template #default="{ row }">
-                <div class="cell-with-speak">
-                  <strong>{{ row.word }}</strong>
-                  <SpeakButton :text="row.word" />
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="phonetic" label="音标" min-width="120" />
-            <el-table-column prop="meaning" label="含义" min-width="150" />
-          </el-table>
-        </template>
-      </el-card>
-    </template>
+    <!-- 句子分析结果 -->
+    <SentenceAnalysisResult v-if="searchMode === 'sentence' && sentenceResult" :result="sentenceResult" />
   </div>
 </template>
 
@@ -255,10 +71,11 @@
 import { ref, computed } from 'vue';
 import { Search } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
-import { analyzeWord, analyzeSentence, createRoot, createWord, createExample } from '../api/index.js';
-import SpeakButton from '../components/SpeakButton.vue';
+import { analyzeWord, analyzeSentence } from '../api/index.js';
 import { getProviderById } from '../constants/aiProviders.js';
 import { isAiSettingsReady, loadAiSettings } from '../utils/aiSettings.js';
+import WordAnalysisResult from '../components/search/WordAnalysisResult.vue';
+import SentenceAnalysisResult from '../components/search/SentenceAnalysisResult.vue';
 
 const settings = ref(loadAiSettings());
 const ready = computed(() => isAiSettingsReady(settings.value));
@@ -266,89 +83,18 @@ const providerName = computed(() => getProviderById(settings.value.providerId).n
 
 const searchInput = ref('');
 const loading = ref(false);
-const saving = ref(false);
 const errorMsg = ref('');
-const searchMode = ref(''); // 'word' | 'sentence'
-
-// 单词分析
+const searchMode = ref('');
 const wordResult = ref(null);
-const addRoot = ref(false);
-const addWord = ref(false);
-const selectedExamples = ref([]);
-
-// 句子分析
 const sentenceResult = ref(null);
 
-// 判断输入是单词还是句子
 const isWord = (input) => /^[a-zA-Z-]+$/.test(input.trim());
-
-// 能否添加单词
-// · 有词根：需要词根已存在 or 勾选添加词根
-// · 无词根：直接允许（将自动归入「未分类」词根）
-const canAddWord = computed(() => {
-  if (!wordResult.value) return false;
-  if (wordResult.value.analysis.root) {
-    return wordResult.value.existingRoot || addRoot.value;
-  }
-  return true; // 无词根时直接允许添加
-});
-
-// 能否添加例句（需要单词可添加且勾选添加单词）
-const canAddExamples = computed(() => {
-  if (!wordResult.value || wordResult.value.existingWord) return false;
-  return canAddWord.value && addWord.value;
-});
-
-// 是否显示保存按钮
-const showSaveButton = computed(() => {
-  if (!wordResult.value || wordResult.value.existingWord) return false;
-  return addRoot.value || addWord.value || selectedExamples.value.length > 0;
-});
-
-// 保存摘要
-const saveSummary = computed(() => {
-  const parts = [];
-  if (addRoot.value && !wordResult.value?.existingRoot) parts.push('词根');
-  if (addWord.value) {
-    const noRoot = !wordResult.value?.analysis.root;
-    parts.push(noRoot ? '单词（→未分类）' : '单词');
-  }
-  if (selectedExamples.value.length) parts.push(`${selectedExamples.value.length} 条例句`);
-  return parts.length ? `将保存: ${parts.join('、')}` : '';
-});
-
-// 勾选/取消例句时自动勾选单词（有词根时也自动勾选词根）
-const toggleExample = (idx, checked) => {
-  if (checked) {
-    if (!selectedExamples.value.includes(idx)) {
-      selectedExamples.value.push(idx);
-    }
-    // 添加例句必然添加单词
-    addWord.value = true;
-    // 只有在有词根信息且词根未存在时才自动勾选添加词根
-    if (wordResult.value?.analysis.root && !wordResult.value?.existingRoot) {
-      addRoot.value = true;
-    }
-  } else {
-    selectedExamples.value = selectedExamples.value.filter((i) => i !== idx);
-  }
-};
 
 const clearResults = () => {
   searchMode.value = '';
   wordResult.value = null;
   sentenceResult.value = null;
-  addRoot.value = false;
-  addWord.value = false;
-  selectedExamples.value = [];
   errorMsg.value = '';
-};
-
-const formatMeaning = (analysis) => {
-  if (analysis.partOfSpeech?.length) {
-    return analysis.partOfSpeech.map((p) => `${p.type} ${p.meaning}`).join('  ');
-  }
-  return analysis.meaning;
 };
 
 const handleSearch = async () => {
@@ -357,7 +103,6 @@ const handleSearch = async () => {
     return ElMessage.warning('请输入要搜索的内容');
   }
 
-  // 基本验证：需要包含英文字母
   if (!/[a-zA-Z]/.test(input)) {
     return ElMessage.warning('请输入英文单词或句子');
   }
@@ -368,7 +113,6 @@ const handleSearch = async () => {
 
   clearResults();
   loading.value = true;
-  errorMsg.value = '';
 
   try {
     if (isWord(input)) {
@@ -386,152 +130,10 @@ const handleSearch = async () => {
     loading.value = false;
   }
 };
-
-const handleSave = async () => {
-  if (!wordResult.value) return;
-
-  saving.value = true;
-  try {
-    let rootId = wordResult.value.existingRoot?.id || null;
-
-    // 1. 添加词根
-    if (addRoot.value && !wordResult.value.existingRoot) {
-      const rootRes = await createRoot({
-        name: wordResult.value.analysis.root.name,
-        meaning: wordResult.value.analysis.root.meaning,
-      });
-      rootId = rootRes.data.id;
-      ElMessage.success(`词根「${wordResult.value.analysis.root.name}」添加成功`);
-    }
-
-    // 2. 添加单词
-    let wordId = null;
-    if (addWord.value) {
-      const wordData = {
-        name: wordResult.value.analysis.word,
-        meaning: formatMeaning(wordResult.value.analysis),
-        phonetic: wordResult.value.analysis.phonetic,
-      };
-      // 有词根时才传 rootId；无词根时由后端自动归入「未分类」
-      if (rootId) wordData.rootId = rootId;
-      const wordRes = await createWord(wordData);
-      wordId = wordRes.data.id;
-      ElMessage.success(`单词「${wordResult.value.analysis.word}」添加成功`);
-    }
-
-    // 3. 添加例句
-    if (selectedExamples.value.length && wordId) {
-      const results = await Promise.allSettled(
-        selectedExamples.value.map((idx) => {
-          const ex = wordResult.value.analysis.examples[idx];
-          return createExample({
-            wordId,
-            sentence: ex.sentence,
-            translation: ex.translation,
-          });
-        })
-      );
-      const successCount = results.filter((r) => r.status === 'fulfilled').length;
-      if (successCount) {
-        ElMessage.success(`${successCount} 条例句添加成功`);
-      }
-    }
-
-    // 添加完成后更新状态
-    if (rootId && addRoot.value && !wordResult.value.existingRoot) {
-      wordResult.value.existingRoot = {
-        id: rootId,
-        name: wordResult.value.analysis.root.name,
-        meaning: wordResult.value.analysis.root.meaning,
-      };
-      addRoot.value = false;
-    }
-    if (wordId && addWord.value) {
-      wordResult.value.existingWord = {
-        id: wordId,
-        name: wordResult.value.analysis.word,
-        rootId,
-        rootName: wordResult.value.analysis.root?.name || '未分类',
-      };
-      addWord.value = false;
-      selectedExamples.value = [];
-    }
-  } catch (e) {
-    ElMessage.error(e?.response?.data?.msg || '保存失败，请重试');
-  } finally {
-    saving.value = false;
-  }
-};
 </script>
 
 <style scoped>
 .search-form {
   max-width: 600px;
-}
-
-.word-analysis-header {
-  padding-bottom: 8px;
-}
-
-.sentence-original {
-  padding: 12px 0;
-}
-
-.sentence-text {
-  font-size: 18px;
-  font-weight: 500;
-  color: #303133;
-  line-height: 1.6;
-}
-
-.sentence-translation {
-  font-size: 16px;
-  color: #606266;
-  line-height: 1.6;
-}
-
-.grammar-text {
-  font-size: 14px;
-  color: #606266;
-  line-height: 1.8;
-  white-space: pre-wrap;
-}
-
-.root-info-section h3 {
-  font-size: 16px;
-  color: #303133;
-}
-
-.example-card .el-card__body {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.pos-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.pos-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.pos-tag {
-  flex-shrink: 0;
-  font-style: italic;
-  font-weight: 600;
-  min-width: 42px;
-  text-align: center;
-}
-
-.pos-meaning {
-  color: #303133;
-  font-size: 14px;
-  line-height: 1.5;
 }
 </style>

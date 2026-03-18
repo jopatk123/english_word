@@ -92,7 +92,7 @@ router.get('/export', async (req, res) => {
         model: Word,
         as: 'word',
         attributes: ['name', 'meaning', 'phonetic'],
-        include: [{ model: Root, as: 'root', attributes: ['name', 'meaning'] }],
+        include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['name', 'meaning'] }],
       }],
       order: [['due_date', 'ASC']],
     });
@@ -101,8 +101,8 @@ router.get('/export', async (req, res) => {
       word: r.word.name,
       meaning: r.word.meaning,
       phonetic: r.word.phonetic || '',
-      root: r.word.root?.name || '',
-      rootMeaning: r.word.root?.meaning || '',
+      roots: r.word.roots?.map(root => root.name).join(', ') || '',
+      rootMeanings: r.word.roots?.map(root => root.meaning).join(', ') || '',
       status: r.status,
       interval: r.interval,
       easeFactor: r.easeFactor,
@@ -113,7 +113,7 @@ router.get('/export', async (req, res) => {
     }));
 
     if (format === 'csv') {
-      const headers = ['word', 'meaning', 'phonetic', 'root', 'rootMeaning', 'status', 'interval', 'easeFactor', 'dueDate', 'reviewCount', 'lastReviewedAt', 'paused'];
+      const headers = ['word', 'meaning', 'phonetic', 'roots', 'rootMeanings', 'status', 'interval', 'easeFactor', 'dueDate', 'reviewCount', 'lastReviewedAt', 'paused'];
       const csvRows = [headers.join(',')];
       data.forEach(row => {
         csvRows.push(headers.map(h => {

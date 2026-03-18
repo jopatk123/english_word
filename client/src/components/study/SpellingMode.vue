@@ -6,8 +6,8 @@
       <!-- 拼写模式：显示释义 -->
       <template v-if="mode === 'spelling'">
         <div class="card-meaning" style="font-size: 22px; margin-bottom: 16px;">{{ card.word.meaning }}</div>
-        <div v-if="card.word.root" class="card-root-tag">
-          词根：{{ card.word.root?.name }}（{{ card.word.root?.meaning }}）
+        <div v-if="card.word.roots?.length" class="card-root-tag">
+          词根：{{ card.word.roots.map(r => `${r.name}（${r.meaning}）`).join('、') }}
         </div>
       </template>
 
