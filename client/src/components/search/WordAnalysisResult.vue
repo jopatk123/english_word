@@ -136,8 +136,17 @@
     </template>
 
     <!-- 操作按钮 -->
-    <div v-if="showSaveButton" class="page-actions ai-footer-actions">
-      <el-button type="primary" :loading="saving" @click="handleSave">
+    <div v-if="canAddAll" class="page-actions ai-footer-actions">
+      <el-button type="primary" :loading="saving" @click="handleAddAll">
+        一键添加全部
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="saving"
+        :disabled="!showSaveButton"
+        style="margin-left: 8px"
+        @click="handleSave"
+      >
         保存选中内容
       </el-button>
       <span v-if="saveSummary" style="color: #909399; font-size: 13px; margin-left: 8px">
@@ -198,6 +207,31 @@ const showSaveButton = computed(() => {
   if (props.wordResult.existingWord) return false;
   return addRoots.value.length > 0 || addWord.value || selectedExamples.value.length > 0;
 });
+
+const canAddAll = computed(() => {
+  // 一键添加功能在当前单词尚未存在时可用
+  return !props.wordResult.existingWord;
+});
+
+const handleAddAll = async () => {
+  if (saving.value) return;
+
+  // 选择所有可添加的词根
+  const allRootIndexes = (props.wordResult.analysis.roots || [])
+    .map((r, idx) => ({ r, idx }))
+    .filter(({ r }) => !isRootExisting(r.name))
+    .map(({ idx }) => idx);
+
+  addRoots.value = Array.from(new Set([...(addRoots.value || []), ...allRootIndexes]));
+
+  // 确保单词被添加（如果它还不存在）
+  addWord.value = true;
+
+  // 选择所有例句（如果有）
+  selectedExamples.value = (props.wordResult.analysis.examples || []).map((_, idx) => idx);
+
+  await handleSave();
+};
 
 const saveSummary = computed(() => {
   const parts = [];
