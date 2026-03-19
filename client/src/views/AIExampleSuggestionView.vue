@@ -138,6 +138,8 @@ const generateSuggestions = async () => {
     return ElMessage.warning('请先完成 AI 配置');
   }
 
+  const excludedSentences = suggestions.value.map((item) => item.sentence).filter(Boolean);
+
   loading.value = true;
   suggestions.value = [];
   selectedRows.value = [];
@@ -146,7 +148,7 @@ const generateSuggestions = async () => {
   debugSummary.value = null;
 
   try {
-    const res = await getAiExampleSuggestions(wordId, settings.value);
+    const res = await getAiExampleSuggestions(wordId, settings.value, { excludedSentences });
     suggestions.value = res.data.items || [];
     resultMessage.value = res.data.message || '建议生成完成';
     debugSummary.value = res.data.debug || null;

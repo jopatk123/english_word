@@ -60,7 +60,12 @@
     />
 
     <!-- 单词分析结果 -->
-    <WordAnalysisResult v-if="searchMode === 'word' && wordResult" :wordResult="wordResult" />
+    <WordAnalysisResult
+      v-if="searchMode === 'word' && wordResult"
+      :wordResult="wordResult"
+      :regenerating-example-index="regeneratingExampleIndex"
+      @regenerate-example="handleRegenerateExample"
+    />
 
     <!-- 句子分析结果 -->
     <SentenceAnalysisResult v-if="searchMode === 'sentence' && sentenceResult" :result="sentenceResult" />
@@ -87,6 +92,7 @@ const errorMsg = ref('');
 const searchMode = ref('');
 const wordResult = ref(null);
 const sentenceResult = ref(null);
+const regeneratingExampleIndex = ref(-1);
 
 const isWord = (input) => /^[a-zA-Z-]+$/.test(input.trim());
 
@@ -95,6 +101,40 @@ const clearResults = () => {
   wordResult.value = null;
   sentenceResult.value = null;
   errorMsg.value = '';
+  regeneratingExampleIndex.value = -1;
+};
+
+const handleRegenerateExample = async ({ index }) => {
+  if (index < 0 || !wordResult.value?.analysis?.examples?.length) return;
+  if (!ready.value) {
+    return ElMessage.warning('请先完成 AI 配置');
+  }
+
+  const analysis = wordResult.value.analysis;
+  const excludedSentences = analysis.examples
+    .map((item) => item?.sentence)
+    .filter(Boolean);
+
+  regeneratingExampleIndex.value = index;
+  try {
+    const res = await analyzeWord(analysis.word, settings.value, {
+      excludedSentences,
+      singleExample: true,
+    });
+    const newExample = res.data?.analysis?.examples?.[0];
+    if (!newExample) {
+      return ElMessage.warning('没有生成新的例句，请再试一次');
+    }
+
+    const nextExamples = [...analysis.examples];
+    nextExamples[index] = newExample;
+    analysis.examples = nextExamples;
+    ElMessage.success('已重新生成该例句');
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.msg || (e?.code === 'ECONNABORTED' ? 'AI 请求超时，请稍后重试' : '重新生成例句失败'));
+  } finally {
+    regeneratingExampleIndex.value = -1;
+  }
 };
 
 const handleSearch = async () => {

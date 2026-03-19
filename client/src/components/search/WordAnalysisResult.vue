@@ -123,8 +123,18 @@
             </div>
             <div class="example-translation">{{ ex.translation }}</div>
           </div>
-          <div v-if="canAddExamples" class="example-actions">
+          <div class="example-actions">
+            <el-button
+              type="primary"
+              text
+              size="small"
+              :loading="regeneratingExampleIndex === idx"
+              @click="emit('regenerate-example', { index: idx })"
+            >
+              重新生成
+            </el-button>
             <el-checkbox
+              v-if="canAddExamples"
               :model-value="selectedExamples.includes(idx)"
               @change="(val) => toggleExample(idx, val)"
             >
@@ -164,7 +174,10 @@ import SpeakButton from '../SpeakButton.vue';
 
 const props = defineProps({
   wordResult: { type: Object, required: true },
+  regeneratingExampleIndex: { type: Number, default: -1 },
 });
+
+const emit = defineEmits(['regenerate-example']);
 
 const saving = ref(false);
 const addRoots = ref([]);
@@ -360,6 +373,12 @@ const handleSave = async () => {
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
+}
+
+.example-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .pos-list {
