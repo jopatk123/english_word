@@ -7,15 +7,17 @@
     </el-breadcrumb>
 
     <div class="report-header">
-      <h2>学习报表</h2>
+      <h2>学习数据中心</h2>
       <div class="report-actions">
         <el-select v-model="days" @change="fetchData" style="width: 130px;">
-          <el-option :value="7" label="最近7天" />
-          <el-option :value="30" label="最近30天" />
-          <el-option :value="90" label="最近90天" />
+          <el-option :value="7" label="最近 7 天" />
+          <el-option :value="30" label="最近 30 天" />
+          <el-option :value="90" label="最近 90 天" />
         </el-select>
         <el-dropdown @command="handleExport">
-          <el-button>导出数据</el-button>
+          <el-button type="primary" plain>
+            导出报告 <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+          </el-button>
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="json">导出 JSON</el-dropdown-item>
@@ -27,104 +29,93 @@
     </div>
 
     <!-- 概览统计卡片 -->
-    <div class="report-summary" v-loading="loading">
-      <div class="summary-card">
-        <div class="summary-number">{{ summary.streak }}</div>
-        <div class="summary-label">🔥 连续学习天数</div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-number">{{ summary.totalReviews }}</div>
-        <div class="summary-label">📊 总复习次数</div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-number">{{ avgDaily }}</div>
-        <div class="summary-label">📈 日均复习</div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-number">{{ masteryRate }}%</div>
-        <div class="summary-label">🎯 掌握率</div>
-      </div>
-    </div>
+    <el-row :gutter="20" class="report-summary" v-loading="loading">
+      <el-col :span="6" :xs="12">
+        <el-card shadow="hover" class="data-card">
+          <div class="card-icon streak-icon">🔥</div>
+          <div class="card-info">
+            <div class="card-title">连续学习</div>
+            <div class="card-value">{{ summary.streak }} <span class="unit">天</span></div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6" :xs="12">
+        <el-card shadow="hover" class="data-card">
+          <div class="card-icon total-icon">📊</div>
+          <div class="card-info">
+            <div class="card-title">总复习次数</div>
+            <div class="card-value">{{ summary.totalReviews }} <span class="unit">次</span></div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6" :xs="12">
+        <el-card shadow="hover" class="data-card">
+          <div class="card-icon avg-icon">📈</div>
+          <div class="card-info">
+            <div class="card-title">日均复习</div>
+            <div class="card-value">{{ avgDaily }} <span class="unit">次</span></div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6" :xs="12">
+        <el-card shadow="hover" class="data-card">
+          <div class="card-icon mastery-icon">🎯</div>
+          <div class="card-info">
+            <div class="card-title">整体掌握率</div>
+            <div class="card-value">{{ masteryRate }}<span class="unit">%</span></div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
 
-    <!-- 每日学习量柱状图（纯CSS） -->
-    <div class="report-section" v-if="summary.daily && summary.daily.length > 0">
-      <h3>每日复习量</h3>
-      <div class="chart-container">
-        <div class="bar-chart">
-          <div
-            v-for="day in displayDaily"
-            :key="day.date"
-            class="bar-group"
-            :title="`${day.date}: ${day.total}次 (✅${day.good + day.easy} ❌${day.again})`"
-          >
-            <div class="bar-stack">
-              <div class="bar bar-good" :style="{ height: barHeight(day.good + day.easy) }"></div>
-              <div class="bar bar-hard" :style="{ height: barHeight(day.hard) }"></div>
-              <div class="bar bar-again" :style="{ height: barHeight(day.again) }"></div>
+    <!-- 图表区域 -->
+    <el-row :gutter="20" class="charts-row" v-if="summary.daily && summary.daily.length > 0" v-loading="loading">
+      <el-col :span="16" :xs="24" class="chart-col">
+        <el-card shadow="never" class="chart-card">
+          <template #header>
+            <div class="card-header">
+              <span>每日复习量分布</span>
             </div>
-            <div class="bar-label">{{ day.date.slice(5) }}</div>
-            <div class="bar-value">{{ day.total }}</div>
-          </div>
-        </div>
-        <div class="chart-legend">
-          <span class="legend-item"><span class="legend-dot" style="background:#67c23a"></span>掌握</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#e6a23c"></span>困难</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#f56c6c"></span>再来</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 掌握度分布 -->
-    <div class="report-section" v-if="stats.total > 0">
-      <h3>掌握度分布</h3>
-      <div class="mastery-distribution">
-        <div class="mastery-row">
-          <span class="mastery-label">已掌握</span>
-          <div class="mastery-bar-bg">
-            <div class="mastery-bar" style="background: #67c23a;" :style="{ width: pct(stats.known) }"></div>
-          </div>
-          <span class="mastery-count">{{ stats.known }}</span>
-        </div>
-        <div class="mastery-row">
-          <span class="mastery-label">复习中</span>
-          <div class="mastery-bar-bg">
-            <div class="mastery-bar" style="background: #409eff;" :style="{ width: pct(stats.total - stats.known - stats.new - stats.learning) }"></div>
-          </div>
-          <span class="mastery-count">{{ stats.total - stats.known - stats.new - stats.learning }}</span>
-        </div>
-        <div class="mastery-row">
-          <span class="mastery-label">学习中</span>
-          <div class="mastery-bar-bg">
-            <div class="mastery-bar" style="background: #e6a23c;" :style="{ width: pct(stats.learning) }"></div>
-          </div>
-          <span class="mastery-count">{{ stats.learning }}</span>
-        </div>
-        <div class="mastery-row">
-          <span class="mastery-label">新词</span>
-          <div class="mastery-bar-bg">
-            <div class="mastery-bar" style="background: #909399;" :style="{ width: pct(stats.new) }"></div>
-          </div>
-          <span class="mastery-count">{{ stats.new }}</span>
-        </div>
-      </div>
-    </div>
+          </template>
+          <div ref="dailyChartRef" class="echart-container"></div>
+        </el-card>
+      </el-col>
+      
+      <el-col :span="8" :xs="24" class="chart-col">
+        <el-card shadow="never" class="chart-card">
+          <template #header>
+            <div class="card-header">
+              <span>当前词汇掌握度</span>
+            </div>
+          </template>
+          <div ref="masteryChartRef" class="echart-container mastery-container"></div>
+        </el-card>
+      </el-col>
+    </el-row>
 
     <div v-if="!loading && summary.daily && summary.daily.length === 0" class="report-empty">
-      <p>暂无学习记录，开始学习后这里会显示你的进度报表。</p>
-      <el-button type="primary" @click="$router.push('/study')">去学习</el-button>
+      <el-empty description="暂无学习记录，开始学习后这里会显示你的进度报表。" />
+      <el-button type="primary" size="large" @click="$router.push('/study')">去学习</el-button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick, shallowRef, watch } from 'vue';
+import { ArrowDown } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
+import * as echarts from 'echarts';
 import { getReviewStats, getReviewHistorySummary, exportReviewData } from '../api/index.js';
 
 const loading = ref(true);
 const days = ref(30);
 const summary = ref({ daily: [], streak: 0, totalReviews: 0 });
 const stats = ref({ total: 0, known: 0, learning: 0, new: 0 });
+
+const dailyChartRef = ref(null);
+const masteryChartRef = ref(null);
+const dailyChartInstance = shallowRef(null);
+const masteryChartInstance = shallowRef(null);
 
 const avgDaily = computed(() => {
   if (!summary.value.daily || summary.value.daily.length === 0) return 0;
@@ -153,19 +144,113 @@ const displayDaily = computed(() => {
   return result;
 });
 
-const maxDaily = computed(() => {
-  return Math.max(...displayDaily.value.map(d => d.total), 1);
-});
+const updateCharts = () => {
+  if (dailyChartInstance.value) {
+    const dates = displayDaily.value.map(d => d.date.slice(5)); // MM-DD
+    const goodData = displayDaily.value.map(d => d.good + d.easy);
+    const hardData = displayDaily.value.map(d => d.hard);
+    const againData = displayDaily.value.map(d => d.again);
+    
+    dailyChartInstance.value.setOption({
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' }
+      },
+      legend: {
+        data: ['掌握', '困难', '再来']
+      },
+      grid: {
+        left: '2%', right: '4%', bottom: '3%', containLabel: true
+      },
+      xAxis: {
+        type: 'category',
+        data: dates,
+        axisTick: { alignWithLabel: true },
+        axisLabel: {
+          color: '#909399'
+        },
+        axisLine: {
+          lineStyle: { color: '#E4E7ED' }
+        }
+      },
+      yAxis: {
+        type: 'value',
+        splitLine: { lineStyle: { type: 'dashed', color: '#EBEEF5' } },
+        axisLabel: { color: '#909399' }
+      },
+      color: ['#67C23A', '#E6A23C', '#F56C6C'],
+      series: [
+        { name: '掌握', type: 'bar', stack: 'total', barMaxWidth: 40, data: goodData },
+        { name: '困难', type: 'bar', stack: 'total', barMaxWidth: 40, data: hardData },
+        { name: '再来', type: 'bar', stack: 'total', barMaxWidth: 40, itemStyle: { borderRadius: [4, 4, 0, 0] }, data: againData }
+      ]
+    });
+  }
 
-const barHeight = (count) => {
-  if (!count) return '0px';
-  return Math.max(2, (count / maxDaily.value) * 120) + 'px';
+  if (masteryChartInstance.value) {
+    const known = stats.value.known;
+    const reviewing = stats.value.total - known - stats.value.new - stats.value.learning;
+    const learning = stats.value.learning;
+    const newWords = stats.value.new;
+    
+    masteryChartInstance.value.setOption({
+      tooltip: {
+        trigger: 'item',
+        formatter: '{b}: <br/>{c} 词 ({d}%)'
+      },
+      legend: {
+        bottom: '0%',
+        left: 'center',
+        icon: 'circle',
+        itemWidth: 10,
+        itemHeight: 10,
+        textStyle: { color: '#606266' }
+      },
+      color: ['#67C23A', '#409EFF', '#E6A23C', '#909399'],
+      series: [
+        {
+          name: '掌握度',
+          type: 'pie',
+          radius: ['45%', '70%'],
+          center: ['50%', '45%'],
+          avoidLabelOverlap: false,
+          itemStyle: {
+            borderRadius: 8,
+            borderColor: '#fff',
+            borderWidth: 2
+          },
+          label: { show: false, position: 'center' },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: 16,
+              fontWeight: 'bold',
+              formatter: '{b}\n{d}%'
+            }
+          },
+          labelLine: { show: false },
+          data: [
+            { value: known, name: '已掌握' },
+            { value: reviewing, name: '复习中' },
+            { value: learning, name: '学习中' },
+            { value: newWords, name: '新词' }
+          ]
+        }
+      ]
+    });
+  }
 };
 
-const pct = (count) => {
-  if (!stats.value.total) return '0%';
-  return Math.round((count / stats.value.total) * 100) + '%';
+const handleResize = () => {
+  dailyChartInstance.value?.resize();
+  masteryChartInstance.value?.resize();
 };
+
+watch([displayDaily, stats], () => {
+    nextTick(() => {
+        updateCharts();
+    });
+}, { deep: true });
 
 const fetchData = async () => {
   loading.value = true;
@@ -176,6 +261,17 @@ const fetchData = async () => {
     ]);
     summary.value = summaryRes.data;
     stats.value = statsRes.data;
+    
+    nextTick(() => {
+      // Init charts if not yet created but refs are ready
+      if (!dailyChartInstance.value && dailyChartRef.value) {
+        dailyChartInstance.value = echarts.init(dailyChartRef.value);
+      }
+      if (!masteryChartInstance.value && masteryChartRef.value) {
+        masteryChartInstance.value = echarts.init(masteryChartRef.value);
+      }
+      updateCharts();
+    });
   } catch {
     ElMessage.error('获取报表数据失败');
   } finally {
@@ -202,5 +298,14 @@ const handleExport = async (format) => {
   }
 };
 
-onMounted(() => fetchData());
+onMounted(() => {
+  fetchData();
+  window.addEventListener('resize', handleResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize);
+  dailyChartInstance.value?.dispose();
+  masteryChartInstance.value?.dispose();
+});
 </script>
