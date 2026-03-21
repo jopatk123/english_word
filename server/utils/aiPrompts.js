@@ -34,12 +34,11 @@ export const buildRootPrompt = (roots) => {
     userPrompt: `基于现有词根库，推荐1个**未收录**的常用英语词根。
 
 规则（必须严格遵守）：
-1. 只推荐一般常用、构词能力强的拉丁/希腊词根。
+1. 推荐常用、构词能力强的拉丁/希腊词根。
 2. **绝对不能推荐以下已存在词根**：${existingRootNames}
-3. 不能推荐近似重复词根。
-4. 若无更多可推荐，返回空数组，hasMore: false。
-5. **禁止返回 reason 和 remark 字段**。
-6. 只返回标准JSON，格式如下：
+3. 若无更多可推荐，返回空数组，hasMore: false。
+4. **禁止返回 reason 和 remark 字段**。
+5. 只返回标准JSON，格式如下：
 {
   "message": "简短说明",
   "hasMore": true,
@@ -69,9 +68,9 @@ export const buildWordPrompt = (root, words) => {
     userPrompt: `围绕词根【${root.name}（${root.meaning}）】推荐1个**未收录**的常用单词。
 
 规则（必须严格遵守）：
-1. 必须属于该词根，日常常用、适合学习。
+1. 推荐的单词，日常常用、适合学习。
 2. **绝对不能推荐以下已存在单词**：${existingWordNames}
-3. 若无更多可推荐，返回空数组，hasMore: false。
+3. 若确实已无可推荐单词，返回空数组，hasMore: false。
 4. 每个单词必须返回词性信息（partOfSpeech），词性类型只能使用标准缩写（n./v./adj./adv./prep./pron./conj./interj./num./art./aux.）。
 5. **禁止返回 reason 和 remark 字段**。
 6. 只返回标准JSON，格式如下：
@@ -111,7 +110,7 @@ export const buildExamplePrompt = (word, examples, excludedSentences = []) => {
 
   return {
     systemPrompt: JSON_ONLY_SYSTEM_PROMPT,
-    userPrompt: `为单词【${word.name}】生成1条**全新、不重复**的简短日常常用英文例句+中文翻译。
+    userPrompt: `为单词【${word.name}】生成1条**全新、不重复**的简短常用英文例句+中文翻译。
 
 单词信息：
 - 单词：${word.name}
@@ -125,7 +124,7 @@ export const buildExamplePrompt = (word, examples, excludedSentences = []) => {
 ${existingExamples}
 3. **还要避开本次已生成过（但未保存）的例句**：
 ${extraExcludedExamples}
-4. 若无更多可推荐，返回空数组，hasMore: false。
+4. 若确实已无更多可推荐，返回空数组，hasMore: false。
 5. **禁止返回 reason 和 remark 字段**。
 6. 只返回标准JSON，格式如下：
 {
@@ -158,15 +157,15 @@ export const buildAnalyzeWordPrompt = (word, options = {}) => {
 
   return {
     systemPrompt: JSON_ONLY_SYSTEM_PROMPT,
-    userPrompt: `分析英语单词【${word}】，返回其词性、含义、音标、词根和${singleExample ? '1条' : '根据不同词性各1条'}日常常用英文例句+中文翻译。
+    userPrompt: `分析英语单词【${word}】，返回其词性、含义、音标、词根(词根采用现代写法）和${singleExample ? '1条' : '根据不同词性各1条'}日常常用英文例句+中文翻译。
 
 规则（必须严格遵守）：
 1. 返回该单词所有常见词性及每种词性对应的中文含义，词性类型只能使用标准缩写（n./v./adj./adv./prep./pron./conj./interj./num./art./aux.）。
 2. meaning 字段填写综合所有词性的主要中文含义（一句话简短概括）。
-3. 仔细分析该单词的**所有词根**信息。一个单词可能有多个词根（如dialogue有词根 dia- 和 logue）。如果该单词有词根，以数组形式返回所有词根；如果没有词根（比如go,run,see等），roots 字段设为空数组 []。
+3. 仔细分析该单词的**所有词根**信息。一个单词可能有多个词根（如dialogue有词根dia和logue）。如果该单词有词根，以数组形式返回所有词根(词根采用现代写法）；如果没有词根（比如go,run,see等），roots 字段设为空数组 []。
 4. ${singleExample
     ? '只生成 1 条日常常用英文例句，句子简短、自然、易学，且能体现该单词的典型用法。'
-    : '根据词性数量生成相应数量的日常常用英文例句，每条例句简短且句中的单词常用、简单、易学，能体现不同词性或典型用法。'}
+    : '根据词性数量生成相应数量的常用英文例句，每条例句简短且句中的单词常用、简单、易学，能体现不同词性或典型用法。'}
 5. **绝对不能与以下例句相同或高度相似**：\n${excludedText}
 6. 只返回标准JSON，格式如下：
 {
