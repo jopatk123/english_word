@@ -97,6 +97,7 @@ const selectedRows = ref([]);
 const selectedMap = ref({});
 const resultMessage = ref('');
 const debugSummary = ref(null);
+const rejectedSentences = ref([]);
 
 const allSelected = computed(() => suggestions.value.length > 0 && selectedRows.value.length === suggestions.value.length);
 
@@ -138,7 +139,11 @@ const generateSuggestions = async () => {
     return ElMessage.warning('请先完成 AI 配置');
   }
 
-  const excludedSentences = suggestions.value.map((item) => item.sentence).filter(Boolean);
+  // 在生成新建议前，将当前显示的例句添加到拒绝列表
+  if (suggestions.value.length) {
+    const currentSentences = suggestions.value.map((item) => item.sentence).filter(Boolean);
+    rejectedSentences.value = [...new Set([...rejectedSentences.value, ...currentSentences])];
+  }
 
   loading.value = true;
   suggestions.value = [];
@@ -148,7 +153,7 @@ const generateSuggestions = async () => {
   debugSummary.value = null;
 
   try {
-    const res = await getAiExampleSuggestions(wordId, settings.value, { excludedSentences });
+    const res = await getAiExampleSuggestions(wordId, settings.value, { excludedSentences: rejectedSentences.value });
     suggestions.value = res.data.items || [];
     resultMessage.value = res.data.message || '建议生成完成';
     debugSummary.value = res.data.debug || null;

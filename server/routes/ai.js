@@ -138,7 +138,7 @@ router.post('/suggest-roots', async (req, res) => {
 router.post('/suggest-words', async (req, res) => {
   const startedAt = Date.now();
   try {
-    const { rootId, config = {} } = req.body || {};
+    const { rootId, config = {}, excludedWords = [] } = req.body || {};
     if (!rootId) return error(res, '缺少词根 ID', 400);
 
     const validatedConfig = validateAiConfig(config);
@@ -149,11 +149,18 @@ router.post('/suggest-words', async (req, res) => {
     if (!root || root.userId !== req.userId) return error(res, '词根不存在', 404);
 
     const words = await root.getWords({ order: [['name', 'ASC']] });
-    const payload = await requestAiJson(validatedConfig, buildWordPrompt(root, words));
+    const normalizedExcludedWords = Array.isArray(excludedWords)
+      ? excludedWords.filter((w) => w && typeof w === 'string').map((w) => w.trim().toLowerCase()).slice(0, 50)
+      : [];
+    
+    const payload = await requestAiJson(
+      validatedConfig,
+      buildWordPrompt(root, words, normalizedExcludedWords),
+    );
     const { rawCount, items, hasMore, filteredCount } = processSuggestionResult(
       payload,
       sanitizeWordSuggestions,
-      words.map((w) => w.name),
+      [...words.map((w) => w.name), ...normalizedExcludedWords],
     );
     const message = items.length
       ? `本次生成了 ${rawCount} 个单词候选，过滤重复或无效项后保留 ${items.length} 个可添加单词。`
@@ -163,6 +170,7 @@ router.post('/suggest-words', async (req, res) => {
       rootId,
       rootName: root.name,
       existingWordCount: words.length,
+      excludedWordCount: normalizedExcludedWords.length,
       rawSuggestedCount: rawCount,
       suggestedCount: items.length,
       filteredCount,

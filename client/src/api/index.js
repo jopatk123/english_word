@@ -88,7 +88,11 @@ export const pauseRootReview = (rootId, paused) => api.post(`/review/roots/${roo
 // ========== AI API ==========
 export const testAiConnection = (config) => aiApi.post('/ai/test', { config });
 export const getAiRootSuggestions = (config) => aiApi.post('/ai/suggest-roots', { config });
-export const getAiWordSuggestions = (rootId, config) => aiApi.post('/ai/suggest-words', { rootId, config });
+export const getAiWordSuggestions = (rootId, config, options = {}) => aiApi.post('/ai/suggest-words', {
+  rootId,
+  config,
+  excludedWords: options.excludedWords || [],
+});
 export const getAiExampleSuggestions = (wordId, config, options = {}) => aiApi.post('/ai/suggest-examples', {
   wordId,
   config,
