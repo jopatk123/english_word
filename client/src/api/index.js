@@ -82,6 +82,8 @@ export const getQuizChoices = (wordId, count = 3) => api.get(`/review/quiz-choic
 export const getReviewHistory = (days = 30) => api.get('/review/history', { params: { tz: getUserTz(), days } });
 export const getReviewHistorySummary = (days = 30) => api.get('/review/history/summary', { params: { tz: getUserTz(), days } });
 export const exportReviewData = (format = 'json') => api.get('/review/export', { params: { format, tz: getUserTz() } });
+export const exportAllData = () => api.get('/review/data/export');
+export const importAllData = (data) => api.post('/review/data/import', data);
 export const pauseWordReview = (wordId) => api.post(`/review/${wordId}/pause`);
 export const pauseRootReview = (rootId, paused) => api.post(`/review/roots/${rootId}/pause`, { paused });
 

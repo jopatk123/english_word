@@ -4,6 +4,7 @@ import statsRouter from './review/stats.js';
 import sessionRouter from './review/session.js';
 import manageRouter from './review/manage.js';
 import historyRouter from './review/history.js';
+import dataRouter from './review/data.js';
 
 const router = Router();
 
@@ -11,6 +12,7 @@ const router = Router();
 router.use(dueRouter);
 router.use(statsRouter);
 router.use(historyRouter);
+router.use(dataRouter);
 router.use(sessionRouter);
 router.use(manageRouter);
 

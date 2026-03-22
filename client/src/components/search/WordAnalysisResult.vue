@@ -226,10 +226,10 @@ const canAddAll = computed(() => {
   return !props.wordResult.existingWord;
 });
 
-const handleAddAll = async () => {
+const handleAddAll = () => {
   if (saving.value) return;
 
-  // 选择所有可添加的词根
+  // 选择所有可添加的词根（仅勾选，不提交）
   const allRootIndexes = (props.wordResult.analysis.roots || [])
     .map((r, idx) => ({ r, idx }))
     .filter(({ r }) => !isRootExisting(r.name))
@@ -237,13 +237,11 @@ const handleAddAll = async () => {
 
   addRoots.value = Array.from(new Set([...(addRoots.value || []), ...allRootIndexes]));
 
-  // 确保单词被添加（如果它还不存在）
+  // 确保单词被勾选
   addWord.value = true;
 
   // 选择所有例句（如果有）
   selectedExamples.value = (props.wordResult.analysis.examples || []).map((_, idx) => idx);
-
-  await handleSave();
 };
 
 const saveSummary = computed(() => {

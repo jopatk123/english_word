@@ -44,7 +44,7 @@
     </div>
 
     <!-- 开始学习按钮 -->
-    <div class="start-section">
+    <div class="start-section start-section-centered">
       <el-button
         type="primary"
         size="large"
@@ -56,6 +56,14 @@
       <el-button size="large" @click="$router.push('/study/report')">
         学习报表
       </el-button>
+      <el-button size="large" :loading="exporting" @click="handleExport">
+        数据导出
+      </el-button>
+      <el-button size="large" @click="triggerImport">
+        数据导入
+      </el-button>
+      <!-- 隐藏的文件输入 -->
+      <input ref="importFileInput" type="file" accept=".json" style="display:none" @change="handleImportFile" />
     </div>
     <p v-if="stats.due === 0 && stats.weekDue > 0" class="advance-hint">
       🎉 今日任务已完成！本周还有 <strong>{{ stats.weekDue }}</strong> 个单词可提前复习。
@@ -68,6 +76,16 @@
     <div class="root-section">
       <div class="section-header">
         <h3>按词根管理学习队列</h3>
+        <el-button
+          size="small"
+          type="primary"
+          plain
+          :loading="enqueuingAll"
+          :disabled="!hasUnenrolledRoots"
+          @click="handleEnqueueAll"
+        >
+          全部加入学习
+        </el-button>
       </div>
 
       <el-table :data="rootsProgress" stripe v-loading="rootsLoading" empty-text="暂无词根，请先添加词根和单词">
@@ -119,10 +137,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { getReviewStats, getRootsProgress, enqueueRoot, getReviewHistorySummary } from '../api/index.js';
+import { getReviewStats, getRootsProgress, enqueueRoot, getReviewHistorySummary, exportAllData, importAllData } from '../api/index.js';
 
 const router = useRouter();
 
@@ -131,8 +149,16 @@ const statsLoading = ref(false);
 const rootsProgress = ref([]);
 const rootsLoading = ref(false);
 const enqueuingId = ref(null);
+const enqueuingAll = ref(false);
+const importing = ref(false);
+const exporting = ref(false);
+const importFileInput = ref(null);
 const streak = ref(0);
 const totalReviews30d = ref(0);
+
+const hasUnenrolledRoots = computed(() =>
+  rootsProgress.value.some(r => r.wordCount > 0 && r.enrolled < r.wordCount)
+);
 
 const fetchStats = async () => {
   statsLoading.value = true;
@@ -185,6 +211,73 @@ const startStudy = () => {
 
 const startAdvanceStudy = () => {
   router.push({ path: '/study/session', query: { advance: 7 } });
+};
+
+const handleEnqueueAll = async () => {
+  const unenrolled = rootsProgress.value.filter(r => r.wordCount > 0 && r.enrolled < r.wordCount);
+  if (unenrolled.length === 0) return;
+  enqueuingAll.value = true;
+  try {
+    for (const root of unenrolled) {
+      await enqueueRoot(root.id);
+    }
+    ElMessage.success(`已将全部 ${unenrolled.length} 个词根的单词加入学习队列`);
+    fetchStats();
+    fetchRootsProgress();
+  } catch {
+    ElMessage.error('加入学习队列失败');
+  } finally {
+    enqueuingAll.value = false;
+  }
+};
+
+const handleExport = async () => {
+  exporting.value = true;
+  try {
+    const res = await exportAllData();
+    const blob = new Blob([JSON.stringify(res, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vocabulary-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    ElMessage.success('导出成功');
+  } catch {
+    ElMessage.error('导出失败');
+  } finally {
+    exporting.value = false;
+  }
+};
+
+const triggerImport = () => {
+  if (importFileInput.value) importFileInput.value.click();
+};
+
+const handleImportFile = async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  // 重置 input，允许重复选同一文件
+  event.target.value = '';
+
+  importing.value = true;
+  try {
+    const text = await file.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return ElMessage.error('文件解析失败，请确认是有效的 JSON 文件');
+    }
+    const res = await importAllData(data);
+    ElMessage.success(res.msg || '导入成功');
+    fetchStats();
+    fetchRootsProgress();
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.msg || '导入失败');
+  } finally {
+    importing.value = false;
+  }
 };
 
 onMounted(() => {
