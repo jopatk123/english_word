@@ -4,10 +4,10 @@
     <el-alert type="success" :closable="false" show-icon>
       <template #title>
         单词 <strong>{{ wordResult.existingWord.name }}</strong> 已存在，关联词根：
-        <template v-for="(root, idx) in (wordResult.existingWord.roots || [])" :key="root.id">
+        <span v-for="(root, idx) in (wordResult.existingWord.roots || [])" :key="root.id">
           <el-link type="primary" @click="$router.push(`/root/${root.id}`)">{{ root.name }}</el-link>
           <span v-if="idx < wordResult.existingWord.roots.length - 1">、</span>
-        </template>
+        </span>
         ，
         <el-link type="primary" @click="$router.push(`/word/${wordResult.existingWord.id}`)">
           点击查看详情

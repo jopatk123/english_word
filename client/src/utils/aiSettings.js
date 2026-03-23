@@ -1,4 +1,4 @@
-import { DEFAULT_PROVIDER_ID, getProviderById } from '../constants/aiProviders.js';
+import { AI_PROVIDERS, DEFAULT_PROVIDER_ID, getProviderById } from '../constants/aiProviders.js';
 
 export const AI_SETTINGS_STORAGE_KEY = 'english-word-ai-settings';
 
@@ -18,7 +18,7 @@ export const createDefaultAiSettings = () => {
 
 /**
  * 获取localStorage中的完整配置对象
- * 结构: { currentProviderId: 'xxx', providers: { openai: {...}, anthropic: {...} } }
+ * 结构: { currentProviderId, providers, customProviders, customModels }
  */
 const getAllAiSettings = () => {
   try {
@@ -27,18 +27,26 @@ const getAllAiSettings = () => {
       return {
         currentProviderId: DEFAULT_PROVIDER_ID,
         providers: {},
+        customProviders: [],
+        customModels: {},
       };
     }
-    
+
     const parsed = JSON.parse(raw);
     return {
       currentProviderId: parsed?.currentProviderId || DEFAULT_PROVIDER_ID,
       providers: parsed?.providers || {},
+      customProviders: Array.isArray(parsed?.customProviders) ? parsed.customProviders : [],
+      customModels: (typeof parsed?.customModels === 'object' && parsed?.customModels !== null)
+        ? parsed.customModels
+        : {},
     };
   } catch {
     return {
       currentProviderId: DEFAULT_PROVIDER_ID,
       providers: {},
+      customProviders: [],
+      customModels: {},
     };
   }
 };
@@ -50,16 +58,56 @@ const saveAllAiSettings = (allSettings) => {
   localStorage.setItem(AI_SETTINGS_STORAGE_KEY, JSON.stringify(allSettings));
 };
 
+// ── 自定义厂商 / 模型 公开读取函数（写操作在文件末尾）────────────────────────
+
 /**
- * 规范化单个提供者的配置
+ * 返回用户保存的自定义厂商列表
+ */
+export const getCustomProviders = () => {
+  const allSettings = getAllAiSettings();
+  return allSettings.customProviders;
+};
+
+/**
+ * 返回内置厂商 + 自定义厂商的合并列表
+ */
+export const getAllProviders = () => [
+  ...AI_PROVIDERS,
+  ...getCustomProviders(),
+];
+
+/**
+ * 返回某厂商的自定义模型列表
+ */
+export const getCustomModels = (providerId) => {
+  const allSettings = getAllAiSettings();
+  const list = allSettings.customModels?.[providerId];
+  return Array.isArray(list) ? list : [];
+};
+
+/**
+ * 返回某厂商的所有模型（内置 + 自定义）
+ */
+export const getAllModels = (providerId) => {
+  const provider = getAllProviders().find((p) => p.id === providerId);
+  const builtIn = provider?.models || [];
+  return [...builtIn, ...getCustomModels(providerId)];
+};
+
+// ── 规范化 ────────────────────────────────────────────────────────────────────
+
+/**
+ * 规范化单个提供者的配置（兼容内置厂商和自定义厂商）
  */
 const normalizeProviderSettings = (settings) => {
-  const provider = getProviderById(settings.providerId);
+  const provider = getAllProviders().find((p) => p.id === settings.providerId)
+    || getAllProviders()[0];
+  const allModels = getAllModels(provider.id);
   return {
     providerId: provider.id,
     providerType: provider.providerType,
     baseUrl: settings.baseUrl?.trim() || provider.baseUrl,
-    model: provider.models.includes(settings.model) ? settings.model : provider.models[0],
+    model: allModels.includes(settings.model) ? settings.model : (allModels[0] || ''),
     apiKey: settings.apiKey?.trim() || '',
   };
 };
@@ -70,16 +118,17 @@ const normalizeProviderSettings = (settings) => {
 export const loadAiSettings = () => {
   const allSettings = getAllAiSettings();
   const currentProviderId = allSettings.currentProviderId;
-  const provider = getProviderById(currentProviderId);
+  const provider = getAllProviders().find((p) => p.id === currentProviderId)
+    || getAllProviders()[0];
+  const allModels = getAllModels(provider.id);
 
-  // 如果该提供者已保存过配置，使用已保存的配置；否则使用默认配置
-  const saved = allSettings.providers[currentProviderId];
+  const saved = allSettings.providers[provider.id];
   if (saved) {
     return {
       providerId: provider.id,
       providerType: provider.providerType,
       baseUrl: saved.baseUrl || provider.baseUrl,
-      model: provider.models.includes(saved.model) ? saved.model : provider.models[0],
+      model: allModels.includes(saved.model) ? saved.model : (allModels[0] || ''),
       apiKey: saved.apiKey || '',
     };
   }
@@ -88,7 +137,7 @@ export const loadAiSettings = () => {
     providerId: provider.id,
     providerType: provider.providerType,
     baseUrl: provider.baseUrl,
-    model: provider.models[0],
+    model: allModels[0] || '',
     apiKey: '',
   };
 };
@@ -136,28 +185,27 @@ export const getCurrentProviderId = () => {
  * 加载特定提供者的配置（用于切换提供者时）
  */
 export const loadProviderSettings = (providerId) => {
-  const provider = getProviderById(providerId);
+  const provider = getAllProviders().find((p) => p.id === providerId)
+    || getAllProviders()[0];
+  const allModels = getAllModels(provider.id);
   const allSettings = getAllAiSettings();
 
-  // 如果该提供者已保存过配置，使用已保存的配置；否则使用默认配置
-  const saved = allSettings.providers[providerId];
+  const saved = allSettings.providers[provider.id];
   if (saved && saved.apiKey) {
-    // 如果已保存过API Key，使用已保存的配置
     return {
       providerId: provider.id,
       providerType: provider.providerType,
       baseUrl: saved.baseUrl || provider.baseUrl,
-      model: provider.models.includes(saved.model) ? saved.model : provider.models[0],
+      model: allModels.includes(saved.model) ? saved.model : (allModels[0] || ''),
       apiKey: saved.apiKey,
     };
   }
 
-  // 否则返回默认配置（API Key为空）
   return {
     providerId: provider.id,
     providerType: provider.providerType,
     baseUrl: provider.baseUrl,
-    model: provider.models[0],
+    model: allModels[0] || '',
     apiKey: '',
   };
 };
@@ -171,3 +219,67 @@ export const maskApiKey = (apiKey) => {
 export const isAiSettingsReady = (settings) => Boolean(
   settings?.providerId && settings?.providerType && settings?.baseUrl && settings?.model && settings?.apiKey
 );
+
+// ── 自定义厂商 写操作 ──────────────────────────────────────────────────────────
+
+/**
+ * 保存一个新的自定义厂商，返回新厂商对象
+ */
+export const saveCustomProvider = (name, baseUrl) => {
+  const allSettings = getAllAiSettings();
+  const id = `custom_${Date.now()}`;
+  const newProvider = {
+    id,
+    name: name.trim(),
+    baseUrl: baseUrl?.trim() || '',
+    providerType: 'openai-compatible',
+    models: [],
+  };
+  allSettings.customProviders.push(newProvider);
+  saveAllAiSettings(allSettings);
+  return newProvider;
+};
+
+/**
+ * 删除一个自定义厂商（同时清除其已保存的配置和自定义模型）
+ */
+export const deleteCustomProvider = (providerId) => {
+  const allSettings = getAllAiSettings();
+  allSettings.customProviders = allSettings.customProviders.filter((p) => p.id !== providerId);
+  delete allSettings.providers[providerId];
+  delete allSettings.customModels[providerId];
+  if (allSettings.currentProviderId === providerId) {
+    allSettings.currentProviderId = DEFAULT_PROVIDER_ID;
+  }
+  saveAllAiSettings(allSettings);
+};
+
+// ── 自定义模型 写操作 ──────────────────────────────────────────────────────────
+
+/**
+ * 为某厂商添加一个自定义模型
+ */
+export const addCustomModel = (providerId, modelName) => {
+  const trimmed = modelName?.trim();
+  if (!trimmed) return;
+  const allSettings = getAllAiSettings();
+  if (!allSettings.customModels[providerId]) {
+    allSettings.customModels[providerId] = [];
+  }
+  if (!allSettings.customModels[providerId].includes(trimmed)) {
+    allSettings.customModels[providerId].push(trimmed);
+  }
+  saveAllAiSettings(allSettings);
+};
+
+/**
+ * 删除某厂商下的一个自定义模型
+ */
+export const deleteCustomModel = (providerId, modelName) => {
+  const allSettings = getAllAiSettings();
+  if (!allSettings.customModels[providerId]) return;
+  allSettings.customModels[providerId] = allSettings.customModels[providerId].filter(
+    (m) => m !== modelName,
+  );
+  saveAllAiSettings(allSettings);
+};
