@@ -52,7 +52,6 @@
       <div class="section-header">
         <h2>词根列表</h2>
         <div class="section-actions">
-          <el-button type="warning" @click="$router.push('/search')">🔍 搜索</el-button>
           <el-button type="success" @click="$router.push('/ai/roots')">智能添加词根</el-button>
           <el-button type="primary" @click="openRootDialog()">添加词根</el-button>
         </div>

@@ -5,8 +5,9 @@
         <h1 class="app-title">📖 词根背单词</h1>
       </div>
       <div v-if="user" class="header-nav">
-        <el-button class="nav-btn" link @click="$router.push('/study')">📝 背单词</el-button>
+        <el-button class="nav-btn" link @click="$router.push('/search')">🔍 搜索</el-button>
         <el-button class="nav-btn" link @click="$router.push('/')">📚 学单词</el-button>
+        <el-button class="nav-btn" link @click="$router.push('/study')">📝 背单词</el-button>
         <el-button class="nav-btn" link @click="$router.push('/ai/settings')">🤖 AI 配置</el-button>
       </div>
       <div v-if="user" class="header-user">
