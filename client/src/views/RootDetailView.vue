@@ -78,7 +78,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getRoot, getWords, createWord, updateWord, deleteWord } from '../api/index.js';
 import SpeakButton from '../components/SpeakButton.vue';
@@ -96,7 +96,13 @@ const editingWord = ref(null);
 const wordForm = ref({ name: '', meaning: '', phonetic: '', remark: '' });
 const saving = ref(false);
 
+const router = useRouter();
 const rootId = props.id || route.params.id;
+
+const findLocalWordByName = (name) => {
+  const target = name.trim().toLowerCase();
+  return words.value.find((item) => item.name.trim().toLowerCase() === target);
+};
 
 const fetchRoot = async () => {
   loading.value = true;
@@ -134,19 +140,62 @@ const handleSaveWord = async () => {
   if (!wordForm.value.name || !wordForm.value.meaning) {
     return ElMessage.warning('请填写单词和含义');
   }
+
+  if (!editingWord.value) {
+    const existingInThisRoot = findLocalWordByName(wordForm.value.name);
+    if (existingInThisRoot) {
+      return ElMessageBox.confirm(
+        `单词「${wordForm.value.name}」已在当前词根中存在，是否前往该单词详情？`,
+        '单词已存在',
+        {
+          confirmButtonText: '前往',
+          cancelButtonText: '取消',
+          type: 'info',
+        }
+      )
+        .then(() => router.push(`/word/${existingInThisRoot.id}`))
+        .catch(() => {});
+    }
+
+    try {
+      const searchRes = await getWords({ keyword: wordForm.value.name });
+      const existingSame = (searchRes.data || []).find((item) => item.name.trim().toLowerCase() === wordForm.value.name.trim().toLowerCase());
+      if (existingSame) {
+        const hasCurrentRoot = (existingSame.roots || []).some((rootItem) => rootItem.id === Number(rootId));
+        if (!hasCurrentRoot) {
+          const confirm = await ElMessageBox.confirm(
+            `单词「${wordForm.value.name}」已在词库中存在，是否前往详情查看？点击取消则继续添加到当前词根。`,
+            '单词已存在',
+            {
+              confirmButtonText: '前往',
+              cancelButtonText: '继续添加',
+              type: 'warning',
+            }
+          ).then(() => true).catch(() => false);
+
+          if (confirm) {
+            return router.push(`/word/${existingSame.id}`);
+          }
+        }
+      }
+    } catch {
+      // 忽略搜索失败，继续执行创建逻辑。
+    }
+  }
+
   saving.value = true;
   try {
     if (editingWord.value) {
       await updateWord(editingWord.value.id, wordForm.value);
       ElMessage.success('更新成功');
     } else {
-      await createWord({ ...wordForm.value, rootId });
-      ElMessage.success('添加成功');
+      const res = await createWord({ ...wordForm.value, rootId });
+      ElMessage.success(res?.msg || '添加成功');
     }
     wordDialogVisible.value = false;
     fetchWords();
-  } catch {
-    ElMessage.error('保存失败');
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.msg || '保存失败');
   } finally {
     saving.value = false;
   }

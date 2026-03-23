@@ -110,6 +110,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { Search } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getRoots, createRoot, updateRoot, deleteRoot, getWords } from '../api/index.js';
@@ -160,6 +161,8 @@ const onSearch = () => {
   }, 300);
 };
 
+const router = useRouter();
+
 const openRootDialog = (root = null) => {
   editingRoot.value = root;
   rootForm.value = root
@@ -168,10 +171,34 @@ const openRootDialog = (root = null) => {
   rootDialogVisible.value = true;
 };
 
+const findRootByName = (name) => {
+  const target = name.trim().toLowerCase();
+  return roots.value.find((item) => item.name.trim().toLowerCase() === target);
+};
+
 const handleSaveRoot = async () => {
   if (!rootForm.value.name || !rootForm.value.meaning) {
     return ElMessage.warning('请填写词根和核心含义');
   }
+
+  if (!editingRoot.value) {
+    const existed = findRootByName(rootForm.value.name);
+    if (existed) {
+      saving.value = false;
+      return ElMessageBox.confirm(
+        `词根「${rootForm.value.name}」已存在，是否前往该词根详情？`,
+        '词根已存在',
+        {
+          confirmButtonText: '前往',
+          cancelButtonText: '取消',
+          type: 'info',
+        }
+      )
+        .then(() => router.push(`/root/${existed.id}`))
+        .catch(() => {});
+    }
+  }
+
   saving.value = true;
   try {
     if (editingRoot.value) {
@@ -183,8 +210,8 @@ const handleSaveRoot = async () => {
     }
     rootDialogVisible.value = false;
     fetchRoots(searchKeyword.value);
-  } catch {
-    ElMessage.error('保存失败');
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.msg || '保存失败');
   } finally {
     saving.value = false;
   }
