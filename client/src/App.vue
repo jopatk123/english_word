@@ -4,6 +4,7 @@
       <div class="header-content" @click="$router.push('/')">
         <h1 class="app-title">📖 词根背单词</h1>
       </div>
+      <div class="header-clock">{{ formattedTime }}</div>
       <div v-if="user" class="header-nav">
         <el-button class="nav-btn" link @click="$router.push('/search')">🔍 搜索</el-button>
         <el-button class="nav-btn" link @click="$router.push('/')">📚 学单词</el-button>
@@ -22,12 +23,29 @@
 </template>
 
 <script setup>
-import { ref, watchEffect } from 'vue';
+import { ref, watchEffect, computed, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 
 const router = useRouter();
 const route = useRoute();
 const user = ref(null);
+
+const now = ref(new Date());
+const timer = setInterval(() => {
+  now.value = new Date();
+}, 1000);
+
+onUnmounted(() => {
+  clearInterval(timer);
+});
+
+const formattedTime = computed(() =>
+  now.value.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+);
 
 watchEffect(() => {
   // Re-evaluate on route change to pick up login/logout
