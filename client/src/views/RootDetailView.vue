@@ -44,13 +44,37 @@
       <el-table-column prop="phonetic" label="音标" min-width="120" />
       <el-table-column prop="exampleCount" label="例句数" width="90" align="center" />
       <el-table-column prop="remark" label="备注" min-width="130" show-overflow-tooltip />
-      <el-table-column label="操作" width="140" align="center">
+      <el-table-column label="操作" width="200" align="center">
         <template #default="{ row }">
+          <el-button link type="warning" @click="openMoveDialog(row)">移动</el-button>
           <el-button link type="primary" @click="openWordDialog(row)">编辑</el-button>
           <el-button link type="danger" @click="handleDeleteWord(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
+
+    <!-- 移动单词对话框 -->
+    <el-dialog v-model="moveDialogVisible" title="移动单词到其他词根" width="420px" destroy-on-close>
+      <p style="margin: 0 0 12px; color: #606266;">将 <strong>{{ movingWord?.name }}</strong> 从当前词根移动到：</p>
+      <el-select
+        v-model="moveTargetRootId"
+        placeholder="请选择目标词根"
+        filterable
+        style="width: 100%"
+        :loading="allRootsLoading"
+      >
+        <el-option
+          v-for="r in otherRoots"
+          :key="r.id"
+          :label="r.name + (r.meaning ? ' — ' + r.meaning : '')"
+          :value="r.id"
+        />
+      </el-select>
+      <template #footer>
+        <el-button @click="moveDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleMoveWord" :loading="moving">确认移动</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 单词表单对话框 -->
     <el-dialog v-model="wordDialogVisible" :title="editingWord ? '编辑单词' : '添加单词'" width="500px" destroy-on-close>
@@ -77,10 +101,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { getRoot, getWords, createWord, updateWord, deleteWord } from '../api/index.js';
+import { getRoot, getRoots, getWords, createWord, updateWord, deleteWord, moveWord } from '../api/index.js';
 import SpeakButton from '../components/SpeakButton.vue';
 
 const props = defineProps({ id: String });
@@ -98,6 +122,48 @@ const saving = ref(false);
 
 const router = useRouter();
 const rootId = props.id || route.params.id;
+
+// 移动单词
+const moveDialogVisible = ref(false);
+const movingWord = ref(null);
+const moveTargetRootId = ref(null);
+const moving = ref(false);
+const allRoots = ref([]);
+const allRootsLoading = ref(false);
+
+const otherRoots = computed(() => allRoots.value.filter(r => r.id !== Number(rootId)));
+
+const openMoveDialog = async (word) => {
+  movingWord.value = word;
+  moveTargetRootId.value = null;
+  moveDialogVisible.value = true;
+  if (allRoots.value.length === 0) {
+    allRootsLoading.value = true;
+    try {
+      const res = await getRoots();
+      allRoots.value = res.data || [];
+    } catch {
+      ElMessage.error('获取词根列表失败');
+    } finally {
+      allRootsLoading.value = false;
+    }
+  }
+};
+
+const handleMoveWord = async () => {
+  if (!moveTargetRootId.value) return ElMessage.warning('请选择目标词根');
+  moving.value = true;
+  try {
+    await moveWord(movingWord.value.id, Number(rootId), moveTargetRootId.value);
+    ElMessage.success('移动成功');
+    moveDialogVisible.value = false;
+    fetchWords();
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.msg || '移动失败');
+  } finally {
+    moving.value = false;
+  }
+};
 
 const findLocalWordByName = (name) => {
   const target = name.trim().toLowerCase();

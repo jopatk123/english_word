@@ -207,6 +207,33 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// 移动单词到另一个词根（从 fromRootId 解除关联，建立 toRootId 关联）
+router.put('/:id/move', async (req, res) => {
+  try {
+    const { fromRootId, toRootId } = req.body;
+    if (!fromRootId || !toRootId) return error(res, 'fromRootId 和 toRootId 为必填项');
+    if (Number(fromRootId) === Number(toRootId)) return error(res, '来源词根和目标词根不能相同');
+
+    const word = await Word.findByPk(req.params.id, {
+      include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'userId'] }],
+    });
+    if (!word || !word.roots?.some(r => r.userId === req.userId)) return error(res, '单词不存在');
+
+    const fromRoot = await Root.findOne({ where: { id: fromRootId, userId: req.userId } });
+    if (!fromRoot) return error(res, '来源词根不存在');
+
+    const toRoot = await Root.findOne({ where: { id: toRootId, userId: req.userId } });
+    if (!toRoot) return error(res, '目标词根不存在');
+
+    await WordRoot.destroy({ where: { wordId: word.id, rootId: Number(fromRootId) } });
+    await WordRoot.findOrCreate({ where: { wordId: word.id, rootId: Number(toRootId) } });
+
+    success(res, null, '移动成功');
+  } catch (e) {
+    error(res, e.message);
+  }
+});
+
 // 删除单词（级联删除例句和关联）
 router.delete('/:id', async (req, res) => {
   try {

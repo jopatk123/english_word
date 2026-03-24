@@ -61,6 +61,7 @@ export const getWord = (id) => api.get(`/words/${id}`);
 export const createWord = (data) => api.post('/words', data);
 export const updateWord = (id, data) => api.put(`/words/${id}`, data);
 export const deleteWord = (id) => api.delete(`/words/${id}`);
+export const moveWord = (id, fromRootId, toRootId) => api.put(`/words/${id}/move`, { fromRootId, toRootId });
 
 // ========== 例句 API ==========
 export const getExamples = (params) => api.get('/examples', { params });
