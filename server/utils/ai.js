@@ -109,6 +109,11 @@ export const validateAiConfig = (config = {}) => {
     throw new Error('AI 配置不完整，请先填写厂商、Base URL、模型和 API Key');
   }
 
+  const rawTemp = parseFloat(config.temperature);
+  const temperature = (!isNaN(rawTemp) && rawTemp >= 0 && rawTemp <= 2)
+    ? Math.round(rawTemp * 100) / 100
+    : 0.2;
+
   return {
     apiKey,
     baseUrl,
@@ -116,10 +121,11 @@ export const validateAiConfig = (config = {}) => {
     providerId,
     providerType,
     providerMode: getProviderMode(providerId, providerType),
+    temperature,
   };
 };
 
-const callOpenAICompatible = async ({ apiKey, baseUrl, model, systemPrompt, userPrompt }) => {
+const callOpenAICompatible = async ({ apiKey, baseUrl, model, temperature, systemPrompt, userPrompt }) => {
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -128,7 +134,7 @@ const callOpenAICompatible = async ({ apiKey, baseUrl, model, systemPrompt, user
     },
     body: JSON.stringify({
       model,
-      temperature: 0.2,
+      temperature: typeof temperature === 'number' ? temperature : 0.2,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -146,7 +152,7 @@ const callOpenAICompatible = async ({ apiKey, baseUrl, model, systemPrompt, user
   return normalizeContentText(content);
 };
 
-const callAnthropic = async ({ apiKey, baseUrl, model, systemPrompt, userPrompt }) => {
+const callAnthropic = async ({ apiKey, baseUrl, model, temperature, systemPrompt, userPrompt }) => {
   const response = await fetch(`${baseUrl}/messages`, {
     method: 'POST',
     headers: {
@@ -157,6 +163,7 @@ const callAnthropic = async ({ apiKey, baseUrl, model, systemPrompt, userPrompt 
     body: JSON.stringify({
       model,
       max_tokens: 1800,
+      temperature: typeof temperature === 'number' ? temperature : 0.2,
       system: systemPrompt,
       messages: [
         { role: 'user', content: userPrompt },

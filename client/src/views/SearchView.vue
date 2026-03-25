@@ -73,7 +73,8 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { Search } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { analyzeWord, analyzeSentence } from '../api/index.js';
@@ -82,6 +83,7 @@ import { isAiSettingsReady, loadAiSettings } from '../utils/aiSettings.js';
 import WordAnalysisResult from '../components/search/WordAnalysisResult.vue';
 import SentenceAnalysisResult from '../components/search/SentenceAnalysisResult.vue';
 
+const route = useRoute();
 const settings = ref(loadAiSettings());
 const ready = computed(() => isAiSettingsReady(settings.value));
 const providerName = computed(() => getProviderById(settings.value.providerId).name);
@@ -170,6 +172,14 @@ const handleSearch = async () => {
     loading.value = false;
   }
 };
+
+onMounted(() => {
+  const q = route.query.q;
+  if (q && typeof q === 'string' && q.trim()) {
+    searchInput.value = q.trim();
+    handleSearch();
+  }
+});
 </script>
 
 <style scoped>

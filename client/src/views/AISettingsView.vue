@@ -81,6 +81,30 @@
           <el-input v-model="form.apiKey" show-password placeholder="请输入 API Key" />
         </el-form-item>
 
+        <el-form-item label="Temperature">
+          <div class="temperature-row">
+            <el-slider
+              v-model="form.temperature"
+              :min="0"
+              :max="2"
+              :step="0.1"
+              :marks="{ 0: '0', 0.2: '0.2', 1: '1', 2: '2' }"
+              show-stops
+              style="flex: 1"
+            />
+            <el-input-number
+              v-model="form.temperature"
+              :min="0"
+              :max="2"
+              :step="0.1"
+              :precision="1"
+              controls-position="right"
+              style="width: 100px; margin-left: 16px"
+            />
+          </div>
+          <div class="temperature-hint">较低值（如 0.2）输出更稳定；较高值（如 1.0）输出更有创意</div>
+        </el-form-item>
+
         <el-form-item>
           <div class="page-actions">
             <el-button type="primary" :loading="saving" @click="handleSave">保存到本地</el-button>
@@ -111,6 +135,10 @@
         <div>
           <span class="summary-label">API Key</span>
           <strong>{{ maskedKey }}</strong>
+        </div>
+        <div>
+          <span class="summary-label">Temperature</span>
+          <strong>{{ form.temperature ?? 0.2 }}</strong>
         </div>
       </div>
     </el-card>
@@ -319,6 +347,19 @@ const handleDeleteModel = (modelName) => {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.temperature-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 520px;
+}
+
+.temperature-hint {
+  font-size: 12px;
+  color: #909399;
   margin-top: 8px;
 }
 </style>

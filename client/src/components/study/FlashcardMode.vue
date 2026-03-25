@@ -36,7 +36,7 @@
     </div>
     <div v-else class="flip-action">
       <el-button type="primary" size="large" @click="$emit('flip')">显示答案</el-button>
-      <div class="keyboard-hint">快捷键：<kbd>空格</kbd> 翻牌，翻牌后按 <kbd>1</kbd>-<kbd>4</kbd> 评分</div>
+      <div class="keyboard-hint">快捷键：<kbd>空格</kbd> 翻牌，翻牌后 <kbd>空格</kbd> 发音，<kbd>1</kbd>-<kbd>4</kbd> 评分</div>
     </div>
   </div>
 </template>

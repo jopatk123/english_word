@@ -8,10 +8,14 @@
         clearable
         size="large"
         @input="onSearch"
+        @keyup.enter="goToSearch"
         class="search-input"
       >
         <template #prefix>
           <el-icon><Search /></el-icon>
+        </template>
+        <template #append>
+          <el-button @click="goToSearch">搜索</el-button>
         </template>
       </el-input>
     </div>
@@ -158,6 +162,12 @@ const onSearch = () => {
     fetchRoots(searchKeyword.value);
     searchWords(searchKeyword.value);
   }, 300);
+};
+
+const goToSearch = () => {
+  const kw = searchKeyword.value.trim();
+  if (!kw) return;
+  router.push({ path: '/search', query: { q: kw } });
 };
 
 const router = useRouter();

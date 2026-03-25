@@ -292,7 +292,11 @@ export function useStudySession() {
     if (studyMode.value === 'flashcard' && modeSelected.value && !finished.value && currentCard.value) {
       if (e.code === 'Space') {
         e.preventDefault();
-        if (!showAnswer.value) flipCard();
+        if (!showAnswer.value) {
+          flipCard();
+        } else if (currentCard.value) {
+          speak(currentCard.value.word.name);
+        }
       }
       if (showAnswer.value && !submitting.value) {
         if (e.key === '1') submitRating(1);

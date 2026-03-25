@@ -13,6 +13,7 @@ export const createDefaultAiSettings = () => {
     baseUrl: provider.baseUrl,
     model: provider.models[0],
     apiKey: '',
+    temperature: 0.2,
   };
 };
 
@@ -103,12 +104,17 @@ const normalizeProviderSettings = (settings) => {
   const provider = getAllProviders().find((p) => p.id === settings.providerId)
     || getAllProviders()[0];
   const allModels = getAllModels(provider.id);
+  const rawTemp = parseFloat(settings.temperature);
+  const temperature = (!isNaN(rawTemp) && rawTemp >= 0 && rawTemp <= 2)
+    ? Math.round(rawTemp * 10) / 10
+    : 0.2;
   return {
     providerId: provider.id,
     providerType: provider.providerType,
     baseUrl: settings.baseUrl?.trim() || provider.baseUrl,
     model: allModels.includes(settings.model) ? settings.model : (allModels[0] || ''),
     apiKey: settings.apiKey?.trim() || '',
+    temperature,
   };
 };
 
@@ -124,12 +130,17 @@ export const loadAiSettings = () => {
 
   const saved = allSettings.providers[provider.id];
   if (saved) {
+    const rawTemp = parseFloat(saved.temperature);
+    const temperature = (!isNaN(rawTemp) && rawTemp >= 0 && rawTemp <= 2)
+      ? Math.round(rawTemp * 10) / 10
+      : 0.2;
     return {
       providerId: provider.id,
       providerType: provider.providerType,
       baseUrl: saved.baseUrl || provider.baseUrl,
       model: allModels.includes(saved.model) ? saved.model : (allModels[0] || ''),
       apiKey: saved.apiKey || '',
+      temperature,
     };
   }
 
@@ -139,6 +150,7 @@ export const loadAiSettings = () => {
     baseUrl: provider.baseUrl,
     model: allModels[0] || '',
     apiKey: '',
+    temperature: 0.2,
   };
 };
 
@@ -154,6 +166,7 @@ export const saveAiSettings = (settings) => {
     baseUrl: normalized.baseUrl,
     model: normalized.model,
     apiKey: normalized.apiKey,
+    temperature: normalized.temperature,
   };
   
   // 更新当前选中的提供者
@@ -192,12 +205,17 @@ export const loadProviderSettings = (providerId) => {
 
   const saved = allSettings.providers[provider.id];
   if (saved && saved.apiKey) {
+    const rawTemp = parseFloat(saved.temperature);
+    const temperature = (!isNaN(rawTemp) && rawTemp >= 0 && rawTemp <= 2)
+      ? Math.round(rawTemp * 10) / 10
+      : 0.2;
     return {
       providerId: provider.id,
       providerType: provider.providerType,
       baseUrl: saved.baseUrl || provider.baseUrl,
       model: allModels.includes(saved.model) ? saved.model : (allModels[0] || ''),
       apiKey: saved.apiKey,
+      temperature,
     };
   }
 
@@ -207,6 +225,7 @@ export const loadProviderSettings = (providerId) => {
     baseUrl: provider.baseUrl,
     model: allModels[0] || '',
     apiKey: '',
+    temperature: 0.2,
   };
 };
 
