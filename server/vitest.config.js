@@ -8,5 +8,12 @@ export default defineConfig({
     },
     // 保证测试串行执行（共享同一个内存DB）
     singleFork: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      reportsDirectory: 'coverage',
+      include: ['**/*.js'],
+      exclude: ['**/node_modules/**', 'test/**'],
+    },
   },
 });
