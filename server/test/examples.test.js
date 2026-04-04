@@ -33,9 +33,9 @@ beforeAll(async () => {
   const user = await User.create({ username: `extest_${suf()}`, password: 'x' });
   userId = user.id;
   app = buildApp(userId);
-  // 创建测试用词根和单词
+  // 创建测试用词根和单词（单词必须带 userId，否则简化后的权限检查会失败）
   const root = await Root.create({ name: `exroot_${suf()}`, meaning: '词根', userId });
-  const word = await Word.create({ name: `exword_${suf()}`, meaning: '含义' });
+  const word = await Word.create({ name: `exword_${suf()}`, meaning: '含义', userId });
   await WordRoot.create({ wordId: word.id, rootId: root.id });
   wordId = word.id;
 });
@@ -88,12 +88,20 @@ describe('GET /examples/', () => {
     const res = await request(app).get('/examples/');
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
+    expect(typeof res.body.total).toBe('number');
   });
 
   it('指定 wordId 只返回该单词的例句', async () => {
     const res = await request(app).get(`/examples/?wordId=${wordId}`);
     expect(res.status).toBe(200);
     res.body.data.forEach((ex) => expect(ex.wordId).toBe(wordId));
+  });
+
+  it('limit/offset 分页正常工作', async () => {
+    const res = await request(app).get(`/examples/?wordId=${wordId}&limit=1&offset=0`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.length).toBeLessThanOrEqual(1);
+    expect(typeof res.body.total).toBe('number');
   });
 });
 

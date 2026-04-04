@@ -29,6 +29,12 @@ const Word = sequelize.define(
       allowNull: true,
       comment: '备注',
     },
+    userId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'user_id',
+      comment: '所属用户ID',
+    },
   },
   {
     tableName: 'words',

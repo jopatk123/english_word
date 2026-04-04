@@ -1,4 +1,5 @@
 import sequelize from '../config/database.js';
+import { runMigrations } from '../migrations.js';
 import User from './User.js';
 import Root from './Root.js';
 import Word from './Word.js';
@@ -10,6 +11,10 @@ import ReviewHistory from './ReviewHistory.js';
 // 用户 -> 词根 (一对多)
 User.hasMany(Root, { foreignKey: 'user_id', as: 'roots', onDelete: 'CASCADE' });
 Root.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+// 用户 -> 单词 (一对多)
+User.hasMany(Word, { foreignKey: 'user_id', as: 'words', onDelete: 'CASCADE' });
+Word.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 // 词根 <-> 单词 (多对多，通过 word_roots 关联表)
 Word.belongsToMany(Root, {
@@ -51,53 +56,7 @@ ReviewHistory.belongsTo(Word, { foreignKey: 'word_id', as: 'word' });
 
 const initDB = async () => {
   await sequelize.sync();
-
-  const queryInterface = sequelize.getQueryInterface();
-
-  // 迁移：为 roots 表添加 user_id 列（如果不存在）
-  const tableInfo = await queryInterface.describeTable('roots').catch(() => ({}));
-  if (!tableInfo.user_id) {
-    await queryInterface.addColumn('roots', 'user_id', {
-      type: sequelize.constructor.DataTypes.INTEGER,
-      allowNull: true,
-    });
-    console.log('已为 roots 表添加 user_id 列');
-  }
-
-  if (!tableInfo.is_default) {
-    await queryInterface.addColumn('roots', 'is_default', {
-      type: sequelize.constructor.DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    });
-    console.log('已为 roots 表添加 is_default 列');
-  }
-
-  // 迁移：为 word_reviews 表添加 paused 列（如果不存在）
-  const reviewTableInfo = await queryInterface.describeTable('word_reviews').catch(() => ({}));
-  if (reviewTableInfo.paused === undefined && Object.keys(reviewTableInfo).length > 0) {
-    await queryInterface.addColumn('word_reviews', 'paused', {
-      type: sequelize.constructor.DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    });
-    console.log('已为 word_reviews 表添加 paused 列');
-  }
-
-  // 迁移：将 words.root_id 一对多关系迁移到 word_roots 多对多关联表
-  const wordsTableInfo = await queryInterface.describeTable('words').catch(() => ({}));
-  if (wordsTableInfo.root_id) {
-    const [rows] = await sequelize.query('SELECT id, root_id FROM words WHERE root_id IS NOT NULL');
-    for (const row of rows) {
-      await sequelize.query(
-        'INSERT OR IGNORE INTO word_roots (word_id, root_id, create_time) VALUES (?, ?, ?)',
-        { replacements: [row.id, row.root_id, new Date().toISOString()] }
-      );
-    }
-    await sequelize.query('ALTER TABLE words DROP COLUMN root_id');
-    console.log('已将 words.root_id 迁移到 word_roots 多对多关联表');
-  }
-
+  await runMigrations();
   console.log('数据库同步完成');
 };
 

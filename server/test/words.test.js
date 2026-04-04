@@ -106,6 +106,7 @@ describe('GET /words/', () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
     expect(res.body.data.length).toBeGreaterThan(0);
+    expect(typeof res.body.total).toBe('number');
   });
 
   it('每条结果含 exampleCount 字段', async () => {
@@ -129,6 +130,14 @@ describe('GET /words/', () => {
     res.body.data.forEach((w) => {
       expect(w.roots.some((r) => r.id === rootId)).toBe(true);
     });
+  });
+
+  it('limit/offset 分页正常工作', async () => {
+    const res = await request(app).get('/words/?limit=1&offset=0');
+    expect(res.status).toBe(200);
+    expect(res.body.data.length).toBeLessThanOrEqual(1);
+    expect(typeof res.body.total).toBe('number');
+    expect(res.body.total).toBeGreaterThanOrEqual(res.body.data.length);
   });
 });
 

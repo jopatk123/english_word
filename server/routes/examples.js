@@ -1,47 +1,50 @@
 import { Router } from 'express';
-import { Example, Word, Root } from '../models/index.js';
-import { success, error } from '../utils/response.js';
+import { Example, Word } from '../models/index.js';
+import { success, successList, error } from '../utils/response.js';
 
 const router = Router();
 
 // 辅助函数：检查单词是否属于当前用户
 const isWordOwnedByUser = async (wordId, userId) => {
-  const word = await Word.findByPk(wordId, {
-    include: [
-      { model: Root, as: 'roots', through: { attributes: [] }, where: { userId }, required: true },
-    ],
-  });
-  return word;
+  return Word.findOne({ where: { id: wordId, userId } });
 };
 
-// 获取指定单词下的例句列表
+// 获取指定单词下的例句列表（支持 limit/offset 分页）
 router.get('/', async (req, res) => {
   try {
     const { wordId } = req.query;
+    const limit = parseInt(req.query.limit) || 0;
+    const offset = parseInt(req.query.offset) || 0;
+
+    const wordWhere = { userId: req.userId };
     const where = wordId ? { wordId } : {};
-    const examples = await Example.findAll({
+
+    const queryOpts = {
       where,
       include: [
         {
           model: Word,
           as: 'word',
-          attributes: ['id', 'name', 'meaning'],
+          attributes: ['id', 'name', 'meaning', 'userId'],
           required: true,
-          include: [
-            {
-              model: Root,
-              as: 'roots',
-              through: { attributes: [] },
-              attributes: ['id'],
-              where: { userId: req.userId },
-              required: true,
-            },
-          ],
+          where: wordWhere,
         },
       ],
       order: [['create_time', 'DESC']],
-    });
-    success(res, examples);
+    };
+    if (limit > 0) {
+      queryOpts.limit = limit;
+      queryOpts.offset = offset;
+    }
+
+    const [examples, total] = await Promise.all([
+      Example.findAll(queryOpts),
+      Example.count({
+        where,
+        include: [{ model: Word, as: 'word', attributes: [], required: true, where: wordWhere }],
+      }),
+    ]);
+    successList(res, examples, total);
   } catch (e) {
     error(res, e.message);
   }
@@ -55,22 +58,12 @@ router.get('/:id', async (req, res) => {
         {
           model: Word,
           as: 'word',
-          attributes: ['id', 'name', 'meaning'],
+          attributes: ['id', 'name', 'meaning', 'userId'],
           required: true,
-          include: [
-            {
-              model: Root,
-              as: 'roots',
-              through: { attributes: [] },
-              attributes: ['id'],
-              where: { userId: req.userId },
-              required: true,
-            },
-          ],
         },
       ],
     });
-    if (!example) return error(res, '例句不存在');
+    if (!example || example.word?.userId !== req.userId) return error(res, '例句不存在');
     success(res, example);
   } catch (e) {
     error(res, e.message);
@@ -103,19 +96,9 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const example = await Example.findByPk(req.params.id, {
-      include: [
-        {
-          model: Word,
-          as: 'word',
-          attributes: ['id'],
-          include: [
-            { model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'userId'] },
-          ],
-        },
-      ],
+      include: [{ model: Word, as: 'word', attributes: ['id', 'userId'] }],
     });
-    if (!example || !example.word?.roots?.some((r) => r.userId === req.userId))
-      return error(res, '例句不存在');
+    if (!example || example.word?.userId !== req.userId) return error(res, '例句不存在');
     const { sentence, translation, remark } = req.body;
     if (!sentence || !translation) return error(res, '例句原文和翻译为必填项');
     const trimmedSentence = sentence.trim();
@@ -139,19 +122,9 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const example = await Example.findByPk(req.params.id, {
-      include: [
-        {
-          model: Word,
-          as: 'word',
-          attributes: ['id'],
-          include: [
-            { model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'userId'] },
-          ],
-        },
-      ],
+      include: [{ model: Word, as: 'word', attributes: ['id', 'userId'] }],
     });
-    if (!example || !example.word?.roots?.some((r) => r.userId === req.userId))
-      return error(res, '例句不存在');
+    if (!example || example.word?.userId !== req.userId) return error(res, '例句不存在');
     await example.destroy();
     success(res, null, '删除成功');
   } catch (e) {

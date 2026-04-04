@@ -1,17 +1,17 @@
 <template>
   <!-- 单词已存在提示 -->
-  <el-card v-if="wordResult.existingWord" class="ai-card" style="margin-top: 16px">
+  <el-card v-if="localExistingWord" class="ai-card" style="margin-top: 16px">
     <el-alert type="success" :closable="false" show-icon>
       <template #title>
-        单词 <strong>{{ wordResult.existingWord.name }}</strong> 已存在，关联词根：
-        <span v-for="(root, idx) in wordResult.existingWord.roots || []" :key="root.id">
+        单词 <strong>{{ localExistingWord.name }}</strong> 已存在，关联词根：
+        <span v-for="(root, idx) in localExistingWord.roots || []" :key="root.id">
           <el-link type="primary" @click="$router.push(`/root/${root.id}`)">{{
             root.name
           }}</el-link>
-          <span v-if="idx < wordResult.existingWord.roots.length - 1">、</span>
+          <span v-if="idx < localExistingWord.roots.length - 1">、</span>
         </span>
         ，
-        <el-link type="primary" @click="$router.push(`/word/${wordResult.existingWord.id}`)">
+        <el-link type="primary" @click="$router.push(`/word/${localExistingWord.id}`)">
           点击查看详情
         </el-link>
       </template>
@@ -75,7 +75,7 @@
               </el-link>
             </template>
           </el-alert>
-          <div v-if="!wordResult.existingWord" style="margin-top: 4px">
+          <div v-if="!localExistingWord" style="margin-top: 4px">
             <el-checkbox
               :model-value="isExistingRootIncluded(analysisRoot.name)"
               @change="(val) => toggleIncludeExistingRoot(analysisRoot.name, val)"
@@ -86,7 +86,7 @@
         </div>
 
         <div
-          v-if="!isRootExisting(analysisRoot.name) && !wordResult.existingWord"
+          v-if="!isRootExisting(analysisRoot.name) && !localExistingWord"
           style="margin-top: 8px"
         >
           <el-checkbox
@@ -108,7 +108,7 @@
     </div>
 
     <!-- 手动指定词根 -->
-    <template v-if="!wordResult.existingWord">
+    <template v-if="!localExistingWord">
       <el-divider />
       <div>
         <div style="font-size: 13px; color: #606266; margin-bottom: 8px">
@@ -136,7 +136,7 @@
     </template>
 
     <!-- 添加单词选项 -->
-    <template v-if="!wordResult.existingWord">
+    <template v-if="!localExistingWord">
       <el-divider />
       <div>
         <el-checkbox v-model="addWord" :disabled="addExamples">
@@ -194,7 +194,7 @@
       </div>
     </template>
 
-    <!-- 操作按钮 -->
+    <!-- 操作按钮（存在 localExistingWord 时隐藏，canAddAll 内部已判断）-->
     <div v-if="canAddAll" class="page-actions ai-footer-actions">
       <el-button type="primary" :loading="saving" @click="handleAddAll"> 一键添加全部 </el-button>
       <el-button
@@ -235,12 +235,16 @@
   const rootSearchLoading = ref(false);
   const rootOptions = ref([]);
 
+  // 本地可变副本，避免直接变异 prop
+  const localExistingWord = ref(props.wordResult?.existingWord ?? null);
+  const localExistingRoots = ref([...(props.wordResult?.existingRoots ?? [])]);
+
   const isRootExisting = (name) => {
-    return props.wordResult?.existingRoots?.some((r) => r.name === name) || false;
+    return localExistingRoots.value.some((r) => r.name === name);
   };
 
   const getExistingRootId = (name) => {
-    return props.wordResult?.existingRoots?.find((r) => r.name === name)?.id;
+    return localExistingRoots.value.find((r) => r.name === name)?.id;
   };
 
   const isExistingRootIncluded = (name) => !excludedExistingRootNames.value.includes(name);
@@ -279,7 +283,7 @@
     }
   };
 
-  const canAddWord = computed(() => !props.wordResult.existingWord);
+  const canAddWord = computed(() => !localExistingWord.value);
 
   const willGoToUncategorized = computed(() => {
     if (!addWord.value) return false;
@@ -293,18 +297,18 @@
   const addExamples = computed(() => selectedExamples.value.length > 0);
 
   const canAddExamples = computed(() => {
-    if (props.wordResult.existingWord) return false;
+    if (localExistingWord.value) return false;
     return addWord.value;
   });
 
   const showSaveButton = computed(() => {
-    if (props.wordResult.existingWord) return false;
+    if (localExistingWord.value) return false;
     return addRoots.value.length > 0 || addWord.value || selectedExamples.value.length > 0;
   });
 
   const canAddAll = computed(() => {
     // 一键添加功能在当前单词尚未存在时可用
-    return !props.wordResult.existingWord;
+    return !localExistingWord.value;
   });
 
   const handleAddAll = () => {
@@ -331,7 +335,7 @@
   const saveSummary = computed(() => {
     const parts = [];
     const newRootCount = addRoots.value.filter((idx) => {
-      const r = props.wordResult?.analysis.roots?.[idx];
+      const r = props.wordResult.analysis.roots?.[idx];
       return r && !isRootExisting(r.name);
     }).length;
     if (newRootCount) parts.push(`${newRootCount} 个词根`);
@@ -379,8 +383,7 @@
         const rootRes = await createRoot({ name: r.name, meaning: r.meaning });
         rootIds.push(rootRes.data.id);
         createdRootNames.push(r.name);
-        if (!props.wordResult.existingRoots) props.wordResult.existingRoots = [];
-        props.wordResult.existingRoots.push({
+        localExistingRoots.value.push({
           id: rootRes.data.id,
           name: r.name,
           meaning: r.meaning,
@@ -423,10 +426,10 @@
       }
 
       if (wordId && addWord.value) {
-        props.wordResult.existingWord = {
+        localExistingWord.value = {
           id: wordId,
           name: props.wordResult.analysis.word,
-          roots: (props.wordResult.existingRoots || []).map((r) => r.name),
+          roots: localExistingRoots.value.map((r) => r.name),
         };
         addWord.value = false;
         selectedExamples.value = [];

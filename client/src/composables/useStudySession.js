@@ -1,8 +1,10 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { getReviewDue, submitReviewResult, getQuizChoices } from '../api/index.js';
+import { getReviewDue, submitReviewResult } from '../api/index.js';
 import { useSpeech } from '../utils/speech.js';
+import { useChoiceMode } from './useChoiceMode.js';
+import { useSpellingMode } from './useSpellingMode.js';
 
 export function useStudySession() {
   const route = useRoute();
@@ -24,27 +26,7 @@ export function useStudySession() {
   const modeSelected = ref(false);
   const modeNames = { flashcard: '闪卡', choice: '选择题', spelling: '拼写', listening: '听力' };
 
-  // 选择题状态
-  const choiceOptions = ref([]);
-  const choiceSelected = ref(-1);
-  const choiceAnswered = ref(false);
-
-  // 拼写 & 听力模式状态
-  const spellingInput = ref('');
-  const spellingAnswered = ref(false);
-  const spellingCorrect = ref(false);
-  const spellingHintLevel = ref(0);
-
   const { speak } = useSpeech();
-
-  const spellingHint = computed(() => {
-    if (!currentCard.value) return '输入单词...';
-    const name = currentCard.value.word.name;
-    if (spellingHintLevel.value === 0) return '输入单词拼写...';
-    if (spellingHintLevel.value === 1)
-      return `${name[0]}${'_'.repeat(name.length - 1)} (${name.length}个字母)`;
-    return `${name.slice(0, Math.ceil(name.length / 2))}${'_'.repeat(name.length - Math.ceil(name.length / 2))}`;
-  });
 
   const currentCard = computed(() => {
     if (currentIndex.value < queue.value.length) {
@@ -52,6 +34,38 @@ export function useStudySession() {
     }
     return null;
   });
+
+  const againWordIds = computed(() => Object.keys(againCountMap.value).map(Number));
+  const hasAgainWords = computed(() => againWordIds.value.length > 0);
+  const againWordCount = computed(() => againWordIds.value.length);
+
+  const handleAgain = (wordId) => {
+    const count = againCountMap.value[wordId] || 0;
+    if (count < MAX_AGAIN_PER_WORD) {
+      againCountMap.value[wordId] = count + 1;
+      queue.value.push({ ...currentCard.value });
+    }
+  };
+
+  // 推进到下一张卡片（通知各模式重置自身状态）
+  const advanceCard = () => {
+    currentIndex.value++;
+    showAnswer.value = false;
+    choice.resetChoice();
+    spelling.resetSpelling();
+
+    if (currentIndex.value >= queue.value.length) {
+      finished.value = true;
+      clearProgress();
+    } else {
+      saveProgress();
+      if (studyMode.value === 'choice') choice.loadChoices();
+    }
+  };
+
+  // 初始化子模式 composable（依赖 currentCard、sessionStats、handleAgain、advanceCard）
+  const choice = useChoiceMode({ currentCard, sessionStats, handleAgain, advanceCard });
+  const spelling = useSpellingMode({ currentCard, sessionStats, handleAgain, advanceCard });
 
   // 自动朗读：进入卡片时朗读一次，翻牌时再朗读一次
   watch(
@@ -75,15 +89,11 @@ export function useStudySession() {
     { immediate: true }
   );
 
-  const againWordIds = computed(() => Object.keys(againCountMap.value).map(Number));
-  const hasAgainWords = computed(() => againWordIds.value.length > 0);
-  const againWordCount = computed(() => againWordIds.value.length);
-
   const selectMode = (mode) => {
     studyMode.value = mode;
     modeSelected.value = true;
     localStorage.setItem('study-mode', mode);
-    if (mode === 'choice') loadChoices();
+    if (mode === 'choice') choice.loadChoices();
   };
 
   const fetchDue = async () => {
@@ -132,7 +142,7 @@ export function useStudySession() {
     againCountMap.value = progress.againMap || {};
     studyMode.value = progress.mode || 'flashcard';
     modeSelected.value = true;
-    if (studyMode.value === 'choice') loadChoices();
+    if (studyMode.value === 'choice') choice.loadChoices();
   };
 
   const dismissResume = () => {
@@ -184,44 +194,14 @@ export function useStudySession() {
     }
   };
 
-  const advanceCard = () => {
-    currentIndex.value++;
-    showAnswer.value = false;
-    choiceAnswered.value = false;
-    choiceSelected.value = -1;
-    spellingInput.value = '';
-    spellingAnswered.value = false;
-    spellingCorrect.value = false;
-    spellingHintLevel.value = 0;
-
-    if (currentIndex.value >= queue.value.length) {
-      finished.value = true;
-      clearProgress();
-    } else {
-      saveProgress();
-      if (studyMode.value === 'choice') loadChoices();
-    }
-  };
-
-  const handleAgain = (wordId) => {
-    const count = againCountMap.value[wordId] || 0;
-    if (count < MAX_AGAIN_PER_WORD) {
-      againCountMap.value[wordId] = count + 1;
-      queue.value.push({ ...currentCard.value });
-    }
-  };
-
   const submitRating = async (quality) => {
     if (submitting.value) return;
     submitting.value = true;
-
     const qualityMap = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy' };
-
     try {
       await submitReviewResult(currentCard.value.wordId, quality);
       sessionStats.value.total++;
       sessionStats.value[qualityMap[quality]]++;
-
       if (quality === 1) handleAgain(currentCard.value.wordId);
       advanceCard();
     } catch {
@@ -230,71 +210,6 @@ export function useStudySession() {
       submitting.value = false;
     }
   };
-
-  // ===== 选择题模式 =====
-  const loadChoices = async () => {
-    if (!currentCard.value) return;
-    try {
-      const res = await getQuizChoices(currentCard.value.word.id, 3);
-      const all = [res.data.correct, ...res.data.distractors];
-      choiceOptions.value = all.sort(() => Math.random() - 0.5);
-    } catch {
-      choiceOptions.value = [
-        { id: currentCard.value.word.id, meaning: currentCard.value.word.meaning },
-      ];
-    }
-  };
-
-  const handleChoice = async (idx) => {
-    choiceSelected.value = idx;
-    choiceAnswered.value = true;
-    const correct = choiceOptions.value[idx].id === currentCard.value.word.id;
-    const quality = correct ? 3 : 1;
-    submitting.value = true;
-    try {
-      await submitReviewResult(currentCard.value.wordId, quality);
-      const qualityMap = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy' };
-      sessionStats.value.total++;
-      sessionStats.value[qualityMap[quality]]++;
-
-      if (quality === 1) handleAgain(currentCard.value.wordId);
-    } catch {
-      ElMessage.error('提交结果失败');
-    } finally {
-      submitting.value = false;
-    }
-  };
-
-  const choiceNext = () => advanceCard();
-
-  // ===== 拼写 & 听力模式 =====
-  const checkSpelling = async () => {
-    if (!spellingInput.value.trim() || spellingAnswered.value) return;
-    spellingAnswered.value = true;
-    spellingCorrect.value =
-      spellingInput.value.trim().toLowerCase() === currentCard.value.word.name.toLowerCase();
-
-    const quality = spellingCorrect.value ? 3 : 1;
-    submitting.value = true;
-    try {
-      await submitReviewResult(currentCard.value.wordId, quality);
-      const qualityMap = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy' };
-      sessionStats.value.total++;
-      sessionStats.value[qualityMap[quality]]++;
-
-      if (quality === 1) handleAgain(currentCard.value.wordId);
-    } catch {
-      ElMessage.error('提交结果失败');
-    } finally {
-      submitting.value = false;
-    }
-  };
-
-  const showSpellingHint = () => {
-    spellingHintLevel.value = Math.min(spellingHintLevel.value + 1, 2);
-  };
-
-  const spellingNext = () => advanceCard();
 
   // 键盘快捷键
   const handleKeyDown = (e) => {
@@ -346,15 +261,15 @@ export function useStudySession() {
     modeSelected,
     modeNames,
     currentCard,
-    // 选择题
-    choiceOptions,
-    choiceSelected,
-    choiceAnswered,
-    // 拼写 & 听力
-    spellingInput,
-    spellingAnswered,
-    spellingCorrect,
-    spellingHint,
+    // 选择题（来自 useChoiceMode）
+    choiceOptions: choice.choiceOptions,
+    choiceSelected: choice.choiceSelected,
+    choiceAnswered: choice.choiceAnswered,
+    // 拼写 & 听力（来自 useSpellingMode）
+    spellingInput: spelling.spellingInput,
+    spellingAnswered: spelling.spellingAnswered,
+    spellingCorrect: spelling.spellingCorrect,
+    spellingHint: spelling.spellingHint,
     // 错误单词
     hasAgainWords,
     againWordCount,
@@ -366,11 +281,11 @@ export function useStudySession() {
     replayAgainWords,
     flipCard,
     submitRating,
-    loadChoices,
-    handleChoice,
-    choiceNext,
-    checkSpelling,
-    showSpellingHint,
-    spellingNext,
+    loadChoices: choice.loadChoices,
+    handleChoice: choice.handleChoice,
+    choiceNext: choice.choiceNext,
+    checkSpelling: spelling.checkSpelling,
+    showSpellingHint: spelling.showSpellingHint,
+    spellingNext: spelling.spellingNext,
   };
 }
