@@ -1,0 +1,64 @@
+/**
+ * 测试：continueReview 排队策略（纯逻辑）
+ *
+ * continueReview() 的核心行为等价于：
+ *   againFirst(originalQueue, againIds) => [...againItems, ...otherItems]
+ *
+ * 此处直接测该纯逻辑，不依赖 composable 完整生命周期。
+ */
+import { describe, it, expect } from 'vitest';
+
+function makeItem(wordId) {
+  return { wordId, word: { id: wordId, name: `word${wordId}`, meaning: `meaning${wordId}` } };
+}
+
+/** 与 useStudySession.continueReview 内部逻辑完全等价的纯函数 */
+function againFirst(originalQueue, againIds) {
+  const ids = new Set(againIds);
+  const againItems = originalQueue.filter((item) => ids.has(item.wordId));
+  const otherItems = originalQueue.filter((item) => !ids.has(item.wordId));
+  return [...againItems, ...otherItems];
+}
+
+describe('continueReview 排队策略', () => {
+  const items = [makeItem(1), makeItem(2), makeItem(3), makeItem(4), makeItem(5)];
+
+  it('有 again 词时，again 词排到最前', () => {
+    const result = againFirst(items, [3, 5]);
+    expect(result.map((i) => i.wordId)).toEqual([3, 5, 1, 2, 4]);
+  });
+
+  it('没有 again 词时，返回全部原始词（顺序不变）', () => {
+    const result = againFirst(items, []);
+    expect(result.map((i) => i.wordId)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it('所有词都是 again 词时，全部保留（again 区与 other 区各自顺序不变）', () => {
+    const result = againFirst(items, [1, 2, 3, 4, 5]);
+    expect(result).toHaveLength(5);
+    // againItems = all five, otherItems = []
+    expect(result.map((i) => i.wordId)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it('只有一个 again 词时，该词排第一', () => {
+    const result = againFirst(items, [4]);
+    expect(result[0].wordId).toBe(4);
+    expect(result).toHaveLength(5);
+  });
+
+  it('again ids 不在队列中时，等同于没有 again 词', () => {
+    const result = againFirst(items, [99]);
+    expect(result.map((i) => i.wordId)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it('空队列返回空数组', () => {
+    expect(againFirst([], [1, 2])).toHaveLength(0);
+  });
+
+  it('多个 again 词相对顺序与原队列保持一致', () => {
+    // items 顺序：1,2,3,4,5；again=[5,2] → filter 保持 [2,5]
+    const result = againFirst(items, [5, 2]);
+    expect(result.slice(0, 2).map((i) => i.wordId)).toEqual([2, 5]);
+  });
+});
+

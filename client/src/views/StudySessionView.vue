@@ -31,8 +31,10 @@
       :sessionStats="sessionStats"
       :hasAgainWords="hasAgainWords"
       :againWordCount="againWordCount"
+      :totalWords="originalQueueLength"
       @replay="replayWithNewMode"
       @replay-again="replayAgainWords"
+      @continue-review="continueReview"
     />
 
     <!-- 闪卡模式 -->
@@ -73,6 +75,7 @@
       v-model:inputValue="spellingInput"
       :answered="spellingAnswered"
       :correct="spellingCorrect"
+      :hard="spellingHard"
       :submitting="submitting"
       :spellingHint="spellingHint"
       :isLast="currentIndex + 1 >= queue.length"
@@ -91,6 +94,7 @@
       v-model:inputValue="spellingInput"
       :answered="spellingAnswered"
       :correct="spellingCorrect"
+      :hard="spellingHard"
       :submitting="submitting"
       :isLast="currentIndex + 1 >= queue.length"
       @check="checkSpelling"
@@ -133,14 +137,17 @@
     spellingInput,
     spellingAnswered,
     spellingCorrect,
+    spellingHard,
     spellingHint,
     hasAgainWords,
     againWordCount,
+    originalQueueLength,
     selectMode,
     applyResume,
     dismissResume,
     replayWithNewMode,
     replayAgainWords,
+    continueReview,
     flipCard,
     submitRating,
     handleChoice,

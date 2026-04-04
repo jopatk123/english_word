@@ -102,19 +102,160 @@ describe('GET /review/due', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.length).toBeLessThanOrEqual(1);
   });
+
+  it('scope=learning 仅返回未掌握单词', async () => {
+    const knownWord = await Word.create({ name: `known_${suf()}`, meaning: '已掌握词', userId });
+    const learningWord = await Word.create({ name: `learning_${suf()}`, meaning: '学习词', userId });
+    await WordRoot.create({ wordId: knownWord.id, rootId });
+    await WordRoot.create({ wordId: learningWord.id, rootId });
+    await WordReview.create({
+      userId,
+      wordId: knownWord.id,
+      status: 'known',
+      interval: 30,
+      easeFactor: 2.8,
+      dueDate: '2099-01-01',
+      reviewCount: 5,
+    });
+    await WordReview.create({
+      userId,
+      wordId: learningWord.id,
+      status: 'review',
+      interval: 3,
+      easeFactor: 2.5,
+      dueDate: '2099-01-01',
+      reviewCount: 2,
+    });
+
+    const res = await request(app).get('/review/due?scope=learning');
+    expect(res.status).toBe(200);
+    const ids = res.body.data.map((item) => item.wordId);
+    expect(ids).toContain(learningWord.id);
+    expect(ids).not.toContain(knownWord.id);
+  });
+
+  it('scope=known 仅返回已掌握单词', async () => {
+    const knownWord = await Word.create({ name: `known_only_${suf()}`, meaning: '已掌握', userId });
+    const learningWord = await Word.create({ name: `learning_only_${suf()}`, meaning: '学习中', userId });
+    await WordRoot.create({ wordId: knownWord.id, rootId });
+    await WordRoot.create({ wordId: learningWord.id, rootId });
+    await WordReview.create({
+      userId,
+      wordId: knownWord.id,
+      status: 'known',
+      interval: 40,
+      easeFactor: 2.9,
+      dueDate: '2099-01-02',
+      reviewCount: 6,
+    });
+    await WordReview.create({
+      userId,
+      wordId: learningWord.id,
+      status: 'learning',
+      interval: 1,
+      easeFactor: 2.3,
+      dueDate: '2099-01-02',
+      reviewCount: 1,
+    });
+
+    const res = await request(app).get('/review/due?scope=known');
+    expect(res.status).toBe(200);
+    const ids = res.body.data.map((item) => item.wordId);
+    expect(ids).toContain(knownWord.id);
+    expect(ids).not.toContain(learningWord.id);
+  });
+
+  it('scope=today-reviewed 仅返回今日已复习单词', async () => {
+    const reviewedWord = await Word.create({ name: `reviewed_${suf()}`, meaning: '今日复习', userId });
+    const untouchedWord = await Word.create({ name: `untouched_${suf()}`, meaning: '未复习', userId });
+    await WordRoot.create({ wordId: reviewedWord.id, rootId });
+    await WordRoot.create({ wordId: untouchedWord.id, rootId });
+    await WordReview.create({
+      userId,
+      wordId: reviewedWord.id,
+      status: 'review',
+      interval: 5,
+      easeFactor: 2.5,
+      dueDate: '2099-01-03',
+      reviewCount: 3,
+      lastReviewedAt: new Date(),
+    });
+    await WordReview.create({
+      userId,
+      wordId: untouchedWord.id,
+      status: 'review',
+      interval: 5,
+      easeFactor: 2.5,
+      dueDate: '2099-01-03',
+      reviewCount: 3,
+      lastReviewedAt: null,
+    });
+
+    const res = await request(app).get('/review/due?scope=today-reviewed');
+    expect(res.status).toBe(200);
+    const ids = res.body.data.map((item) => item.wordId);
+    expect(ids).toContain(reviewedWord.id);
+    expect(ids).not.toContain(untouchedWord.id);
+  });
+
+  it('scope=continue 时未掌握单词排在已掌握前面', async () => {
+    const knownWord = await Word.create({ name: `continue_known_${suf()}`, meaning: '已掌握', userId });
+    const learningWord = await Word.create({ name: `continue_learning_${suf()}`, meaning: '学习中', userId });
+    await WordRoot.create({ wordId: knownWord.id, rootId });
+    await WordRoot.create({ wordId: learningWord.id, rootId });
+    await WordReview.create({
+      userId,
+      wordId: knownWord.id,
+      status: 'known',
+      interval: 50,
+      easeFactor: 3,
+      dueDate: '2099-01-04',
+      reviewCount: 8,
+    });
+    await WordReview.create({
+      userId,
+      wordId: learningWord.id,
+      status: 'review',
+      interval: 4,
+      easeFactor: 2.4,
+      dueDate: '2099-01-04',
+      reviewCount: 2,
+    });
+
+    const res = await request(app).get('/review/due?scope=continue');
+    expect(res.status).toBe(200);
+    const ids = res.body.data.map((item) => item.wordId);
+    expect(ids.indexOf(learningWord.id)).toBeLessThan(ids.indexOf(knownWord.id));
+  });
 });
 
 // ─── GET /review/stats ────────────────────────────────────────
 describe('GET /review/stats', () => {
-  it('返回包含各状态计数的统计对象', async () => {
+  it('返回用户视角统计，且总数等于学习中+已掌握', async () => {
+    const reviewWord = await Word.create({ name: `stats_review_${suf()}`, meaning: '复习中', userId });
+    await WordRoot.create({ wordId: reviewWord.id, rootId });
+    await WordReview.create({
+      userId,
+      wordId: reviewWord.id,
+      status: 'review',
+      interval: 6,
+      easeFactor: 2.6,
+      dueDate: '2099-01-05',
+      reviewCount: 4,
+    });
+
     const res = await request(app).get('/review/stats');
     expect(res.status).toBe(200);
     const s = res.body.data;
     expect(typeof s.total).toBe('number');
     expect(typeof s.due).toBe('number');
     expect(typeof s.new).toBe('number');
+    expect(typeof s.learning).toBe('number');
     expect(typeof s.known).toBe('number');
     expect(typeof s.todayReviewed).toBe('number');
+    expect(s.total).toBe(s.learning + s.known);
+    expect(s.new).toBe(0);
+    expect(s.learning).toBeGreaterThan(0);
   });
 });
 

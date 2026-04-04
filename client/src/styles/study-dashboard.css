@@ -55,6 +55,10 @@
   border-left: 4px solid #b37feb;
 }
 
+.stat-total {
+  border-left: 4px solid #b37feb;
+}
+
 .stat-number {
   font-size: 32px;
   font-weight: 700;

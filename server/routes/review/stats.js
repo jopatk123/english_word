@@ -22,24 +22,21 @@ router.get('/stats', async (req, res) => {
     const [
       totalCount,
       todayDueCount,
-      newCount,
-      learningCount,
       knownCount,
       todayReviewed,
       overdueCount,
       weekDueCount,
     ] = await Promise.all([
-      WordReview.count({ where: { userId: req.userId } }),
+      WordReview.count({ where: { userId: req.userId, paused: false } }),
       // 今日到期（仅 dueDate == today）
       WordReview.count({
         where: { userId: req.userId, paused: false, dueDate: today },
       }),
-      WordReview.count({ where: { userId: req.userId, status: 'new' } }),
-      WordReview.count({ where: { userId: req.userId, status: 'learning' } }),
-      WordReview.count({ where: { userId: req.userId, status: 'known' } }),
+      WordReview.count({ where: { userId: req.userId, paused: false, status: 'known' } }),
       WordReview.count({
         where: {
           userId: req.userId,
+          paused: false,
           lastReviewedAt: { [Op.gte]: todayStartDate },
         },
       }),
@@ -57,12 +54,14 @@ router.get('/stats', async (req, res) => {
       }),
     ]);
 
+    const learningCount = Math.max(totalCount - knownCount, 0);
+
     success(res, {
       total: totalCount,
       // due = 今日到期 + 超期，代表"现在需要复习的总量"
       due: todayDueCount + overdueCount,
       todayDue: todayDueCount,
-      new: newCount,
+      new: 0,
       learning: learningCount,
       known: knownCount,
       todayReviewed,

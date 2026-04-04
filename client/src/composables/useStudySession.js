@@ -39,6 +39,7 @@ export function useStudySession() {
   const againWordIds = computed(() => Object.keys(againCountMap.value).map(Number));
   const hasAgainWords = computed(() => againWordIds.value.length > 0);
   const againWordCount = computed(() => againWordIds.value.length);
+  const originalQueueLength = computed(() => originalQueue.value.length);
 
   const handleAgain = (wordId) => {
     const count = againCountMap.value[wordId] || 0;
@@ -106,14 +107,23 @@ export function useStudySession() {
     try {
       const saved = localStorage.getItem('study-session-progress');
       const advanceDays = Math.min(parseInt(route.query.advance) || 0, 30);
-      const res = await getReviewDue(advanceDays > 0 ? { advance: advanceDays } : {});
+      const scope = typeof route.query.scope === 'string' ? route.query.scope : '';
+      const params = {
+        ...(advanceDays > 0 ? { advance: advanceDays } : {}),
+        ...(scope ? { scope } : {}),
+      };
+      const res = await getReviewDue(params);
       queue.value = res.data || [];
       originalQueue.value = [...queue.value];
 
       if (saved && queue.value.length > 0) {
         try {
           const progress = JSON.parse(saved);
+          const queueIds = queue.value.map((r) => r.wordId).join(',');
+          const progressScope = progress.scope || '';
           if (
+            progress.queueIds === queueIds &&
+            progressScope === scope &&
             progress.index > 0 &&
             progress.index < queue.value.length &&
             queue.value[progress.index]?.wordId !== undefined
@@ -177,13 +187,28 @@ export function useStudySession() {
     resetSession(true);
   };
 
+  /**
+   * 继续复习：将未掌握词（again）排在最前，后跟全部原始词，进入重播模式。
+   * 不管本轮是否全部掌握，都可以无限继续。
+   */
+  const continueReview = () => {
+    const ids = new Set(againWordIds.value);
+    const againWords = originalQueue.value.filter((item) => ids.has(item.wordId));
+    const otherWords = originalQueue.value.filter((item) => !ids.has(item.wordId));
+    queue.value = [...againWords, ...otherWords];
+    originalQueue.value = [...queue.value];
+    resetSession(true);
+  };
+
   // 保存进度
   const saveProgress = () => {
+    const scope = typeof route.query.scope === 'string' ? route.query.scope : '';
     const data = {
       index: currentIndex.value,
       stats: sessionStats.value,
       againMap: againCountMap.value,
       mode: studyMode.value,
+      scope,
       queueIds: queue.value.map((r) => r.wordId).join(','),
     };
     localStorage.setItem('study-session-progress', JSON.stringify(data));
@@ -278,16 +303,19 @@ export function useStudySession() {
     spellingInput: spelling.spellingInput,
     spellingAnswered: spelling.spellingAnswered,
     spellingCorrect: spelling.spellingCorrect,
+    spellingHard: spelling.spellingHard,
     spellingHint: spelling.spellingHint,
     // 错误单词
     hasAgainWords,
     againWordCount,
+    originalQueueLength,
     // 方法
     selectMode,
     applyResume,
     dismissResume,
     replayWithNewMode,
     replayAgainWords,
+    continueReview,
     flipCard,
     submitRating,
     loadChoices: choice.loadChoices,

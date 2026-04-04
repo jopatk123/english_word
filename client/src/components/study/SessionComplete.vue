@@ -26,11 +26,14 @@
       </div>
     </div>
     <div class="complete-actions">
-      <el-button type="primary" @click="$router.push('/study')">返回仪表盘</el-button>
+      <el-button type="primary" @click="$emit('continue-review')">
+        继续复习{{ againWordCount > 0 ? `（先练 ${againWordCount} 个难词）` : `（共 ${totalWords} 个）` }}
+      </el-button>
       <el-button @click="$emit('replay')">换模式再来一遍</el-button>
       <el-button v-if="hasAgainWords" type="warning" plain @click="$emit('replay-again')"
-        >重练错误单词（{{ againWordCount }} 个）</el-button
+        >只练错误单词（{{ againWordCount }} 个）</el-button
       >
+      <el-button @click="$router.push('/study')">返回仪表盘</el-button>
       <el-button @click="$router.push('/')">回到首页</el-button>
     </div>
   </div>
@@ -41,7 +44,8 @@
     sessionStats: { type: Object, required: true },
     hasAgainWords: { type: Boolean, default: false },
     againWordCount: { type: Number, default: 0 },
+    totalWords: { type: Number, default: 0 },
   });
 
-  defineEmits(['replay', 'replay-again']);
+  defineEmits(['replay', 'replay-again', 'continue-review']);
 </script>

@@ -115,7 +115,7 @@
   const loading = ref(true);
   const days = ref(30);
   const summary = ref({ daily: [], streak: 0, totalReviews: 0 });
-  const stats = ref({ total: 0, known: 0, learning: 0, new: 0 });
+  const stats = ref({ total: 0, known: 0, learning: 0 });
 
   const dailyChartRef = ref(null);
   const masteryChartRef = ref(null);
@@ -208,9 +208,7 @@
 
     if (masteryChartInstance.value) {
       const known = stats.value.known;
-      const reviewing = stats.value.total - known - stats.value.new - stats.value.learning;
       const learning = stats.value.learning;
-      const newWords = stats.value.new;
 
       masteryChartInstance.value.setOption({
         tooltip: {
@@ -225,7 +223,7 @@
           itemHeight: 10,
           textStyle: { color: '#606266' },
         },
-        color: ['#67C23A', '#409EFF', '#E6A23C', '#909399'],
+        color: ['#67C23A', '#409EFF'],
         series: [
           {
             name: '掌握度',
@@ -250,9 +248,7 @@
             labelLine: { show: false },
             data: [
               { value: known, name: '已掌握' },
-              { value: reviewing, name: '复习中' },
               { value: learning, name: '学习中' },
-              { value: newWords, name: '新词' },
             ],
           },
         ],

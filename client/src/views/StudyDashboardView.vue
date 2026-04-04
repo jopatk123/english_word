@@ -7,31 +7,47 @@
 
     <!-- 统计卡片 -->
     <div class="stats-cards" v-loading="statsLoading">
-      <div class="stat-card stat-due" @click="startStudy">
+      <div class="stat-card stat-due clickable" @click="openSessionFor('today-due', stats.todayDue)">
         <div class="stat-number">{{ stats.todayDue }}</div>
         <div class="stat-label">今日到期</div>
       </div>
       <div
         class="stat-card stat-overdue"
         :class="{ clickable: stats.overdue > 0 }"
-        @click="stats.overdue > 0 && startStudy()"
+        @click="openSessionFor('overdue', stats.overdue)"
       >
         <div class="stat-number">{{ stats.overdue }}</div>
         <div class="stat-label">超期未复习</div>
       </div>
-      <div class="stat-card stat-today">
+      <div
+        class="stat-card stat-today"
+        :class="{ clickable: stats.todayReviewed > 0 }"
+        @click="openSessionFor('today-reviewed', stats.todayReviewed)"
+      >
         <div class="stat-number">{{ stats.todayReviewed }}</div>
         <div class="stat-label">今日已复习</div>
       </div>
-      <div class="stat-card stat-week">
-        <div class="stat-number">{{ stats.weekDue }}</div>
-        <div class="stat-label">本周剩余</div>
+      <div
+        class="stat-card stat-total"
+        :class="{ clickable: stats.total > 0 }"
+        @click="openSessionFor('all', stats.total)"
+      >
+        <div class="stat-number">{{ stats.total }}</div>
+        <div class="stat-label">总单词数</div>
       </div>
-      <div class="stat-card stat-learning">
-        <div class="stat-number">{{ stats.learning + stats.new }}</div>
+      <div
+        class="stat-card stat-learning"
+        :class="{ clickable: stats.learning > 0 }"
+        @click="openSessionFor('learning', stats.learning)"
+      >
+        <div class="stat-number">{{ stats.learning }}</div>
         <div class="stat-label">学习中</div>
       </div>
-      <div class="stat-card stat-known">
+      <div
+        class="stat-card stat-known"
+        :class="{ clickable: stats.known > 0 }"
+        @click="openSessionFor('known', stats.known)"
+      >
         <div class="stat-number">{{ stats.known }}</div>
         <div class="stat-label">已掌握</div>
       </div>
@@ -52,15 +68,17 @@
       <el-button
         type="primary"
         size="large"
-        :disabled="stats.due === 0 && stats.weekDue === 0"
-        @click="stats.due > 0 ? startStudy() : startAdvanceStudy()"
+        :disabled="stats.due === 0 && stats.weekDue === 0 && stats.total === 0"
+        @click="handlePrimaryStudyAction"
       >
         {{
           stats.due > 0
             ? `开始复习（${stats.due} 个）`
             : stats.weekDue > 0
               ? `提前复习（${stats.weekDue} 个）`
-              : '暂无待复习单词'
+              : stats.total > 0
+                ? `继续复习（${stats.total} 个）`
+                : '暂无待复习单词'
         }}
       </el-button>
       <el-button size="large" @click="$router.push('/study/report')"> 学习报表 </el-button>
@@ -79,7 +97,7 @@
       🎉 今日任务已完成！本周还有 <strong>{{ stats.weekDue }}</strong> 个单词可提前复习。
     </p>
     <p v-else-if="stats.due === 0 && stats.weekDue === 0 && stats.total > 0" class="advance-hint">
-      ✅ 近期暂无待复习单词，继续保持！
+      ✅ 今日没有待完成任务了，你仍然可以点击“继续复习”巩固全部单词。
     </p>
 
     <!-- 词根列表（管理学习队列） -->
@@ -235,13 +253,32 @@
   };
 
   const startStudy = () => {
-    if (stats.value.due > 0) {
-      router.push('/study/session');
-    }
+    if (stats.value.due > 0) router.push('/study/session');
   };
 
   const startAdvanceStudy = () => {
     router.push({ path: '/study/session', query: { advance: 7 } });
+  };
+
+  const startContinueStudy = () => {
+    if (stats.value.total > 0) {
+      router.push({ path: '/study/session', query: { scope: 'continue' } });
+    }
+  };
+
+  const handlePrimaryStudyAction = () => {
+    if (stats.value.due > 0) {
+      startStudy();
+    } else if (stats.value.weekDue > 0) {
+      startAdvanceStudy();
+    } else {
+      startContinueStudy();
+    }
+  };
+
+  const openSessionFor = (scope, count) => {
+    if (!count) return;
+    router.push({ path: '/study/session', query: { scope } });
   };
 
   const handleEnqueueAll = async () => {

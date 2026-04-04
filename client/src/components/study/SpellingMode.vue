@@ -30,6 +30,15 @@
         />
         <div v-if="answered" class="spelling-feedback">
           <div v-if="correct" class="spelling-correct">✅ 正确！</div>
+          <div v-else-if="hard" class="spelling-hard">
+            🟡 接近正确！正确答案：<strong>{{ card.word.name }}</strong>
+            <div
+              v-if="mode === 'listening'"
+              style="color: #909399; font-size: 14px; margin-top: 4px"
+            >
+              {{ card.word.meaning }}
+            </div>
+          </div>
           <div v-else class="spelling-wrong">
             ❌ 正确答案：<strong>{{ card.word.name }}</strong>
             <div
@@ -70,6 +79,7 @@
     inputValue: { type: String, default: '' },
     answered: { type: Boolean, default: false },
     correct: { type: Boolean, default: false },
+    hard: { type: Boolean, default: false },
     submitting: { type: Boolean, default: false },
     spellingHint: { type: String, default: '输入单词拼写...' },
     isLast: { type: Boolean, default: false },

@@ -12,6 +12,7 @@
 import { ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { getQuizChoices } from '../api/index.js';
+import { useSpeech } from '../utils/speech.js';
 
 function shuffle(arr) {
   const a = [...arr];
@@ -23,6 +24,7 @@ function shuffle(arr) {
 }
 
 export function useChoiceMode({ currentCard, sessionStats, handleAgain, advanceCard, isReplay }) {
+  const { speak } = useSpeech();
   const choiceOptions = ref([]);
   const choiceSelected = ref(-1);
   const choiceAnswered = ref(false);
@@ -69,6 +71,8 @@ export function useChoiceMode({ currentCard, sessionStats, handleAgain, advanceC
     const correct = choiceOptions.value[idx].id === currentCard.value.word.id;
     const quality = correct ? 3 : 1;
     const qualityMap = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy' };
+    // 答题后自动朗读当前单词
+    speak(currentCard.value.word.name);
     try {
       if (!isReplay?.value) {
         const { submitReviewResult } = await import('../api/index.js');
