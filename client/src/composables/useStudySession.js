@@ -20,6 +20,7 @@ export function useStudySession() {
   const MAX_AGAIN_PER_WORD = 3;
   const againCountMap = ref({});
   const resumeInfo = ref(null);
+  const isReplay = ref(false);
 
   // 学习模式
   const studyMode = ref('flashcard');
@@ -64,8 +65,8 @@ export function useStudySession() {
   };
 
   // 初始化子模式 composable（依赖 currentCard、sessionStats、handleAgain、advanceCard）
-  const choice = useChoiceMode({ currentCard, sessionStats, handleAgain, advanceCard });
-  const spelling = useSpellingMode({ currentCard, sessionStats, handleAgain, advanceCard });
+  const choice = useChoiceMode({ currentCard, sessionStats, handleAgain, advanceCard, isReplay });
+  const spelling = useSpellingMode({ currentCard, sessionStats, handleAgain, advanceCard, isReplay });
 
   // 自动朗读：进入卡片时朗读一次，翻牌时再朗读一次
   watch(
@@ -93,7 +94,11 @@ export function useStudySession() {
     studyMode.value = mode;
     modeSelected.value = true;
     localStorage.setItem('study-mode', mode);
-    if (mode === 'choice') choice.loadChoices();
+    if (mode === 'choice') {
+      // 将队列中所有单词传给选择题模式，用于本地生成干扰项
+      choice.setQueueWords(queue.value.map((r) => r.word));
+      choice.loadChoices();
+    }
   };
 
   const fetchDue = async () => {
@@ -108,15 +113,12 @@ export function useStudySession() {
       if (saved && queue.value.length > 0) {
         try {
           const progress = JSON.parse(saved);
-          if (progress.queueIds && queue.value.length > 0) {
-            const currentIds = queue.value.map((r) => r.wordId).join(',');
-            if (
-              progress.queueIds === currentIds &&
-              progress.index > 0 &&
-              progress.index < queue.value.length
-            ) {
-              resumeInfo.value = progress;
-            }
+          if (
+            progress.index > 0 &&
+            progress.index < queue.value.length &&
+            queue.value[progress.index]?.wordId !== undefined
+          ) {
+            resumeInfo.value = progress;
           }
         } catch {
           /* ignore corrupt data */
@@ -142,7 +144,10 @@ export function useStudySession() {
     againCountMap.value = progress.againMap || {};
     studyMode.value = progress.mode || 'flashcard';
     modeSelected.value = true;
-    if (studyMode.value === 'choice') choice.loadChoices();
+    if (studyMode.value === 'choice') {
+      choice.setQueueWords(queue.value.map((r) => r.word));
+      choice.loadChoices();
+    }
   };
 
   const dismissResume = () => {
@@ -150,25 +155,26 @@ export function useStudySession() {
     clearProgress();
   };
 
-  const resetSession = () => {
+  const resetSession = (replay = false) => {
     currentIndex.value = 0;
     finished.value = false;
     modeSelected.value = false;
     showAnswer.value = false;
     sessionStats.value = { total: 0, again: 0, hard: 0, good: 0, easy: 0 };
     againCountMap.value = {};
+    isReplay.value = replay;
   };
 
   const replayWithNewMode = () => {
     queue.value = [...originalQueue.value];
-    resetSession();
+    resetSession(true);
   };
 
   const replayAgainWords = () => {
     const ids = new Set(againWordIds.value);
     queue.value = originalQueue.value.filter((item) => ids.has(item.wordId));
     originalQueue.value = [...queue.value];
-    resetSession();
+    resetSession(true);
   };
 
   // 保存进度
@@ -198,8 +204,11 @@ export function useStudySession() {
     if (submitting.value) return;
     submitting.value = true;
     const qualityMap = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy' };
+    // 重播模式：只统计，不提交到服务器
     try {
-      await submitReviewResult(currentCard.value.wordId, quality);
+      if (!isReplay.value) {
+        await submitReviewResult(currentCard.value.wordId, quality);
+      }
       sessionStats.value.total++;
       sessionStats.value[qualityMap[quality]]++;
       if (quality === 1) handleAgain(currentCard.value.wordId);

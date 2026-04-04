@@ -6,12 +6,13 @@
  * @param {import('vue').Ref}        deps.sessionStats       会话统计（由 useStudySession 提供）
  * @param {Function}                 deps.handleAgain        重复出现单词
  * @param {Function}                 deps.advanceCard        向下一张卡片推进
+ * @param {import('vue').Ref}        deps.isReplay           是否为重播模式
  */
 import { ref, computed } from 'vue';
 import { ElMessage } from 'element-plus';
 import { submitReviewResult } from '../api/index.js';
 
-export function useSpellingMode({ currentCard, sessionStats, handleAgain, advanceCard }) {
+export function useSpellingMode({ currentCard, sessionStats, handleAgain, advanceCard, isReplay }) {
   const spellingInput = ref('');
   const spellingAnswered = ref(false);
   const spellingCorrect = ref(false);
@@ -35,7 +36,9 @@ export function useSpellingMode({ currentCard, sessionStats, handleAgain, advanc
     const quality = spellingCorrect.value ? 3 : 1;
     const qualityMap = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy' };
     try {
-      await submitReviewResult(currentCard.value.wordId, quality);
+      if (!isReplay?.value) {
+        await submitReviewResult(currentCard.value.wordId, quality);
+      }
       sessionStats.value.total++;
       sessionStats.value[qualityMap[quality]]++;
       if (quality === 1) handleAgain(currentCard.value.wordId);

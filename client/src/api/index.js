@@ -80,7 +80,8 @@ export const enqueueRoot = (rootId) => api.post('/review/enqueue', { rootId, tz:
 export const submitReviewResult = (wordId, quality) =>
   api.post(`/review/${wordId}/result`, { quality, tz: getUserTz() });
 export const getRootsProgress = () => api.get('/review/roots-progress');
-export const resetWordReview = (wordId) => api.post(`/review/${wordId}/reset`);
+export const resetWordReview = (wordId) =>
+  api.post(`/review/${wordId}/reset`, { tz: getUserTz() });
 export const removeWordReview = (wordId) => api.delete(`/review/${wordId}`);
 export const getQuizChoices = (wordId, count = 3) =>
   api.get(`/review/quiz-choices/${wordId}`, { params: { count } });

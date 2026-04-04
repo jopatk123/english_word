@@ -67,7 +67,8 @@ router.post('/:wordId/result', async (req, res) => {
     const { interval, easeFactor, status } = getNextReview(
       quality,
       review.interval,
-      review.easeFactor
+      review.easeFactor,
+      review.status
     );
     const today = todayStr(req.body.tz);
     const nextDue = addDays(today, interval);

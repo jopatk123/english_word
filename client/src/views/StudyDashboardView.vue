@@ -8,8 +8,8 @@
     <!-- 统计卡片 -->
     <div class="stats-cards" v-loading="statsLoading">
       <div class="stat-card stat-due" @click="startStudy">
-        <div class="stat-number">{{ stats.due }}</div>
-        <div class="stat-label">今日待复习</div>
+        <div class="stat-number">{{ stats.todayDue }}</div>
+        <div class="stat-label">今日到期</div>
       </div>
       <div
         class="stat-card stat-overdue"
@@ -25,7 +25,7 @@
       </div>
       <div class="stat-card stat-week">
         <div class="stat-number">{{ stats.weekDue }}</div>
-        <div class="stat-label">本周待复习</div>
+        <div class="stat-label">本周剩余</div>
       </div>
       <div class="stat-card stat-learning">
         <div class="stat-number">{{ stats.learning + stats.new }}</div>
@@ -168,6 +168,7 @@
   const stats = ref({
     total: 0,
     due: 0,
+    todayDue: 0,
     new: 0,
     learning: 0,
     known: 0,

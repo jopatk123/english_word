@@ -71,7 +71,7 @@ router.post('/:wordId/reset', async (req, res) => {
       status: 'new',
       interval: 0,
       easeFactor: 2.5,
-      dueDate: todayStr(),
+      dueDate: todayStr(req.body.tz),
       reviewCount: 0,
       lastReviewedAt: null,
     });

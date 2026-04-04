@@ -51,9 +51,21 @@ router.get('/history/summary', async (req, res) => {
       order: [['reviewed_at', 'ASC']],
     });
 
+    // 使用用户时区对日期进行分组，避免 UTC 偏移导致日期错位
+    const toLocalDate = (date) => {
+      if (tz) {
+        try {
+          return new Date(date).toLocaleDateString('en-CA', { timeZone: tz });
+        } catch {
+          /* invalid tz, fallback */
+        }
+      }
+      return new Date(date).toISOString().slice(0, 10);
+    };
+
     const dailyMap = {};
     histories.forEach((h) => {
-      const day = h.reviewedAt.toISOString().slice(0, 10);
+      const day = toLocalDate(h.reviewedAt);
       if (!dailyMap[day])
         dailyMap[day] = { date: day, total: 0, again: 0, hard: 0, good: 0, easy: 0 };
       dailyMap[day].total++;
@@ -63,15 +75,13 @@ router.get('/history/summary', async (req, res) => {
 
     const today = todayStr(tz);
     let streak = 0;
-    let checkDate = new Date(today);
-    while (true) {
-      const dateStr = checkDate.toISOString().slice(0, 10);
-      if (dailyMap[dateStr]) {
-        streak++;
-        checkDate.setDate(checkDate.getDate() - 1);
-      } else {
-        break;
-      }
+    let checkDate = today;
+    while (dailyMap[checkDate]) {
+      streak++;
+      // 用纯字符串日期运算，避免 Date 对象的时区陷阱
+      const d = new Date(checkDate + 'T12:00:00Z');
+      d.setUTCDate(d.getUTCDate() - 1);
+      checkDate = d.toISOString().slice(0, 10);
     }
 
     success(res, {

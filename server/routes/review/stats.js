@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { Op } from 'sequelize';
 import { WordReview } from '../../models/index.js';
 import { success, error } from '../../utils/response.js';
-import { todayStr, todayStartUTC, addDays } from '../../utils/srs.js';
+import { todayStr, todayStart, addDays } from '../../utils/srs.js';
 
 const router = Router();
 
@@ -10,18 +10,18 @@ router.get('/stats', async (req, res) => {
   try {
     const tz = req.query.tz;
     const today = todayStr(tz);
-    const todayStart = todayStartUTC(tz);
+    const todayStartDate = todayStart(tz);
+    const tomorrow = addDays(today, 1);
 
-    const todayDate = new Date(today);
-    const dayOfWeek = todayDate.getDay();
-    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    const weekStart = new Date(todayDate);
-    weekStart.setDate(todayDate.getDate() - mondayOffset);
-    const weekStartStr = weekStart.toISOString().slice(0, 10);
+    // 计算本周日（含）日期字符串
+    const todayDate = new Date(today + 'T12:00:00Z');
+    const dayOfWeek = todayDate.getUTCDay();
+    const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+    const weekEndStr = addDays(today, daysUntilSunday);
 
     const [
       totalCount,
-      dueCount,
+      todayDueCount,
       newCount,
       learningCount,
       knownCount,
@@ -30,8 +30,9 @@ router.get('/stats', async (req, res) => {
       weekDueCount,
     ] = await Promise.all([
       WordReview.count({ where: { userId: req.userId } }),
+      // 今日到期（仅 dueDate == today）
       WordReview.count({
-        where: { userId: req.userId, paused: false, dueDate: { [Op.lte]: today } },
+        where: { userId: req.userId, paused: false, dueDate: today },
       }),
       WordReview.count({ where: { userId: req.userId, status: 'new' } }),
       WordReview.count({ where: { userId: req.userId, status: 'learning' } }),
@@ -39,24 +40,28 @@ router.get('/stats', async (req, res) => {
       WordReview.count({
         where: {
           userId: req.userId,
-          lastReviewedAt: { [Op.gte]: todayStart },
+          lastReviewedAt: { [Op.gte]: todayStartDate },
         },
       }),
+      // 超期未复习（dueDate < today），与 todayDue 互斥
       WordReview.count({
         where: { userId: req.userId, paused: false, dueDate: { [Op.lt]: today } },
       }),
+      // 本周剩余（明天 ~ 本周日），不包含今日和超期
       WordReview.count({
         where: {
           userId: req.userId,
           paused: false,
-          dueDate: { [Op.gte]: weekStartStr, [Op.lte]: addDays(weekStartStr, 6) },
+          dueDate: { [Op.gte]: tomorrow, [Op.lte]: weekEndStr },
         },
       }),
     ]);
 
     success(res, {
       total: totalCount,
-      due: dueCount,
+      // due = 今日到期 + 超期，代表"现在需要复习的总量"
+      due: todayDueCount + overdueCount,
+      todayDue: todayDueCount,
       new: newCount,
       learning: learningCount,
       known: knownCount,
