@@ -34,9 +34,12 @@ export const logAiInfo = (message, debugInfo, extra = {}) => {
 };
 
 export const logAiError = (message, debugInfo, err, extra = {}) => {
-  console.error(`[AI] ${message}`, JSON.stringify({
-    ...withDuration(debugInfo),
-    error: err?.message || 'unknown error',
-    ...extra,
-  }));
+  console.error(
+    `[AI] ${message}`,
+    JSON.stringify({
+      ...withDuration(debugInfo),
+      error: err?.message || 'unknown error',
+      ...extra,
+    })
+  );
 };

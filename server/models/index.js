@@ -12,8 +12,18 @@ User.hasMany(Root, { foreignKey: 'user_id', as: 'roots', onDelete: 'CASCADE' });
 Root.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 // 词根 <-> 单词 (多对多，通过 word_roots 关联表)
-Word.belongsToMany(Root, { through: WordRoot, foreignKey: 'wordId', otherKey: 'rootId', as: 'roots' });
-Root.belongsToMany(Word, { through: WordRoot, foreignKey: 'rootId', otherKey: 'wordId', as: 'words' });
+Word.belongsToMany(Root, {
+  through: WordRoot,
+  foreignKey: 'wordId',
+  otherKey: 'rootId',
+  as: 'roots',
+});
+Root.belongsToMany(Word, {
+  through: WordRoot,
+  foreignKey: 'rootId',
+  otherKey: 'wordId',
+  as: 'words',
+});
 
 // WordRoot 直接关联（用于独立查询关联表）
 WordRoot.belongsTo(Root, { foreignKey: 'root_id', as: 'root' });

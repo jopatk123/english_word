@@ -18,11 +18,13 @@ router.get('/history', async (req, res) => {
         userId: req.userId,
         reviewedAt: { [Op.gte]: since },
       },
-      include: [{
-        model: Word,
-        as: 'word',
-        attributes: ['id', 'name'],
-      }],
+      include: [
+        {
+          model: Word,
+          as: 'word',
+          attributes: ['id', 'name'],
+        },
+      ],
       order: [['reviewed_at', 'DESC']],
     });
 
@@ -50,9 +52,10 @@ router.get('/history/summary', async (req, res) => {
     });
 
     const dailyMap = {};
-    histories.forEach(h => {
+    histories.forEach((h) => {
       const day = h.reviewedAt.toISOString().slice(0, 10);
-      if (!dailyMap[day]) dailyMap[day] = { date: day, total: 0, again: 0, hard: 0, good: 0, easy: 0 };
+      if (!dailyMap[day])
+        dailyMap[day] = { date: day, total: 0, again: 0, hard: 0, good: 0, easy: 0 };
       dailyMap[day].total++;
       const qMap = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy' };
       dailyMap[day][qMap[h.quality]]++;
@@ -88,39 +91,68 @@ router.get('/export', async (req, res) => {
 
     const reviews = await WordReview.findAll({
       where: { userId: req.userId },
-      include: [{
-        model: Word,
-        as: 'word',
-        attributes: ['name', 'meaning', 'phonetic'],
-        include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['name', 'meaning'] }],
-      }],
+      include: [
+        {
+          model: Word,
+          as: 'word',
+          attributes: ['name', 'meaning', 'phonetic'],
+          include: [
+            {
+              model: Root,
+              as: 'roots',
+              through: { attributes: [] },
+              attributes: ['name', 'meaning'],
+            },
+          ],
+        },
+      ],
       order: [['due_date', 'ASC']],
     });
 
-    const data = reviews.filter(r => r.word).map(r => ({
-      word: r.word.name,
-      meaning: r.word.meaning,
-      phonetic: r.word.phonetic || '',
-      roots: r.word.roots?.map(root => root.name).join(', ') || '',
-      rootMeanings: r.word.roots?.map(root => root.meaning).join(', ') || '',
-      status: r.status,
-      interval: r.interval,
-      easeFactor: r.easeFactor,
-      dueDate: r.dueDate,
-      reviewCount: r.reviewCount,
-      lastReviewedAt: r.lastReviewedAt,
-      paused: r.paused,
-    }));
+    const data = reviews
+      .filter((r) => r.word)
+      .map((r) => ({
+        word: r.word.name,
+        meaning: r.word.meaning,
+        phonetic: r.word.phonetic || '',
+        roots: r.word.roots?.map((root) => root.name).join(', ') || '',
+        rootMeanings: r.word.roots?.map((root) => root.meaning).join(', ') || '',
+        status: r.status,
+        interval: r.interval,
+        easeFactor: r.easeFactor,
+        dueDate: r.dueDate,
+        reviewCount: r.reviewCount,
+        lastReviewedAt: r.lastReviewedAt,
+        paused: r.paused,
+      }));
 
     if (format === 'csv') {
-      const headers = ['word', 'meaning', 'phonetic', 'roots', 'rootMeanings', 'status', 'interval', 'easeFactor', 'dueDate', 'reviewCount', 'lastReviewedAt', 'paused'];
+      const headers = [
+        'word',
+        'meaning',
+        'phonetic',
+        'roots',
+        'rootMeanings',
+        'status',
+        'interval',
+        'easeFactor',
+        'dueDate',
+        'reviewCount',
+        'lastReviewedAt',
+        'paused',
+      ];
       const csvRows = [headers.join(',')];
-      data.forEach(row => {
-        csvRows.push(headers.map(h => {
-          const val = String(row[h] ?? '');
-          return val.includes(',') || val.includes('"') || val.includes('\n')
-            ? `"${val.replace(/"/g, '""')}"` : val;
-        }).join(','));
+      data.forEach((row) => {
+        csvRows.push(
+          headers
+            .map((h) => {
+              const val = String(row[h] ?? '');
+              return val.includes(',') || val.includes('"') || val.includes('\n')
+                ? `"${val.replace(/"/g, '""')}"`
+                : val;
+            })
+            .join(',')
+        );
       });
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', 'attachment; filename=learning-data.csv');

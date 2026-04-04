@@ -7,7 +7,9 @@ const router = Router();
 // 辅助函数：检查单词是否属于当前用户
 const isWordOwnedByUser = async (wordId, userId) => {
   const word = await Word.findByPk(wordId, {
-    include: [{ model: Root, as: 'roots', through: { attributes: [] }, where: { userId }, required: true }],
+    include: [
+      { model: Root, as: 'roots', through: { attributes: [] }, where: { userId }, required: true },
+    ],
   });
   return word;
 };
@@ -19,11 +21,24 @@ router.get('/', async (req, res) => {
     const where = wordId ? { wordId } : {};
     const examples = await Example.findAll({
       where,
-      include: [{
-        model: Word, as: 'word', attributes: ['id', 'name', 'meaning'],
-        required: true,
-        include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id'], where: { userId: req.userId }, required: true }],
-      }],
+      include: [
+        {
+          model: Word,
+          as: 'word',
+          attributes: ['id', 'name', 'meaning'],
+          required: true,
+          include: [
+            {
+              model: Root,
+              as: 'roots',
+              through: { attributes: [] },
+              attributes: ['id'],
+              where: { userId: req.userId },
+              required: true,
+            },
+          ],
+        },
+      ],
       order: [['create_time', 'DESC']],
     });
     success(res, examples);
@@ -36,11 +51,24 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const example = await Example.findByPk(req.params.id, {
-      include: [{
-        model: Word, as: 'word', attributes: ['id', 'name', 'meaning'],
-        required: true,
-        include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id'], where: { userId: req.userId }, required: true }],
-      }],
+      include: [
+        {
+          model: Word,
+          as: 'word',
+          attributes: ['id', 'name', 'meaning'],
+          required: true,
+          include: [
+            {
+              model: Root,
+              as: 'roots',
+              through: { attributes: [] },
+              attributes: ['id'],
+              where: { userId: req.userId },
+              required: true,
+            },
+          ],
+        },
+      ],
     });
     if (!example) return error(res, '例句不存在');
     success(res, example);
@@ -75,17 +103,27 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const example = await Example.findByPk(req.params.id, {
-      include: [{
-        model: Word, as: 'word', attributes: ['id'],
-        include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'userId'] }],
-      }],
+      include: [
+        {
+          model: Word,
+          as: 'word',
+          attributes: ['id'],
+          include: [
+            { model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'userId'] },
+          ],
+        },
+      ],
     });
-    if (!example || !example.word?.roots?.some(r => r.userId === req.userId)) return error(res, '例句不存在');
+    if (!example || !example.word?.roots?.some((r) => r.userId === req.userId))
+      return error(res, '例句不存在');
     const { sentence, translation, remark } = req.body;
     if (!sentence || !translation) return error(res, '例句原文和翻译为必填项');
     const trimmedSentence = sentence.trim();
-    const existedExample = await Example.findOne({ where: { wordId: example.wordId, sentence: trimmedSentence } });
-    if (existedExample && existedExample.id !== example.id) return error(res, '该单词下已存在相同例句，请勿重复保存', 400);
+    const existedExample = await Example.findOne({
+      where: { wordId: example.wordId, sentence: trimmedSentence },
+    });
+    if (existedExample && existedExample.id !== example.id)
+      return error(res, '该单词下已存在相同例句，请勿重复保存', 400);
     await example.update({
       sentence: trimmedSentence,
       translation: translation.trim(),
@@ -101,12 +139,19 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const example = await Example.findByPk(req.params.id, {
-      include: [{
-        model: Word, as: 'word', attributes: ['id'],
-        include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'userId'] }],
-      }],
+      include: [
+        {
+          model: Word,
+          as: 'word',
+          attributes: ['id'],
+          include: [
+            { model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'userId'] },
+          ],
+        },
+      ],
     });
-    if (!example || !example.word?.roots?.some(r => r.userId === req.userId)) return error(res, '例句不存在');
+    if (!example || !example.word?.roots?.some((r) => r.userId === req.userId))
+      return error(res, '例句不存在');
     await example.destroy();
     success(res, null, '删除成功');
   } catch (e) {

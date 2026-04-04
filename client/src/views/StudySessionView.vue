@@ -7,7 +7,12 @@
     </el-breadcrumb>
 
     <!-- 加载状态 -->
-    <div v-if="loading" class="session-loading" v-loading="true" element-loading-text="加载学习队列..." />
+    <div
+      v-if="loading"
+      class="session-loading"
+      v-loading="true"
+      element-loading-text="加载学习队列..."
+    />
 
     <!-- 模式选择（学习开始前） -->
     <ModeSelect
@@ -101,25 +106,47 @@
 </template>
 
 <script setup>
-import { useStudySession } from '../composables/useStudySession.js';
-import ModeSelect from '../components/study/ModeSelect.vue';
-import SessionComplete from '../components/study/SessionComplete.vue';
-import FlashcardMode from '../components/study/FlashcardMode.vue';
-import ChoiceMode from '../components/study/ChoiceMode.vue';
-import SpellingMode from '../components/study/SpellingMode.vue';
+  import { useStudySession } from '../composables/useStudySession.js';
+  import ModeSelect from '../components/study/ModeSelect.vue';
+  import SessionComplete from '../components/study/SessionComplete.vue';
+  import FlashcardMode from '../components/study/FlashcardMode.vue';
+  import ChoiceMode from '../components/study/ChoiceMode.vue';
+  import SpellingMode from '../components/study/SpellingMode.vue';
 
-const {
-  loading, queue, currentIndex, showAnswer, submitting, finished,
-  sessionStats, againCountMap, resumeInfo,
-  studyMode, modeSelected, modeNames,
-  currentCard,
-  choiceOptions, choiceSelected, choiceAnswered,
-  spellingInput, spellingAnswered, spellingCorrect, spellingHint,
-  hasAgainWords, againWordCount,
-  selectMode, applyResume, dismissResume,
-  replayWithNewMode, replayAgainWords,
-  flipCard, submitRating,
-  handleChoice, choiceNext,
-  checkSpelling, showSpellingHint, spellingNext,
-} = useStudySession();
+  const {
+    loading,
+    queue,
+    currentIndex,
+    showAnswer,
+    submitting,
+    finished,
+    sessionStats,
+    againCountMap,
+    resumeInfo,
+    studyMode,
+    modeSelected,
+    modeNames,
+    currentCard,
+    choiceOptions,
+    choiceSelected,
+    choiceAnswered,
+    spellingInput,
+    spellingAnswered,
+    spellingCorrect,
+    spellingHint,
+    hasAgainWords,
+    againWordCount,
+    selectMode,
+    applyResume,
+    dismissResume,
+    replayWithNewMode,
+    replayAgainWords,
+    flipCard,
+    submitRating,
+    handleChoice,
+    choiceNext,
+    checkSpelling,
+    showSpellingHint,
+    spellingNext,
+  } = useStudySession();
 </script>

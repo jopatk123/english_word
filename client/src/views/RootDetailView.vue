@@ -24,7 +24,9 @@
       <h3>关联单词（{{ words.length }}）</h3>
       <div class="section-actions">
         <el-button type="info" @click="$router.push('/')">返回词根列表</el-button>
-        <el-button type="success" @click="$router.push(`/root/${rootId}/ai-words`)">智能添加单词</el-button>
+        <el-button type="success" @click="$router.push(`/root/${rootId}/ai-words`)"
+          >智能添加单词</el-button
+        >
         <el-button type="primary" @click="openWordDialog()">添加单词</el-button>
       </div>
     </div>
@@ -54,8 +56,15 @@
     </el-table>
 
     <!-- 移动单词对话框 -->
-    <el-dialog v-model="moveDialogVisible" title="移动单词到其他词根" width="420px" destroy-on-close>
-      <p style="margin: 0 0 12px; color: #606266;">将 <strong>{{ movingWord?.name }}</strong> 从当前词根移动到：</p>
+    <el-dialog
+      v-model="moveDialogVisible"
+      title="移动单词到其他词根"
+      width="420px"
+      destroy-on-close
+    >
+      <p style="margin: 0 0 12px; color: #606266">
+        将 <strong>{{ movingWord?.name }}</strong> 从当前词根移动到：
+      </p>
       <el-select
         v-model="moveTargetRootId"
         placeholder="请选择目标词根"
@@ -77,7 +86,12 @@
     </el-dialog>
 
     <!-- 单词表单对话框 -->
-    <el-dialog v-model="wordDialogVisible" :title="editingWord ? '编辑单词' : '添加单词'" width="500px" destroy-on-close>
+    <el-dialog
+      v-model="wordDialogVisible"
+      :title="editingWord ? '编辑单词' : '添加单词'"
+      width="500px"
+      destroy-on-close
+    >
       <el-form :model="wordForm" label-width="80px">
         <el-form-item label="单词" required>
           <el-input v-model="wordForm.name" placeholder="如：reject" />
@@ -101,189 +115,208 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { getRoot, getRoots, getWords, createWord, updateWord, deleteWord, moveWord } from '../api/index.js';
-import SpeakButton from '../components/SpeakButton.vue';
+  import { ref, computed, onMounted } from 'vue';
+  import { useRoute, useRouter } from 'vue-router';
+  import { ElMessage, ElMessageBox } from 'element-plus';
+  import {
+    getRoot,
+    getRoots,
+    getWords,
+    createWord,
+    updateWord,
+    deleteWord,
+    moveWord,
+  } from '../api/index.js';
+  import SpeakButton from '../components/SpeakButton.vue';
 
-const props = defineProps({ id: String });
-const route = useRoute();
+  const props = defineProps({ id: String });
+  const route = useRoute();
 
-const root = ref(null);
-const words = ref([]);
-const loading = ref(false);
-const wordsLoading = ref(false);
+  const root = ref(null);
+  const words = ref([]);
+  const loading = ref(false);
+  const wordsLoading = ref(false);
 
-const wordDialogVisible = ref(false);
-const editingWord = ref(null);
-const wordForm = ref({ name: '', meaning: '', phonetic: '', remark: '' });
-const saving = ref(false);
+  const wordDialogVisible = ref(false);
+  const editingWord = ref(null);
+  const wordForm = ref({ name: '', meaning: '', phonetic: '', remark: '' });
+  const saving = ref(false);
 
-const router = useRouter();
-const rootId = props.id || route.params.id;
+  const router = useRouter();
+  const rootId = props.id || route.params.id;
 
-// 移动单词
-const moveDialogVisible = ref(false);
-const movingWord = ref(null);
-const moveTargetRootId = ref(null);
-const moving = ref(false);
-const allRoots = ref([]);
-const allRootsLoading = ref(false);
+  // 移动单词
+  const moveDialogVisible = ref(false);
+  const movingWord = ref(null);
+  const moveTargetRootId = ref(null);
+  const moving = ref(false);
+  const allRoots = ref([]);
+  const allRootsLoading = ref(false);
 
-const otherRoots = computed(() => allRoots.value.filter(r => r.id !== Number(rootId)));
+  const otherRoots = computed(() => allRoots.value.filter((r) => r.id !== Number(rootId)));
 
-const openMoveDialog = async (word) => {
-  movingWord.value = word;
-  moveTargetRootId.value = null;
-  moveDialogVisible.value = true;
-  if (allRoots.value.length === 0) {
-    allRootsLoading.value = true;
+  const openMoveDialog = async (word) => {
+    movingWord.value = word;
+    moveTargetRootId.value = null;
+    moveDialogVisible.value = true;
+    if (allRoots.value.length === 0) {
+      allRootsLoading.value = true;
+      try {
+        const res = await getRoots();
+        allRoots.value = res.data || [];
+      } catch {
+        ElMessage.error('获取词根列表失败');
+      } finally {
+        allRootsLoading.value = false;
+      }
+    }
+  };
+
+  const handleMoveWord = async () => {
+    if (!moveTargetRootId.value) return ElMessage.warning('请选择目标词根');
+    moving.value = true;
     try {
-      const res = await getRoots();
-      allRoots.value = res.data || [];
-    } catch {
-      ElMessage.error('获取词根列表失败');
+      await moveWord(movingWord.value.id, Number(rootId), moveTargetRootId.value);
+      ElMessage.success('移动成功');
+      moveDialogVisible.value = false;
+      fetchWords();
+    } catch (e) {
+      ElMessage.error(e?.response?.data?.msg || '移动失败');
     } finally {
-      allRootsLoading.value = false;
+      moving.value = false;
     }
-  }
-};
+  };
 
-const handleMoveWord = async () => {
-  if (!moveTargetRootId.value) return ElMessage.warning('请选择目标词根');
-  moving.value = true;
-  try {
-    await moveWord(movingWord.value.id, Number(rootId), moveTargetRootId.value);
-    ElMessage.success('移动成功');
-    moveDialogVisible.value = false;
-    fetchWords();
-  } catch (e) {
-    ElMessage.error(e?.response?.data?.msg || '移动失败');
-  } finally {
-    moving.value = false;
-  }
-};
+  const findLocalWordByName = (name) => {
+    const target = name.trim().toLowerCase();
+    return words.value.find((item) => item.name.trim().toLowerCase() === target);
+  };
 
-const findLocalWordByName = (name) => {
-  const target = name.trim().toLowerCase();
-  return words.value.find((item) => item.name.trim().toLowerCase() === target);
-};
-
-const fetchRoot = async () => {
-  loading.value = true;
-  try {
-    const res = await getRoot(rootId);
-    root.value = res.data;
-  } catch {
-    ElMessage.error('获取词根信息失败');
-  } finally {
-    loading.value = false;
-  }
-};
-
-const fetchWords = async () => {
-  wordsLoading.value = true;
-  try {
-    const res = await getWords({ rootId });
-    words.value = res.data;
-  } catch {
-    ElMessage.error('获取单词列表失败');
-  } finally {
-    wordsLoading.value = false;
-  }
-};
-
-const openWordDialog = (word = null) => {
-  editingWord.value = word;
-  wordForm.value = word
-    ? { name: word.name, meaning: word.meaning, phonetic: word.phonetic || '', remark: word.remark || '' }
-    : { name: '', meaning: '', phonetic: '', remark: '' };
-  wordDialogVisible.value = true;
-};
-
-const handleSaveWord = async () => {
-  if (!wordForm.value.name || !wordForm.value.meaning) {
-    return ElMessage.warning('请填写单词和含义');
-  }
-
-  if (!editingWord.value) {
-    const existingInThisRoot = findLocalWordByName(wordForm.value.name);
-    if (existingInThisRoot) {
-      return ElMessageBox.confirm(
-        `单词「${wordForm.value.name}」已在当前词根中存在，是否前往该单词详情？`,
-        '单词已存在',
-        {
-          confirmButtonText: '前往',
-          cancelButtonText: '取消',
-          type: 'info',
-        }
-      )
-        .then(() => router.push(`/word/${existingInThisRoot.id}`))
-        .catch(() => {});
-    }
-
+  const fetchRoot = async () => {
+    loading.value = true;
     try {
-      const searchRes = await getWords({ keyword: wordForm.value.name });
-      const existingSame = (searchRes.data || []).find((item) => item.name.trim().toLowerCase() === wordForm.value.name.trim().toLowerCase());
-      if (existingSame) {
-        const hasCurrentRoot = (existingSame.roots || []).some((rootItem) => rootItem.id === Number(rootId));
-        if (!hasCurrentRoot) {
-          const confirm = await ElMessageBox.confirm(
-            `单词「${wordForm.value.name}」已在词库中存在，是否前往详情查看？点击取消则继续添加到当前词根。`,
-            '单词已存在',
-            {
-              confirmButtonText: '前往',
-              cancelButtonText: '继续添加',
-              type: 'warning',
-            }
-          ).then(() => true).catch(() => false);
+      const res = await getRoot(rootId);
+      root.value = res.data;
+    } catch {
+      ElMessage.error('获取词根信息失败');
+    } finally {
+      loading.value = false;
+    }
+  };
 
-          if (confirm) {
-            return router.push(`/word/${existingSame.id}`);
+  const fetchWords = async () => {
+    wordsLoading.value = true;
+    try {
+      const res = await getWords({ rootId });
+      words.value = res.data;
+    } catch {
+      ElMessage.error('获取单词列表失败');
+    } finally {
+      wordsLoading.value = false;
+    }
+  };
+
+  const openWordDialog = (word = null) => {
+    editingWord.value = word;
+    wordForm.value = word
+      ? {
+          name: word.name,
+          meaning: word.meaning,
+          phonetic: word.phonetic || '',
+          remark: word.remark || '',
+        }
+      : { name: '', meaning: '', phonetic: '', remark: '' };
+    wordDialogVisible.value = true;
+  };
+
+  const handleSaveWord = async () => {
+    if (!wordForm.value.name || !wordForm.value.meaning) {
+      return ElMessage.warning('请填写单词和含义');
+    }
+
+    if (!editingWord.value) {
+      const existingInThisRoot = findLocalWordByName(wordForm.value.name);
+      if (existingInThisRoot) {
+        return ElMessageBox.confirm(
+          `单词「${wordForm.value.name}」已在当前词根中存在，是否前往该单词详情？`,
+          '单词已存在',
+          {
+            confirmButtonText: '前往',
+            cancelButtonText: '取消',
+            type: 'info',
+          }
+        )
+          .then(() => router.push(`/word/${existingInThisRoot.id}`))
+          .catch(() => {});
+      }
+
+      try {
+        const searchRes = await getWords({ keyword: wordForm.value.name });
+        const existingSame = (searchRes.data || []).find(
+          (item) => item.name.trim().toLowerCase() === wordForm.value.name.trim().toLowerCase()
+        );
+        if (existingSame) {
+          const hasCurrentRoot = (existingSame.roots || []).some(
+            (rootItem) => rootItem.id === Number(rootId)
+          );
+          if (!hasCurrentRoot) {
+            const confirm = await ElMessageBox.confirm(
+              `单词「${wordForm.value.name}」已在词库中存在，是否前往详情查看？点击取消则继续添加到当前词根。`,
+              '单词已存在',
+              {
+                confirmButtonText: '前往',
+                cancelButtonText: '继续添加',
+                type: 'warning',
+              }
+            )
+              .then(() => true)
+              .catch(() => false);
+
+            if (confirm) {
+              return router.push(`/word/${existingSame.id}`);
+            }
           }
         }
+      } catch {
+        // 忽略搜索失败，继续执行创建逻辑。
       }
+    }
+
+    saving.value = true;
+    try {
+      if (editingWord.value) {
+        await updateWord(editingWord.value.id, wordForm.value);
+        ElMessage.success('更新成功');
+      } else {
+        const res = await createWord({ ...wordForm.value, rootId });
+        ElMessage.success(res?.msg || '添加成功');
+      }
+      wordDialogVisible.value = false;
+      fetchWords();
+    } catch (e) {
+      ElMessage.error(e?.response?.data?.msg || '保存失败');
+    } finally {
+      saving.value = false;
+    }
+  };
+
+  const handleDeleteWord = async (word) => {
+    try {
+      await ElMessageBox.confirm(
+        `确定删除单词「${word.name}」？关联的例句将一并删除。`,
+        '确认删除',
+        { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+      );
+      await deleteWord(word.id);
+      ElMessage.success('删除成功');
+      fetchWords();
     } catch {
-      // 忽略搜索失败，继续执行创建逻辑。
+      // 取消
     }
-  }
+  };
 
-  saving.value = true;
-  try {
-    if (editingWord.value) {
-      await updateWord(editingWord.value.id, wordForm.value);
-      ElMessage.success('更新成功');
-    } else {
-      const res = await createWord({ ...wordForm.value, rootId });
-      ElMessage.success(res?.msg || '添加成功');
-    }
-    wordDialogVisible.value = false;
+  onMounted(() => {
+    fetchRoot();
     fetchWords();
-  } catch (e) {
-    ElMessage.error(e?.response?.data?.msg || '保存失败');
-  } finally {
-    saving.value = false;
-  }
-};
-
-const handleDeleteWord = async (word) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定删除单词「${word.name}」？关联的例句将一并删除。`,
-      '确认删除',
-      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
-    );
-    await deleteWord(word.id);
-    ElMessage.success('删除成功');
-    fetchWords();
-  } catch {
-    // 取消
-  }
-};
-
-onMounted(() => {
-  fetchRoot();
-  fetchWords();
-});
+  });
 </script>

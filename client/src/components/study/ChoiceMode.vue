@@ -35,19 +35,19 @@
 </template>
 
 <script setup>
-import SpeakButton from '../SpeakButton.vue';
-import SessionProgress from './SessionProgress.vue';
+  import SpeakButton from '../SpeakButton.vue';
+  import SessionProgress from './SessionProgress.vue';
 
-defineProps({
-  card: { type: Object, required: true },
-  currentIndex: { type: Number, required: true },
-  total: { type: Number, required: true },
-  choiceOptions: { type: Array, required: true },
-  choiceSelected: { type: Number, default: -1 },
-  choiceAnswered: { type: Boolean, default: false },
-  submitting: { type: Boolean, default: false },
-  isLast: { type: Boolean, default: false },
-});
+  defineProps({
+    card: { type: Object, required: true },
+    currentIndex: { type: Number, required: true },
+    total: { type: Number, required: true },
+    choiceOptions: { type: Array, required: true },
+    choiceSelected: { type: Number, default: -1 },
+    choiceAnswered: { type: Boolean, default: false },
+    submitting: { type: Boolean, default: false },
+    isLast: { type: Boolean, default: false },
+  });
 
-defineEmits(['choose', 'next']);
+  defineEmits(['choose', 'next']);
 </script>

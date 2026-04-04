@@ -68,122 +68,128 @@
     />
 
     <!-- 句子分析结果 -->
-    <SentenceAnalysisResult v-if="searchMode === 'sentence' && sentenceResult" :result="sentenceResult" />
+    <SentenceAnalysisResult
+      v-if="searchMode === 'sentence' && sentenceResult"
+      :result="sentenceResult"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
-import { Search } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
-import { analyzeWord, analyzeSentence } from '../api/index.js';
-import { getProviderById } from '../constants/aiProviders.js';
-import { isAiSettingsReady, loadAiSettings } from '../utils/aiSettings.js';
-import WordAnalysisResult from '../components/search/WordAnalysisResult.vue';
-import SentenceAnalysisResult from '../components/search/SentenceAnalysisResult.vue';
+  import { ref, computed, onMounted } from 'vue';
+  import { useRoute } from 'vue-router';
+  import { Search } from '@element-plus/icons-vue';
+  import { ElMessage } from 'element-plus';
+  import { analyzeWord, analyzeSentence } from '../api/index.js';
+  import { getProviderById } from '../constants/aiProviders.js';
+  import { isAiSettingsReady, loadAiSettings } from '../utils/aiSettings.js';
+  import WordAnalysisResult from '../components/search/WordAnalysisResult.vue';
+  import SentenceAnalysisResult from '../components/search/SentenceAnalysisResult.vue';
 
-const route = useRoute();
-const settings = ref(loadAiSettings());
-const ready = computed(() => isAiSettingsReady(settings.value));
-const providerName = computed(() => getProviderById(settings.value.providerId).name);
+  const route = useRoute();
+  const settings = ref(loadAiSettings());
+  const ready = computed(() => isAiSettingsReady(settings.value));
+  const providerName = computed(() => getProviderById(settings.value.providerId).name);
 
-const searchInput = ref('');
-const loading = ref(false);
-const errorMsg = ref('');
-const searchMode = ref('');
-const wordResult = ref(null);
-const sentenceResult = ref(null);
-const regeneratingExampleIndex = ref(-1);
+  const searchInput = ref('');
+  const loading = ref(false);
+  const errorMsg = ref('');
+  const searchMode = ref('');
+  const wordResult = ref(null);
+  const sentenceResult = ref(null);
+  const regeneratingExampleIndex = ref(-1);
 
-const isWord = (input) => /^[a-zA-Z-]+$/.test(input.trim());
+  const isWord = (input) => /^[a-zA-Z-]+$/.test(input.trim());
 
-const clearResults = () => {
-  searchMode.value = '';
-  wordResult.value = null;
-  sentenceResult.value = null;
-  errorMsg.value = '';
-  regeneratingExampleIndex.value = -1;
-};
-
-const handleRegenerateExample = async ({ index }) => {
-  if (index < 0 || !wordResult.value?.analysis?.examples?.length) return;
-  if (!ready.value) {
-    return ElMessage.warning('请先完成 AI 配置');
-  }
-
-  const analysis = wordResult.value.analysis;
-  const excludedSentences = analysis.examples
-    .map((item) => item?.sentence)
-    .filter(Boolean);
-
-  regeneratingExampleIndex.value = index;
-  try {
-    const res = await analyzeWord(analysis.word, settings.value, {
-      excludedSentences,
-      singleExample: true,
-    });
-    const newExample = res.data?.analysis?.examples?.[0];
-    if (!newExample) {
-      return ElMessage.warning('没有生成新的例句，请再试一次');
-    }
-
-    const nextExamples = [...analysis.examples];
-    nextExamples[index] = newExample;
-    analysis.examples = nextExamples;
-    ElMessage.success('已重新生成该例句');
-  } catch (e) {
-    ElMessage.error(e?.response?.data?.msg || (e?.code === 'ECONNABORTED' ? 'AI 请求超时，请稍后重试' : '重新生成例句失败'));
-  } finally {
+  const clearResults = () => {
+    searchMode.value = '';
+    wordResult.value = null;
+    sentenceResult.value = null;
+    errorMsg.value = '';
     regeneratingExampleIndex.value = -1;
-  }
-};
+  };
 
-const handleSearch = async () => {
-  const input = searchInput.value.trim();
-  if (!input) {
-    return ElMessage.warning('请输入要搜索的内容');
-  }
-
-  if (!/[a-zA-Z]/.test(input)) {
-    return ElMessage.warning('请输入英文单词或句子');
-  }
-
-  if (!ready.value) {
-    return ElMessage.warning('请先完成 AI 配置');
-  }
-
-  clearResults();
-  loading.value = true;
-
-  try {
-    if (isWord(input)) {
-      searchMode.value = 'word';
-      const res = await analyzeWord(input, settings.value);
-      wordResult.value = res.data;
-    } else {
-      searchMode.value = 'sentence';
-      const res = await analyzeSentence(input, settings.value);
-      sentenceResult.value = res.data;
+  const handleRegenerateExample = async ({ index }) => {
+    if (index < 0 || !wordResult.value?.analysis?.examples?.length) return;
+    if (!ready.value) {
+      return ElMessage.warning('请先完成 AI 配置');
     }
-  } catch (e) {
-    errorMsg.value = e?.response?.data?.msg || (e?.code === 'ECONNABORTED' ? 'AI 请求超时，请稍后重试' : '搜索分析失败，请重试');
-  } finally {
-    loading.value = false;
-  }
-};
 
-onMounted(() => {
-  const q = route.query.q;
-  if (q && typeof q === 'string' && q.trim()) {
-    searchInput.value = q.trim();
-    handleSearch();
-  }
-});
+    const analysis = wordResult.value.analysis;
+    const excludedSentences = analysis.examples.map((item) => item?.sentence).filter(Boolean);
+
+    regeneratingExampleIndex.value = index;
+    try {
+      const res = await analyzeWord(analysis.word, settings.value, {
+        excludedSentences,
+        singleExample: true,
+      });
+      const newExample = res.data?.analysis?.examples?.[0];
+      if (!newExample) {
+        return ElMessage.warning('没有生成新的例句，请再试一次');
+      }
+
+      const nextExamples = [...analysis.examples];
+      nextExamples[index] = newExample;
+      analysis.examples = nextExamples;
+      ElMessage.success('已重新生成该例句');
+    } catch (e) {
+      ElMessage.error(
+        e?.response?.data?.msg ||
+          (e?.code === 'ECONNABORTED' ? 'AI 请求超时，请稍后重试' : '重新生成例句失败')
+      );
+    } finally {
+      regeneratingExampleIndex.value = -1;
+    }
+  };
+
+  const handleSearch = async () => {
+    const input = searchInput.value.trim();
+    if (!input) {
+      return ElMessage.warning('请输入要搜索的内容');
+    }
+
+    if (!/[a-zA-Z]/.test(input)) {
+      return ElMessage.warning('请输入英文单词或句子');
+    }
+
+    if (!ready.value) {
+      return ElMessage.warning('请先完成 AI 配置');
+    }
+
+    clearResults();
+    loading.value = true;
+
+    try {
+      if (isWord(input)) {
+        searchMode.value = 'word';
+        const res = await analyzeWord(input, settings.value);
+        wordResult.value = res.data;
+      } else {
+        searchMode.value = 'sentence';
+        const res = await analyzeSentence(input, settings.value);
+        sentenceResult.value = res.data;
+      }
+    } catch (e) {
+      errorMsg.value =
+        e?.response?.data?.msg ||
+        (e?.code === 'ECONNABORTED' ? 'AI 请求超时，请稍后重试' : '搜索分析失败，请重试');
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  onMounted(() => {
+    const q = route.query.q;
+    if (q && typeof q === 'string' && q.trim()) {
+      searchInput.value = q.trim();
+      handleSearch();
+    }
+  });
 </script>
 
 <style scoped>
-.search-form {
-  max-width: 600px;
-}
+  .search-form {
+    max-width: 600px;
+  }
 </style>

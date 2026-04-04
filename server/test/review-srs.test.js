@@ -181,7 +181,14 @@ describe('WordReview 学习队列数据库操作', () => {
     const today = new Date().toISOString().slice(0, 10);
     const nextDue = addDays(today, interval);
 
-    await review.update({ status, interval, easeFactor, dueDate: nextDue, reviewCount: review.reviewCount + 1, lastReviewedAt: new Date() });
+    await review.update({
+      status,
+      interval,
+      easeFactor,
+      dueDate: nextDue,
+      reviewCount: review.reviewCount + 1,
+      lastReviewedAt: new Date(),
+    });
 
     const updated = await WordReview.findOne({ where: { userId: testUserId, wordId: testWordId } });
     expect(updated.interval).toBe(3);
@@ -196,7 +203,14 @@ describe('WordReview 学习队列数据库操作', () => {
     const today = new Date().toISOString().slice(0, 10);
     const nextDue = addDays(today, interval);
 
-    await review.update({ status, interval, easeFactor, dueDate: nextDue, reviewCount: review.reviewCount + 1, lastReviewedAt: new Date() });
+    await review.update({
+      status,
+      interval,
+      easeFactor,
+      dueDate: nextDue,
+      reviewCount: review.reviewCount + 1,
+      lastReviewedAt: new Date(),
+    });
 
     const updated = await WordReview.findOne({ where: { userId: testUserId, wordId: testWordId } });
     expect(updated.interval).toBe(0);
@@ -210,7 +224,7 @@ describe('WordReview 学习队列数据库操作', () => {
     const activeReviews = await WordReview.findAll({
       where: { userId: testUserId, paused: false },
     });
-    const pausedWord = activeReviews.find(r => r.wordId === testWordId);
+    const pausedWord = activeReviews.find((r) => r.wordId === testWordId);
     expect(pausedWord).toBeUndefined();
   });
 

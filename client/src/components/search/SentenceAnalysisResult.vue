@@ -45,35 +45,35 @@
 </template>
 
 <script setup>
-import SpeakButton from '../SpeakButton.vue';
+  import SpeakButton from '../SpeakButton.vue';
 
-defineProps({
-  result: { type: Object, required: true },
-});
+  defineProps({
+    result: { type: Object, required: true },
+  });
 </script>
 
 <style scoped>
-.sentence-original {
-  padding: 12px 0;
-}
+  .sentence-original {
+    padding: 12px 0;
+  }
 
-.sentence-text {
-  font-size: 18px;
-  font-weight: 500;
-  color: #303133;
-  line-height: 1.6;
-}
+  .sentence-text {
+    font-size: 18px;
+    font-weight: 500;
+    color: #303133;
+    line-height: 1.6;
+  }
 
-.sentence-translation {
-  font-size: 16px;
-  color: #606266;
-  line-height: 1.6;
-}
+  .sentence-translation {
+    font-size: 16px;
+    color: #606266;
+    line-height: 1.6;
+  }
 
-.grammar-text {
-  font-size: 14px;
-  color: #606266;
-  line-height: 1.8;
-  white-space: pre-wrap;
-}
+  .grammar-text {
+    font-size: 14px;
+    color: #606266;
+    line-height: 1.8;
+    white-space: pre-wrap;
+  }
 </style>

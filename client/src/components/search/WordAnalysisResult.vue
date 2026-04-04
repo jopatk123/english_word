@@ -4,8 +4,10 @@
     <el-alert type="success" :closable="false" show-icon>
       <template #title>
         单词 <strong>{{ wordResult.existingWord.name }}</strong> 已存在，关联词根：
-        <span v-for="(root, idx) in (wordResult.existingWord.roots || [])" :key="root.id">
-          <el-link type="primary" @click="$router.push(`/root/${root.id}`)">{{ root.name }}</el-link>
+        <span v-for="(root, idx) in wordResult.existingWord.roots || []" :key="root.id">
+          <el-link type="primary" @click="$router.push(`/root/${root.id}`)">{{
+            root.name
+          }}</el-link>
           <span v-if="idx < wordResult.existingWord.roots.length - 1">、</span>
         </span>
         ，
@@ -50,7 +52,11 @@
     <el-divider />
     <div v-if="wordResult.analysis.roots?.length" class="root-info-section">
       <h3 style="margin-bottom: 12px">词根信息（{{ wordResult.analysis.roots.length }} 个）</h3>
-      <div v-for="(analysisRoot, rIdx) in wordResult.analysis.roots" :key="rIdx" style="margin-bottom: 12px; padding: 8px 0; border-bottom: 1px dashed #ebeef5">
+      <div
+        v-for="(analysisRoot, rIdx) in wordResult.analysis.roots"
+        :key="rIdx"
+        style="margin-bottom: 12px; padding: 8px 0; border-bottom: 1px dashed #ebeef5"
+      >
         <div class="cell-with-speak" style="margin-bottom: 8px">
           <el-tag type="primary" size="large">{{ analysisRoot.name }}</el-tag>
           <SpeakButton :text="analysisRoot.name" />
@@ -61,7 +67,10 @@
           <el-alert type="info" :closable="false" show-icon>
             <template #title>
               词根 <strong>{{ analysisRoot.name }}</strong> 已存在，
-              <el-link type="primary" @click="$router.push(`/root/${getExistingRootId(analysisRoot.name)}`)">
+              <el-link
+                type="primary"
+                @click="$router.push(`/root/${getExistingRootId(analysisRoot.name)}`)"
+              >
                 点击查看
               </el-link>
             </template>
@@ -76,7 +85,10 @@
           </div>
         </div>
 
-        <div v-if="!isRootExisting(analysisRoot.name) && !wordResult.existingWord" style="margin-top: 8px">
+        <div
+          v-if="!isRootExisting(analysisRoot.name) && !wordResult.existingWord"
+          style="margin-top: 8px"
+        >
           <el-checkbox
             :model-value="addRoots.includes(rIdx)"
             @change="(val) => toggleAddRoot(rIdx, val)"
@@ -134,7 +146,8 @@
             type="info"
             size="small"
             style="margin-left: 6px; vertical-align: middle"
-          >→ 未分类</el-tag>
+            >→ 未分类</el-tag
+          >
         </el-checkbox>
       </div>
     </template>
@@ -183,9 +196,7 @@
 
     <!-- 操作按钮 -->
     <div v-if="canAddAll" class="page-actions ai-footer-actions">
-      <el-button type="primary" :loading="saving" @click="handleAddAll">
-        一键添加全部
-      </el-button>
+      <el-button type="primary" :loading="saving" @click="handleAddAll"> 一键添加全部 </el-button>
       <el-button
         type="primary"
         :loading="saving"
@@ -203,271 +214,277 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { ElMessage } from 'element-plus';
-import { createRoot, createWord, createExample, getRoots } from '../../api/index.js';
-import SpeakButton from '../SpeakButton.vue';
+  import { ref, computed } from 'vue';
+  import { ElMessage } from 'element-plus';
+  import { createRoot, createWord, createExample, getRoots } from '../../api/index.js';
+  import SpeakButton from '../SpeakButton.vue';
 
-const props = defineProps({
-  wordResult: { type: Object, required: true },
-  regeneratingExampleIndex: { type: Number, default: -1 },
-});
+  const props = defineProps({
+    wordResult: { type: Object, required: true },
+    regeneratingExampleIndex: { type: Number, default: -1 },
+  });
 
-const emit = defineEmits(['regenerate-example']);
+  const emit = defineEmits(['regenerate-example']);
 
-const saving = ref(false);
-const addRoots = ref([]);
-const addWord = ref(false);
-const selectedExamples = ref([]);
-const excludedExistingRootNames = ref([]);
-const manualRootIds = ref([]);
-const rootSearchLoading = ref(false);
-const rootOptions = ref([]);
+  const saving = ref(false);
+  const addRoots = ref([]);
+  const addWord = ref(false);
+  const selectedExamples = ref([]);
+  const excludedExistingRootNames = ref([]);
+  const manualRootIds = ref([]);
+  const rootSearchLoading = ref(false);
+  const rootOptions = ref([]);
 
-const isRootExisting = (name) => {
-  return props.wordResult?.existingRoots?.some((r) => r.name === name) || false;
-};
+  const isRootExisting = (name) => {
+    return props.wordResult?.existingRoots?.some((r) => r.name === name) || false;
+  };
 
-const getExistingRootId = (name) => {
-  return props.wordResult?.existingRoots?.find((r) => r.name === name)?.id;
-};
+  const getExistingRootId = (name) => {
+    return props.wordResult?.existingRoots?.find((r) => r.name === name)?.id;
+  };
 
-const isExistingRootIncluded = (name) => !excludedExistingRootNames.value.includes(name);
+  const isExistingRootIncluded = (name) => !excludedExistingRootNames.value.includes(name);
 
-const toggleIncludeExistingRoot = (name, val) => {
-  if (val) {
-    excludedExistingRootNames.value = excludedExistingRootNames.value.filter((n) => n !== name);
-  } else {
-    if (!excludedExistingRootNames.value.includes(name)) {
-      excludedExistingRootNames.value.push(name);
-    }
-  }
-};
-
-const searchRoots = async (query) => {
-  if (!query) {
-    rootOptions.value = [];
-    return;
-  }
-  rootSearchLoading.value = true;
-  try {
-    const res = await getRoots(query);
-    rootOptions.value = res.data || [];
-  } catch {
-    rootOptions.value = [];
-  } finally {
-    rootSearchLoading.value = false;
-  }
-};
-
-const toggleAddRoot = (idx, val) => {
-  if (val) {
-    if (!addRoots.value.includes(idx)) addRoots.value.push(idx);
-  } else {
-    addRoots.value = addRoots.value.filter((i) => i !== idx);
-  }
-};
-
-const canAddWord = computed(() => !props.wordResult.existingWord);
-
-const willGoToUncategorized = computed(() => {
-  if (!addWord.value) return false;
-  const roots = props.wordResult.analysis.roots || [];
-  const hasExistingIncluded = roots.some((r) => isRootExisting(r.name) && isExistingRootIncluded(r.name));
-  return !hasExistingIncluded && addRoots.value.length === 0 && manualRootIds.value.length === 0;
-});
-
-const addExamples = computed(() => selectedExamples.value.length > 0);
-
-const canAddExamples = computed(() => {
-  if (props.wordResult.existingWord) return false;
-  return addWord.value;
-});
-
-const showSaveButton = computed(() => {
-  if (props.wordResult.existingWord) return false;
-  return addRoots.value.length > 0 || addWord.value || selectedExamples.value.length > 0;
-});
-
-const canAddAll = computed(() => {
-  // 一键添加功能在当前单词尚未存在时可用
-  return !props.wordResult.existingWord;
-});
-
-const handleAddAll = () => {
-  if (saving.value) return;
-
-  // 取消所有对已存在词根的排除（确保全部包含）
-  excludedExistingRootNames.value = [];
-
-  // 选择所有可添加的词根（仅勾选，不提交）
-  const allRootIndexes = (props.wordResult.analysis.roots || [])
-    .map((r, idx) => ({ r, idx }))
-    .filter(({ r }) => !isRootExisting(r.name))
-    .map(({ idx }) => idx);
-
-  addRoots.value = Array.from(new Set([...(addRoots.value || []), ...allRootIndexes]));
-
-  // 确保单词被勾选
-  addWord.value = true;
-
-  // 选择所有例句（如果有）
-  selectedExamples.value = (props.wordResult.analysis.examples || []).map((_, idx) => idx);
-};
-
-const saveSummary = computed(() => {
-  const parts = [];
-  const newRootCount = addRoots.value.filter((idx) => {
-    const r = props.wordResult?.analysis.roots?.[idx];
-    return r && !isRootExisting(r.name);
-  }).length;
-  if (newRootCount) parts.push(`${newRootCount} 个词根`);
-  if (addWord.value) {
-    parts.push(willGoToUncategorized.value ? '单词（→未分类）' : '单词');
-  }
-  if (selectedExamples.value.length) parts.push(`${selectedExamples.value.length} 条例句`);
-  return parts.length ? `将保存: ${parts.join('、')}` : '';
-});
-
-const toggleExample = (idx, checked) => {
-  if (checked) {
-    if (!selectedExamples.value.includes(idx)) {
-      selectedExamples.value.push(idx);
-    }
-    addWord.value = true;
-  } else {
-    selectedExamples.value = selectedExamples.value.filter((i) => i !== idx);
-  }
-};
-
-const formatMeaning = (analysis) => {
-  if (analysis.partOfSpeech?.length) {
-    return analysis.partOfSpeech.map((p) => `${p.type} ${p.meaning}`).join('  ');
-  }
-  return analysis.meaning;
-};
-
-const handleSave = async () => {
-  saving.value = true;
-  const goToUncategorized = willGoToUncategorized.value;
-  try {
-    const analysisRoots = props.wordResult.analysis.roots || [];
-    const rootIds = [...manualRootIds.value];
-
-    for (const r of analysisRoots) {
-      const existingId = getExistingRootId(r.name);
-      if (existingId && isExistingRootIncluded(r.name)) rootIds.push(existingId);
-    }
-
-    const createdRootNames = [];
-    for (const idx of addRoots.value) {
-      const r = analysisRoots[idx];
-      if (!r || isRootExisting(r.name)) continue;
-      const rootRes = await createRoot({ name: r.name, meaning: r.meaning });
-      rootIds.push(rootRes.data.id);
-      createdRootNames.push(r.name);
-      if (!props.wordResult.existingRoots) props.wordResult.existingRoots = [];
-      props.wordResult.existingRoots.push({ id: rootRes.data.id, name: r.name, meaning: r.meaning });
-    }
-    if (createdRootNames.length) {
-      ElMessage.success(`词根「${createdRootNames.join('、')}」添加成功`);
-    }
-    addRoots.value = [];
-
-    let wordId = null;
-    if (addWord.value) {
-      const wordData = {
-        name: props.wordResult.analysis.word,
-        meaning: formatMeaning(props.wordResult.analysis),
-        phonetic: props.wordResult.analysis.phonetic,
-      };
-      if (rootIds.length) wordData.rootIds = [...new Set(rootIds)];
-      const wordRes = await createWord(wordData);
-      wordId = wordRes.data.id;
-      const dest = goToUncategorized ? '（已归入「未分类」）' : '';
-      ElMessage.success(`单词「${props.wordResult.analysis.word}」${dest}添加成功`);
-    }
-
-    if (selectedExamples.value.length && wordId) {
-      const results = await Promise.allSettled(
-        selectedExamples.value.map((idx) => {
-          const ex = props.wordResult.analysis.examples[idx];
-          return createExample({
-            wordId,
-            sentence: ex.sentence,
-            translation: ex.translation,
-          });
-        })
-      );
-      const successCount = results.filter((r) => r.status === 'fulfilled').length;
-      if (successCount) {
-        ElMessage.success(`${successCount} 条例句添加成功`);
+  const toggleIncludeExistingRoot = (name, val) => {
+    if (val) {
+      excludedExistingRootNames.value = excludedExistingRootNames.value.filter((n) => n !== name);
+    } else {
+      if (!excludedExistingRootNames.value.includes(name)) {
+        excludedExistingRootNames.value.push(name);
       }
     }
+  };
 
-    if (wordId && addWord.value) {
-      props.wordResult.existingWord = {
-        id: wordId,
-        name: props.wordResult.analysis.word,
-        roots: (props.wordResult.existingRoots || []).map((r) => r.name),
-      };
-      addWord.value = false;
-      selectedExamples.value = [];
+  const searchRoots = async (query) => {
+    if (!query) {
+      rootOptions.value = [];
+      return;
     }
-  } catch (e) {
-    ElMessage.error(e?.response?.data?.msg || '保存失败，请重试');
-  } finally {
-    saving.value = false;
-  }
-};
+    rootSearchLoading.value = true;
+    try {
+      const res = await getRoots(query);
+      rootOptions.value = res.data || [];
+    } catch {
+      rootOptions.value = [];
+    } finally {
+      rootSearchLoading.value = false;
+    }
+  };
+
+  const toggleAddRoot = (idx, val) => {
+    if (val) {
+      if (!addRoots.value.includes(idx)) addRoots.value.push(idx);
+    } else {
+      addRoots.value = addRoots.value.filter((i) => i !== idx);
+    }
+  };
+
+  const canAddWord = computed(() => !props.wordResult.existingWord);
+
+  const willGoToUncategorized = computed(() => {
+    if (!addWord.value) return false;
+    const roots = props.wordResult.analysis.roots || [];
+    const hasExistingIncluded = roots.some(
+      (r) => isRootExisting(r.name) && isExistingRootIncluded(r.name)
+    );
+    return !hasExistingIncluded && addRoots.value.length === 0 && manualRootIds.value.length === 0;
+  });
+
+  const addExamples = computed(() => selectedExamples.value.length > 0);
+
+  const canAddExamples = computed(() => {
+    if (props.wordResult.existingWord) return false;
+    return addWord.value;
+  });
+
+  const showSaveButton = computed(() => {
+    if (props.wordResult.existingWord) return false;
+    return addRoots.value.length > 0 || addWord.value || selectedExamples.value.length > 0;
+  });
+
+  const canAddAll = computed(() => {
+    // 一键添加功能在当前单词尚未存在时可用
+    return !props.wordResult.existingWord;
+  });
+
+  const handleAddAll = () => {
+    if (saving.value) return;
+
+    // 取消所有对已存在词根的排除（确保全部包含）
+    excludedExistingRootNames.value = [];
+
+    // 选择所有可添加的词根（仅勾选，不提交）
+    const allRootIndexes = (props.wordResult.analysis.roots || [])
+      .map((r, idx) => ({ r, idx }))
+      .filter(({ r }) => !isRootExisting(r.name))
+      .map(({ idx }) => idx);
+
+    addRoots.value = Array.from(new Set([...(addRoots.value || []), ...allRootIndexes]));
+
+    // 确保单词被勾选
+    addWord.value = true;
+
+    // 选择所有例句（如果有）
+    selectedExamples.value = (props.wordResult.analysis.examples || []).map((_, idx) => idx);
+  };
+
+  const saveSummary = computed(() => {
+    const parts = [];
+    const newRootCount = addRoots.value.filter((idx) => {
+      const r = props.wordResult?.analysis.roots?.[idx];
+      return r && !isRootExisting(r.name);
+    }).length;
+    if (newRootCount) parts.push(`${newRootCount} 个词根`);
+    if (addWord.value) {
+      parts.push(willGoToUncategorized.value ? '单词（→未分类）' : '单词');
+    }
+    if (selectedExamples.value.length) parts.push(`${selectedExamples.value.length} 条例句`);
+    return parts.length ? `将保存: ${parts.join('、')}` : '';
+  });
+
+  const toggleExample = (idx, checked) => {
+    if (checked) {
+      if (!selectedExamples.value.includes(idx)) {
+        selectedExamples.value.push(idx);
+      }
+      addWord.value = true;
+    } else {
+      selectedExamples.value = selectedExamples.value.filter((i) => i !== idx);
+    }
+  };
+
+  const formatMeaning = (analysis) => {
+    if (analysis.partOfSpeech?.length) {
+      return analysis.partOfSpeech.map((p) => `${p.type} ${p.meaning}`).join('  ');
+    }
+    return analysis.meaning;
+  };
+
+  const handleSave = async () => {
+    saving.value = true;
+    const goToUncategorized = willGoToUncategorized.value;
+    try {
+      const analysisRoots = props.wordResult.analysis.roots || [];
+      const rootIds = [...manualRootIds.value];
+
+      for (const r of analysisRoots) {
+        const existingId = getExistingRootId(r.name);
+        if (existingId && isExistingRootIncluded(r.name)) rootIds.push(existingId);
+      }
+
+      const createdRootNames = [];
+      for (const idx of addRoots.value) {
+        const r = analysisRoots[idx];
+        if (!r || isRootExisting(r.name)) continue;
+        const rootRes = await createRoot({ name: r.name, meaning: r.meaning });
+        rootIds.push(rootRes.data.id);
+        createdRootNames.push(r.name);
+        if (!props.wordResult.existingRoots) props.wordResult.existingRoots = [];
+        props.wordResult.existingRoots.push({
+          id: rootRes.data.id,
+          name: r.name,
+          meaning: r.meaning,
+        });
+      }
+      if (createdRootNames.length) {
+        ElMessage.success(`词根「${createdRootNames.join('、')}」添加成功`);
+      }
+      addRoots.value = [];
+
+      let wordId = null;
+      if (addWord.value) {
+        const wordData = {
+          name: props.wordResult.analysis.word,
+          meaning: formatMeaning(props.wordResult.analysis),
+          phonetic: props.wordResult.analysis.phonetic,
+        };
+        if (rootIds.length) wordData.rootIds = [...new Set(rootIds)];
+        const wordRes = await createWord(wordData);
+        wordId = wordRes.data.id;
+        const dest = goToUncategorized ? '（已归入「未分类」）' : '';
+        ElMessage.success(`单词「${props.wordResult.analysis.word}」${dest}添加成功`);
+      }
+
+      if (selectedExamples.value.length && wordId) {
+        const results = await Promise.allSettled(
+          selectedExamples.value.map((idx) => {
+            const ex = props.wordResult.analysis.examples[idx];
+            return createExample({
+              wordId,
+              sentence: ex.sentence,
+              translation: ex.translation,
+            });
+          })
+        );
+        const successCount = results.filter((r) => r.status === 'fulfilled').length;
+        if (successCount) {
+          ElMessage.success(`${successCount} 条例句添加成功`);
+        }
+      }
+
+      if (wordId && addWord.value) {
+        props.wordResult.existingWord = {
+          id: wordId,
+          name: props.wordResult.analysis.word,
+          roots: (props.wordResult.existingRoots || []).map((r) => r.name),
+        };
+        addWord.value = false;
+        selectedExamples.value = [];
+      }
+    } catch (e) {
+      ElMessage.error(e?.response?.data?.msg || '保存失败，请重试');
+    } finally {
+      saving.value = false;
+    }
+  };
 </script>
 
 <style scoped>
-.word-analysis-header {
-  padding-bottom: 8px;
-}
+  .word-analysis-header {
+    padding-bottom: 8px;
+  }
 
-.root-info-section h3 {
-  font-size: 16px;
-  color: #303133;
-}
+  .root-info-section h3 {
+    font-size: 16px;
+    color: #303133;
+  }
 
-.example-card .el-card__body {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-}
+  .example-card .el-card__body {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+  }
 
-.example-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+  .example-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
 
-.pos-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+  .pos-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
 
-.pos-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+  .pos-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
 
-.pos-tag {
-  flex-shrink: 0;
-  font-style: italic;
-  font-weight: 600;
-  min-width: 42px;
-  text-align: center;
-}
+  .pos-tag {
+    flex-shrink: 0;
+    font-style: italic;
+    font-weight: 600;
+    min-width: 42px;
+    text-align: center;
+  }
 
-.pos-meaning {
-  color: #303133;
-  font-size: 14px;
-  line-height: 1.5;
-}
+  .pos-meaning {
+    color: #303133;
+    font-size: 14px;
+    line-height: 1.5;
+  }
 </style>

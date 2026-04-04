@@ -11,26 +11,31 @@ router.get('/roots-progress', async (req, res) => {
   try {
     const roots = await Root.findAll({
       where: { userId: req.userId },
-      include: [{
-        model: Word,
-        as: 'words',
-        through: { attributes: [] },
-        attributes: ['id'],
-        include: [{
-          model: WordReview,
-          as: 'reviews',
-          where: { userId: req.userId },
-          required: false,
-          attributes: ['status'],
-        }],
-      }],
+      include: [
+        {
+          model: Word,
+          as: 'words',
+          through: { attributes: [] },
+          attributes: ['id'],
+          include: [
+            {
+              model: WordReview,
+              as: 'reviews',
+              where: { userId: req.userId },
+              required: false,
+              attributes: ['status'],
+            },
+          ],
+        },
+      ],
       order: [['create_time', 'DESC']],
     });
 
-    const result = roots.map(r => {
+    const result = roots.map((r) => {
       const wordCount = r.words.length;
-      let enrolled = 0, known = 0;
-      r.words.forEach(w => {
+      let enrolled = 0,
+        known = 0;
+      r.words.forEach((w) => {
         if (w.reviews && w.reviews.length > 0) {
           enrolled++;
           if (w.reviews[0].status === 'known') known++;
@@ -119,12 +124,12 @@ router.post('/roots/:rootId/pause', async (req, res) => {
     if (!root || root.userId !== req.userId) return error(res, '词根不存在', 404);
 
     const wordRoots = await WordRoot.findAll({ where: { rootId }, attributes: ['wordId'] });
-    const wordIds = wordRoots.map(wr => wr.wordId);
+    const wordIds = wordRoots.map((wr) => wr.wordId);
 
     if (wordIds.length > 0) {
       await WordReview.update(
         { paused: !!paused },
-        { where: { userId: req.userId, wordId: { [Op.in]: wordIds } } },
+        { where: { userId: req.userId, wordId: { [Op.in]: wordIds } } }
       );
     }
 

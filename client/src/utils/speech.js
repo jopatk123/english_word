@@ -13,16 +13,16 @@ function pickEnglishVoice() {
   // macOS / iOS 高质量英语语音，按偏好排序
   const preferred = ['Samantha', 'Alex', 'Daniel', 'Karen', 'Moira', 'Tessa', 'Rishi'];
   for (const name of preferred) {
-    const v = voices.find(v => v.name === name);
+    const v = voices.find((v) => v.name === name);
     if (v) return v;
   }
 
   // 次选：任意 en-US 语音
-  const enUS = voices.find(v => v.lang === 'en-US');
+  const enUS = voices.find((v) => v.lang === 'en-US');
   if (enUS) return enUS;
 
   // 最后兜底：任意英语语音
-  return voices.find(v => v.lang.startsWith('en')) || null;
+  return voices.find((v) => v.lang.startsWith('en')) || null;
 }
 
 /**
@@ -63,8 +63,12 @@ export function useSpeech() {
       const voice = pickEnglishVoice();
       if (voice) utterance.voice = voice;
 
-      utterance.onend = () => { speakingText.value = ''; };
-      utterance.onerror = () => { speakingText.value = ''; };
+      utterance.onend = () => {
+        speakingText.value = '';
+      };
+      utterance.onerror = () => {
+        speakingText.value = '';
+      };
 
       window.speechSynthesis.speak(utterance);
     });

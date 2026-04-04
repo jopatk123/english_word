@@ -37,7 +37,11 @@ router.post('/enqueue', async (req, res) => {
       if (created) addedCount++;
     }
 
-    success(res, { added: addedCount, total: words.length }, `已添加 ${addedCount} 个新单词到学习队列`);
+    success(
+      res,
+      { added: addedCount, total: words.length },
+      `已添加 ${addedCount} 个新单词到学习队列`
+    );
   } catch (e) {
     error(res, e.message);
   }
@@ -60,7 +64,11 @@ router.post('/:wordId/result', async (req, res) => {
 
     const oldInterval = review.interval;
     const oldEase = review.easeFactor;
-    const { interval, easeFactor, status } = getNextReview(quality, review.interval, review.easeFactor);
+    const { interval, easeFactor, status } = getNextReview(
+      quality,
+      review.interval,
+      review.easeFactor
+    );
     const today = todayStr(req.body.tz);
     const nextDue = addDays(today, interval);
 
@@ -108,7 +116,7 @@ router.get('/quiz-choices/:wordId', async (req, res) => {
 
     success(res, {
       correct: { id: word.id, name: word.name, meaning: word.meaning },
-      distractors: distractors.map(d => ({ id: d.id, name: d.name, meaning: d.meaning })),
+      distractors: distractors.map((d) => ({ id: d.id, name: d.name, meaning: d.meaning })),
     });
   } catch (e) {
     error(res, e.message);

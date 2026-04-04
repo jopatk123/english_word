@@ -16,7 +16,9 @@
           <div class="page-actions">
             <el-button @click="$router.push('/ai/settings')">修改配置</el-button>
             <el-button @click="$router.push(`/root/${rootId}`)">返回词根</el-button>
-            <el-button type="primary" :loading="loading" @click="generateSuggestions">重新生成</el-button>
+            <el-button type="primary" :loading="loading" @click="generateSuggestions"
+              >重新生成</el-button
+            >
           </div>
         </div>
       </template>
@@ -79,175 +81,182 @@
         </el-table>
 
         <div v-if="suggestions.length" class="page-actions ai-footer-actions">
-          <el-button @click="toggleAllSelection">{{ allSelected ? '取消全选' : '全选建议' }}</el-button>
-          <el-button type="primary" :loading="saving" @click="handleSaveSelected">保存选中单词</el-button>
+          <el-button @click="toggleAllSelection">{{
+            allSelected ? '取消全选' : '全选建议'
+          }}</el-button>
+          <el-button type="primary" :loading="saving" @click="handleSaveSelected"
+            >保存选中单词</el-button
+          >
         </div>
-
       </template>
     </el-card>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
-import { ElMessage } from 'element-plus';
-import { createWord, getAiWordSuggestions, getRoot, getWords } from '../api/index.js';
-import SpeakButton from '../components/SpeakButton.vue';
-import { getProviderById } from '../constants/aiProviders.js';
-import { isAiSettingsReady, loadAiSettings } from '../utils/aiSettings.js';
+  import { computed, onMounted, ref } from 'vue';
+  import { useRoute } from 'vue-router';
+  import { ElMessage } from 'element-plus';
+  import { createWord, getAiWordSuggestions, getRoot, getWords } from '../api/index.js';
+  import SpeakButton from '../components/SpeakButton.vue';
+  import { getProviderById } from '../constants/aiProviders.js';
+  import { isAiSettingsReady, loadAiSettings } from '../utils/aiSettings.js';
 
-const route = useRoute();
-const rootId = route.params.id;
+  const route = useRoute();
+  const rootId = route.params.id;
 
-const settings = ref(loadAiSettings());
-const ready = computed(() => isAiSettingsReady(settings.value));
-const providerName = computed(() => getProviderById(settings.value.providerId).name);
+  const settings = ref(loadAiSettings());
+  const ready = computed(() => isAiSettingsReady(settings.value));
+  const providerName = computed(() => getProviderById(settings.value.providerId).name);
 
-const root = ref(null);
-const wordCount = ref(0);
-const loading = ref(false);
-const saving = ref(false);
-const suggestions = ref([]);
-const selectedRows = ref([]);
-const resultMessage = ref('');
-const tableRef = ref(null);
-const debugSummary = ref(null);
-const rejectedWords = ref([]);
+  const root = ref(null);
+  const wordCount = ref(0);
+  const loading = ref(false);
+  const saving = ref(false);
+  const suggestions = ref([]);
+  const selectedRows = ref([]);
+  const resultMessage = ref('');
+  const tableRef = ref(null);
+  const debugSummary = ref(null);
+  const rejectedWords = ref([]);
 
-const allSelected = computed(() => suggestions.value.length > 0 && selectedRows.value.length === suggestions.value.length);
+  const allSelected = computed(
+    () => suggestions.value.length > 0 && selectedRows.value.length === suggestions.value.length
+  );
 
-const fetchBaseData = async () => {
-  try {
-    const [rootRes, wordsRes] = await Promise.all([
-      getRoot(rootId),
-      getWords({ rootId }),
-    ]);
-    root.value = rootRes.data;
-    wordCount.value = wordsRes.data.length;
-  } catch {
-    ElMessage.error('获取词根数据失败');
-  }
-};
+  const fetchBaseData = async () => {
+    try {
+      const [rootRes, wordsRes] = await Promise.all([getRoot(rootId), getWords({ rootId })]);
+      root.value = rootRes.data;
+      wordCount.value = wordsRes.data.length;
+    } catch {
+      ElMessage.error('获取词根数据失败');
+    }
+  };
 
-const handleSelectionChange = (rows) => {
-  selectedRows.value = rows;
-};
+  const handleSelectionChange = (rows) => {
+    selectedRows.value = rows;
+  };
 
-const toggleAllSelection = () => {
-  if (!tableRef.value) return;
-  tableRef.value.toggleAllSelection();
-};
+  const toggleAllSelection = () => {
+    if (!tableRef.value) return;
+    tableRef.value.toggleAllSelection();
+  };
 
-const generateSuggestions = async () => {
-  if (!ready.value) {
-    return ElMessage.warning('请先完成 AI 配置');
-  }
+  const generateSuggestions = async () => {
+    if (!ready.value) {
+      return ElMessage.warning('请先完成 AI 配置');
+    }
 
-  // 在生成新建议前，将当前显示的单词添加到拒绝列表
-  if (suggestions.value.length) {
-    const currentWords = suggestions.value.map((w) => w.name);
-    rejectedWords.value = [...new Set([...rejectedWords.value, ...currentWords])];
-  }
+    // 在生成新建议前，将当前显示的单词添加到拒绝列表
+    if (suggestions.value.length) {
+      const currentWords = suggestions.value.map((w) => w.name);
+      rejectedWords.value = [...new Set([...rejectedWords.value, ...currentWords])];
+    }
 
-  loading.value = true;
-  suggestions.value = [];
-  selectedRows.value = [];
-  resultMessage.value = '';
-  debugSummary.value = null;
-
-  try {
-    const res = await getAiWordSuggestions(rootId, settings.value, {
-      excludedWords: rejectedWords.value,
-    });
-    suggestions.value = res.data.items || [];
-    resultMessage.value = res.data.message || '建议生成完成';
-    debugSummary.value = res.data.debug || null;
-  } catch (e) {
-    resultMessage.value = '';
-    ElMessage.error(e?.response?.data?.msg || (e?.code === 'ECONNABORTED' ? 'AI 请求超时，请稍后重试' : '生成单词建议失败'));
-  } finally {
-    loading.value = false;
-  }
-};
-
-const formatMeaning = (item) => {
-  if (item.partOfSpeech?.length) {
-    return item.partOfSpeech.map((p) => `${p.type} ${p.meaning}`).join('  ');
-  }
-  return item.meaning;
-};
-
-const handleSaveSelected = async () => {
-  if (!selectedRows.value.length) {
-    return ElMessage.warning('请先选择至少一个单词');
-  }
-
-  saving.value = true;
-  try {
-    const results = await Promise.allSettled(
-      selectedRows.value.map((item) => createWord({
-        rootId,
-        name: item.name,
-        meaning: formatMeaning(item),
-        phonetic: item.phonetic,
-      }))
-    );
-
-    const successCount = results.filter((item) => item.status === 'fulfilled').length;
-    const failedCount = results.length - successCount;
-
-    suggestions.value = suggestions.value.filter(
-      (item) => !selectedRows.value.some((selected) => selected.name === item.name)
-    );
+    loading.value = true;
+    suggestions.value = [];
     selectedRows.value = [];
-    wordCount.value += successCount;
+    resultMessage.value = '';
+    debugSummary.value = null;
 
-    if (successCount) {
-      ElMessage.success(`已保存 ${successCount} 个单词`);
+    try {
+      const res = await getAiWordSuggestions(rootId, settings.value, {
+        excludedWords: rejectedWords.value,
+      });
+      suggestions.value = res.data.items || [];
+      resultMessage.value = res.data.message || '建议生成完成';
+      debugSummary.value = res.data.debug || null;
+    } catch (e) {
+      resultMessage.value = '';
+      ElMessage.error(
+        e?.response?.data?.msg ||
+          (e?.code === 'ECONNABORTED' ? 'AI 请求超时，请稍后重试' : '生成单词建议失败')
+      );
+    } finally {
+      loading.value = false;
     }
-    if (failedCount) {
-      ElMessage.warning(`${failedCount} 个单词保存失败，可能已存在`);
-    }
-    if (!suggestions.value.length) {
-      resultMessage.value = '当前这批建议已处理完成，如需更多建议可以再次生成';
-    }
-  } finally {
-    saving.value = false;
-  }
-};
+  };
 
-onMounted(async () => {
-  await fetchBaseData();
-  if (ready.value) {
-    generateSuggestions();
-  }
-});
+  const formatMeaning = (item) => {
+    if (item.partOfSpeech?.length) {
+      return item.partOfSpeech.map((p) => `${p.type} ${p.meaning}`).join('  ');
+    }
+    return item.meaning;
+  };
+
+  const handleSaveSelected = async () => {
+    if (!selectedRows.value.length) {
+      return ElMessage.warning('请先选择至少一个单词');
+    }
+
+    saving.value = true;
+    try {
+      const results = await Promise.allSettled(
+        selectedRows.value.map((item) =>
+          createWord({
+            rootId,
+            name: item.name,
+            meaning: formatMeaning(item),
+            phonetic: item.phonetic,
+          })
+        )
+      );
+
+      const successCount = results.filter((item) => item.status === 'fulfilled').length;
+      const failedCount = results.length - successCount;
+
+      suggestions.value = suggestions.value.filter(
+        (item) => !selectedRows.value.some((selected) => selected.name === item.name)
+      );
+      selectedRows.value = [];
+      wordCount.value += successCount;
+
+      if (successCount) {
+        ElMessage.success(`已保存 ${successCount} 个单词`);
+      }
+      if (failedCount) {
+        ElMessage.warning(`${failedCount} 个单词保存失败，可能已存在`);
+      }
+      if (!suggestions.value.length) {
+        resultMessage.value = '当前这批建议已处理完成，如需更多建议可以再次生成';
+      }
+    } finally {
+      saving.value = false;
+    }
+  };
+
+  onMounted(async () => {
+    await fetchBaseData();
+    if (ready.value) {
+      generateSuggestions();
+    }
+  });
 </script>
 
 <style scoped>
-.pos-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
+  .pos-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
 
-.pos-row:last-child {
-  margin-bottom: 0;
-}
+  .pos-row:last-child {
+    margin-bottom: 0;
+  }
 
-.pos-tag {
-  flex-shrink: 0;
-  font-style: italic;
-  font-weight: 600;
-  min-width: 38px;
-  text-align: center;
-}
+  .pos-tag {
+    flex-shrink: 0;
+    font-style: italic;
+    font-weight: 600;
+    min-width: 38px;
+    text-align: center;
+  }
 
-.pos-meaning {
-  font-size: 13px;
-  color: #303133;
-  line-height: 1.4;
-}
+  .pos-meaning {
+    font-size: 13px;
+    color: #303133;
+    line-height: 1.4;
+  }
 </style>

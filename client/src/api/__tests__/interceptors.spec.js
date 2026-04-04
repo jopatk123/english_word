@@ -24,7 +24,9 @@ vi.mock('axios', () => {
     delete: vi.fn(),
     interceptors: {
       request: {
-        use: (fn) => { shared.requestHandlers.push(fn); },
+        use: (fn) => {
+          shared.requestHandlers.push(fn);
+        },
       },
       response: {
         use: (ok, err) => {
@@ -47,11 +49,19 @@ import * as apiModule from '../index.js';
 const makeLocalStorageMock = () => {
   let store = {};
   return {
-    getItem: (key) => Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null,
-    setItem: (key, value) => { store[key] = String(value); },
-    removeItem: (key) => { delete store[key]; },
-    clear: () => { store = {}; },
-    _reset: () => { store = {}; },
+    getItem: (key) => (Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null),
+    setItem: (key, value) => {
+      store[key] = String(value);
+    },
+    removeItem: (key) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+    _reset: () => {
+      store = {};
+    },
   };
 };
 
@@ -149,13 +159,28 @@ describe('handleResponse 成功拦截器', () => {
 
 // ── 导出的 API 函数结构 ───────────────────────────────────────────────
 describe('导出的 API 函数', () => {
-  it('login 是函数', () => { expect(typeof apiModule.login).toBe('function'); });
-  it('register 是函数', () => { expect(typeof apiModule.register).toBe('function'); });
-  it('getMe 是函数', () => { expect(typeof apiModule.getMe).toBe('function'); });
-  it('getRoots 是函数', () => { expect(typeof apiModule.getRoots).toBe('function'); });
-  it('getWords 是函数', () => { expect(typeof apiModule.getWords).toBe('function'); });
-  it('testAiConnection 是函数', () => { expect(typeof apiModule.testAiConnection).toBe('function'); });
-  it('getReviewDue 是函数', () => { expect(typeof apiModule.getReviewDue).toBe('function'); });
-  it('exportAllData 是函数', () => { expect(typeof apiModule.exportAllData).toBe('function'); });
+  it('login 是函数', () => {
+    expect(typeof apiModule.login).toBe('function');
+  });
+  it('register 是函数', () => {
+    expect(typeof apiModule.register).toBe('function');
+  });
+  it('getMe 是函数', () => {
+    expect(typeof apiModule.getMe).toBe('function');
+  });
+  it('getRoots 是函数', () => {
+    expect(typeof apiModule.getRoots).toBe('function');
+  });
+  it('getWords 是函数', () => {
+    expect(typeof apiModule.getWords).toBe('function');
+  });
+  it('testAiConnection 是函数', () => {
+    expect(typeof apiModule.testAiConnection).toBe('function');
+  });
+  it('getReviewDue 是函数', () => {
+    expect(typeof apiModule.getReviewDue).toBe('function');
+  });
+  it('exportAllData 是函数', () => {
+    expect(typeof apiModule.exportAllData).toBe('function');
+  });
 });
-

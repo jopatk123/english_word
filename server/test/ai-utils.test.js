@@ -101,7 +101,7 @@ describe('logAiInfo / logAiError', () => {
     logAiInfo('test.start', debugInfo);
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('[AI] test.start'),
-      expect.any(String),
+      expect.any(String)
     );
   });
 
@@ -248,9 +248,7 @@ describe('sanitizeAnalyzeWordResult', () => {
         { type: 'n.', meaning: '视察员' },
       ],
       roots: [{ name: 'spect', meaning: '看' }],
-      examples: [
-        { sentence: 'She inspects the room.', translation: '她检查房间。' },
-      ],
+      examples: [{ sentence: 'She inspects the room.', translation: '她检查房间。' }],
     };
     const result = sanitizeAnalyzeWordResult(parsed, 'inspect');
     expect(result.word).toBe('inspect');
@@ -265,7 +263,14 @@ describe('sanitizeAnalyzeWordResult', () => {
   });
 
   it('meaning 为空返回 null', () => {
-    const parsed = { word: 'x', meaning: '', phonetic: '', partOfSpeech: [], roots: [], examples: [] };
+    const parsed = {
+      word: 'x',
+      meaning: '',
+      phonetic: '',
+      partOfSpeech: [],
+      roots: [],
+      examples: [],
+    };
     expect(sanitizeAnalyzeWordResult(parsed, 'x')).toBeNull();
   });
 
@@ -385,9 +390,7 @@ describe('sanitizeAnalyzeSentenceResult', () => {
       sentence: 'She reads every day.',
       translation: '她每天阅读。',
       grammar: '主谓宾结构',
-      vocabulary: [
-        { word: 'reads', meaning: '阅读', phonetic: '/riːdz/' },
-      ],
+      vocabulary: [{ word: 'reads', meaning: '阅读', phonetic: '/riːdz/' }],
     };
     const result = sanitizeAnalyzeSentenceResult(parsed, 'She reads every day.');
     expect(result.sentence).toBe('She reads every day.');

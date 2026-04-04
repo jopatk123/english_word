@@ -15,7 +15,10 @@ import examplesRouter from '../routes/examples.js';
 const buildApp = (userId) => {
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => { req.userId = userId; next(); });
+  app.use((req, _res, next) => {
+    req.userId = userId;
+    next();
+  });
   app.use('/examples', examplesRouter);
   return app;
 };
@@ -51,14 +54,16 @@ describe('POST /examples/', () => {
   it('缺少必填字段返回错误', async () => {
     const res = await request(app)
       .post('/examples/')
-      .send({ wordId, sentence: 'Only sentence.', /* missing translation */ });
+      .send({ wordId, sentence: 'Only sentence.' /* missing translation */ });
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 
   it('重复例句返回 400', async () => {
     const sentence = `Duplicate sentence. ${suf()}`;
     await request(app).post('/examples/').send({ wordId, sentence, translation: '翻译' });
-    const res = await request(app).post('/examples/').send({ wordId, sentence, translation: '翻译' });
+    const res = await request(app)
+      .post('/examples/')
+      .send({ wordId, sentence, translation: '翻译' });
     expect(res.status).toBe(400);
     expect(res.body.msg).toMatch(/已存在/);
   });
@@ -74,7 +79,9 @@ describe('POST /examples/', () => {
 // ─── GET /examples/ ───────────────────────────────────────────
 describe('GET /examples/', () => {
   beforeAll(async () => {
-    await request(app).post('/examples/').send({ wordId, sentence: `List test. ${suf()}`, translation: '列表测试' });
+    await request(app)
+      .post('/examples/')
+      .send({ wordId, sentence: `List test. ${suf()}`, translation: '列表测试' });
   });
 
   it('无 wordId 时返回所有该用户例句', async () => {
@@ -86,7 +93,7 @@ describe('GET /examples/', () => {
   it('指定 wordId 只返回该单词的例句', async () => {
     const res = await request(app).get(`/examples/?wordId=${wordId}`);
     expect(res.status).toBe(200);
-    res.body.data.forEach(ex => expect(ex.wordId).toBe(wordId));
+    res.body.data.forEach((ex) => expect(ex.wordId).toBe(wordId));
   });
 });
 

@@ -19,11 +19,19 @@ import {
 const makeLocalStorageMock = () => {
   let store = {};
   return {
-    getItem: (key) => Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null,
-    setItem: (key, value) => { store[key] = String(value); },
-    removeItem: (key) => { delete store[key]; },
-    clear: () => { store = {}; },
-    _reset: () => { store = {}; },
+    getItem: (key) => (Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null),
+    setItem: (key, value) => {
+      store[key] = String(value);
+    },
+    removeItem: (key) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+    _reset: () => {
+      store = {};
+    },
   };
 };
 

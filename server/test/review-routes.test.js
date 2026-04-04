@@ -23,7 +23,10 @@ import historyRouter from '../routes/review/history.js';
 const buildApp = (userId) => {
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => { req.userId = userId; next(); });
+  app.use((req, _res, next) => {
+    req.userId = userId;
+    next();
+  });
   // 挂载路由（顺序同 review.js）
   app.use('/review', dueRouter);
   app.use('/review', statsRouter);
@@ -55,26 +58,20 @@ beforeAll(async () => {
 // ─── POST /review/enqueue ─────────────────────────────────────
 describe('POST /review/enqueue', () => {
   it('成功将词根下单词加入队列', async () => {
-    const res = await request(app)
-      .post('/review/enqueue')
-      .send({ rootId });
+    const res = await request(app).post('/review/enqueue').send({ rootId });
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveProperty('added');
     expect(res.body.data.added).toBeGreaterThan(0);
   });
 
   it('重复加入同一词根时 added=0', async () => {
-    const res = await request(app)
-      .post('/review/enqueue')
-      .send({ rootId });
+    const res = await request(app).post('/review/enqueue').send({ rootId });
     expect(res.status).toBe(200);
     expect(res.body.data.added).toBe(0);
   });
 
   it('不存在的词根返回 404', async () => {
-    const res = await request(app)
-      .post('/review/enqueue')
-      .send({ rootId: 99999999 });
+    const res = await request(app).post('/review/enqueue').send({ rootId: 99999999 });
     expect(res.status).toBe(404);
   });
 
@@ -127,7 +124,7 @@ describe('GET /review/roots-progress', () => {
     const res = await request(app).get('/review/roots-progress');
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
-    const r = res.body.data.find(r => r.id === rootId);
+    const r = res.body.data.find((r) => r.id === rootId);
     expect(r).toBeTruthy();
     expect(typeof r.enrolled).toBe('number');
   });
@@ -138,18 +135,14 @@ describe('POST /review/:wordId/result', () => {
   it('quality=3 提交成功，interval 更新', async () => {
     // 确保入队
     await request(app).post('/review/enqueue').send({ rootId });
-    const res = await request(app)
-      .post(`/review/${wordId}/result`)
-      .send({ quality: 3 });
+    const res = await request(app).post(`/review/${wordId}/result`).send({ quality: 3 });
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveProperty('interval');
     expect(res.body.data.interval).toBeGreaterThan(0);
   });
 
   it('quality 超出范围返回 400', async () => {
-    const res = await request(app)
-      .post(`/review/${wordId}/result`)
-      .send({ quality: 5 });
+    const res = await request(app).post(`/review/${wordId}/result`).send({ quality: 5 });
     expect(res.status).toBe(400);
   });
 
@@ -157,9 +150,7 @@ describe('POST /review/:wordId/result', () => {
     // 创建一个未入队的新单词
     const word2 = await Word.create({ name: `rword2_${suf()}`, meaning: '含义2' });
     await WordRoot.create({ wordId: word2.id, rootId });
-    const res = await request(app)
-      .post(`/review/${word2.id}/result`)
-      .send({ quality: 3 });
+    const res = await request(app).post(`/review/${word2.id}/result`).send({ quality: 3 });
     expect(res.status).toBe(404);
   });
 });
@@ -169,9 +160,7 @@ describe('POST /review/:wordId/pause', () => {
   it('切换暂停状态', async () => {
     // 确保入队
     await request(app).post('/review/enqueue').send({ rootId });
-    const res = await request(app)
-      .post(`/review/${wordId}/pause`)
-      .send({});
+    const res = await request(app).post(`/review/${wordId}/pause`).send({});
     expect(res.status).toBe(200);
     // 验证 paused 状态已更改
     const rw = await WordReview.findOne({ where: { userId, wordId } });

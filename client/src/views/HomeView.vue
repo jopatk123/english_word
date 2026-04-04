@@ -35,7 +35,7 @@
         <el-table-column prop="meaning" label="含义" min-width="150" />
         <el-table-column label="所属词根" min-width="120">
           <template #default="{ row }">
-            <template v-for="(root, idx) in (row.roots || [])" :key="root.id">
+            <template v-for="(root, idx) in row.roots || []" :key="root.id">
               <el-link type="primary" @click="$router.push(`/root/${root.id}`)">
                 {{ root.name }}
               </el-link>
@@ -61,7 +61,12 @@
         </div>
       </div>
 
-      <el-table :data="roots" stripe v-loading="loading" empty-text="暂无词根，点击「添加词根」开始吧">
+      <el-table
+        :data="roots"
+        stripe
+        v-loading="loading"
+        empty-text="暂无词根，点击「添加词根」开始吧"
+      >
         <el-table-column prop="name" label="词根" min-width="120">
           <template #default="{ row }">
             <div class="cell-with-speak">
@@ -74,7 +79,8 @@
                 type="info"
                 size="small"
                 style="margin-left: 6px; vertical-align: middle"
-              >未分类</el-tag>
+                >未分类</el-tag
+              >
             </div>
           </template>
         </el-table-column>
@@ -83,15 +89,24 @@
         <el-table-column prop="remark" label="备注" min-width="150" show-overflow-tooltip />
         <el-table-column label="操作" width="140" align="center">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openRootDialog(row)" :disabled="row.isDefault">编辑</el-button>
-            <el-button link type="danger" @click="handleDeleteRoot(row)" :disabled="row.isDefault">删除</el-button>
+            <el-button link type="primary" @click="openRootDialog(row)" :disabled="row.isDefault"
+              >编辑</el-button
+            >
+            <el-button link type="danger" @click="handleDeleteRoot(row)" :disabled="row.isDefault"
+              >删除</el-button
+            >
           </template>
         </el-table-column>
       </el-table>
     </div>
 
     <!-- 词根表单对话框 -->
-    <el-dialog v-model="rootDialogVisible" :title="editingRoot ? '编辑词根' : '添加词根'" width="500px" destroy-on-close>
+    <el-dialog
+      v-model="rootDialogVisible"
+      :title="editingRoot ? '编辑词根' : '添加词根'"
+      width="500px"
+      destroy-on-close
+    >
       <el-form :model="rootForm" label-width="80px">
         <el-form-item label="词根" required>
           <el-input v-model="rootForm.name" placeholder="如：ject" />
@@ -112,137 +127,137 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { Search } from '@element-plus/icons-vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { getRoots, createRoot, updateRoot, deleteRoot, getWords } from '../api/index.js';
-import SpeakButton from '../components/SpeakButton.vue';
+  import { ref, onMounted } from 'vue';
+  import { useRouter } from 'vue-router';
+  import { Search } from '@element-plus/icons-vue';
+  import { ElMessage, ElMessageBox } from 'element-plus';
+  import { getRoots, createRoot, updateRoot, deleteRoot, getWords } from '../api/index.js';
+  import SpeakButton from '../components/SpeakButton.vue';
 
-const roots = ref([]);
-const loading = ref(false);
-const searchKeyword = ref('');
-const wordResults = ref([]);
+  const roots = ref([]);
+  const loading = ref(false);
+  const searchKeyword = ref('');
+  const wordResults = ref([]);
 
-const rootDialogVisible = ref(false);
-const editingRoot = ref(null);
-const rootForm = ref({ name: '', meaning: '', remark: '' });
-const saving = ref(false);
+  const rootDialogVisible = ref(false);
+  const editingRoot = ref(null);
+  const rootForm = ref({ name: '', meaning: '', remark: '' });
+  const saving = ref(false);
 
-let searchTimer = null;
+  let searchTimer = null;
 
-const fetchRoots = async (keyword) => {
-  loading.value = true;
-  try {
-    const res = await getRoots(keyword);
-    roots.value = res.data;
-  } catch (e) {
-    ElMessage.error('获取词根列表失败');
-  } finally {
-    loading.value = false;
-  }
-};
+  const fetchRoots = async (keyword) => {
+    loading.value = true;
+    try {
+      const res = await getRoots(keyword);
+      roots.value = res.data;
+    } catch (e) {
+      ElMessage.error('获取词根列表失败');
+    } finally {
+      loading.value = false;
+    }
+  };
 
-const searchWords = async (keyword) => {
-  if (!keyword) {
-    wordResults.value = [];
-    return;
-  }
-  try {
-    const res = await getWords({ keyword });
-    wordResults.value = res.data;
-  } catch {
-    wordResults.value = [];
-  }
-};
+  const searchWords = async (keyword) => {
+    if (!keyword) {
+      wordResults.value = [];
+      return;
+    }
+    try {
+      const res = await getWords({ keyword });
+      wordResults.value = res.data;
+    } catch {
+      wordResults.value = [];
+    }
+  };
 
-const onSearch = () => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    fetchRoots(searchKeyword.value);
-    searchWords(searchKeyword.value);
-  }, 300);
-};
+  const onSearch = () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      fetchRoots(searchKeyword.value);
+      searchWords(searchKeyword.value);
+    }, 300);
+  };
 
-const goToSearch = () => {
-  const kw = searchKeyword.value.trim();
-  if (!kw) return;
-  router.push({ path: '/search', query: { q: kw } });
-};
+  const goToSearch = () => {
+    const kw = searchKeyword.value.trim();
+    if (!kw) return;
+    router.push({ path: '/search', query: { q: kw } });
+  };
 
-const router = useRouter();
+  const router = useRouter();
 
-const openRootDialog = (root = null) => {
-  editingRoot.value = root;
-  rootForm.value = root
-    ? { name: root.name, meaning: root.meaning, remark: root.remark || '' }
-    : { name: '', meaning: '', remark: '' };
-  rootDialogVisible.value = true;
-};
+  const openRootDialog = (root = null) => {
+    editingRoot.value = root;
+    rootForm.value = root
+      ? { name: root.name, meaning: root.meaning, remark: root.remark || '' }
+      : { name: '', meaning: '', remark: '' };
+    rootDialogVisible.value = true;
+  };
 
-const findRootByName = (name) => {
-  const target = name.trim().toLowerCase();
-  return roots.value.find((item) => item.name.trim().toLowerCase() === target);
-};
+  const findRootByName = (name) => {
+    const target = name.trim().toLowerCase();
+    return roots.value.find((item) => item.name.trim().toLowerCase() === target);
+  };
 
-const handleSaveRoot = async () => {
-  if (!rootForm.value.name || !rootForm.value.meaning) {
-    return ElMessage.warning('请填写词根和核心含义');
-  }
+  const handleSaveRoot = async () => {
+    if (!rootForm.value.name || !rootForm.value.meaning) {
+      return ElMessage.warning('请填写词根和核心含义');
+    }
 
-  if (!editingRoot.value) {
-    const existed = findRootByName(rootForm.value.name);
-    if (existed) {
+    if (!editingRoot.value) {
+      const existed = findRootByName(rootForm.value.name);
+      if (existed) {
+        saving.value = false;
+        return ElMessageBox.confirm(
+          `词根「${rootForm.value.name}」已存在，是否前往该词根详情？`,
+          '词根已存在',
+          {
+            confirmButtonText: '前往',
+            cancelButtonText: '取消',
+            type: 'info',
+          }
+        )
+          .then(() => router.push(`/root/${existed.id}`))
+          .catch(() => {});
+      }
+    }
+
+    saving.value = true;
+    try {
+      if (editingRoot.value) {
+        await updateRoot(editingRoot.value.id, rootForm.value);
+        ElMessage.success('更新成功');
+      } else {
+        await createRoot(rootForm.value);
+        ElMessage.success('添加成功');
+      }
+      rootDialogVisible.value = false;
+      fetchRoots(searchKeyword.value);
+    } catch (e) {
+      ElMessage.error(e?.response?.data?.msg || '保存失败');
+    } finally {
       saving.value = false;
-      return ElMessageBox.confirm(
-        `词根「${rootForm.value.name}」已存在，是否前往该词根详情？`,
-        '词根已存在',
-        {
-          confirmButtonText: '前往',
-          cancelButtonText: '取消',
-          type: 'info',
-        }
-      )
-        .then(() => router.push(`/root/${existed.id}`))
-        .catch(() => {});
     }
-  }
+  };
 
-  saving.value = true;
-  try {
-    if (editingRoot.value) {
-      await updateRoot(editingRoot.value.id, rootForm.value);
-      ElMessage.success('更新成功');
-    } else {
-      await createRoot(rootForm.value);
-      ElMessage.success('添加成功');
+  const handleDeleteRoot = async (root) => {
+    if (root.isDefault) {
+      return ElMessage.warning('「未分类」词根不能删除，它用于存放无词根的单词');
     }
-    rootDialogVisible.value = false;
-    fetchRoots(searchKeyword.value);
-  } catch (e) {
-    ElMessage.error(e?.response?.data?.msg || '保存失败');
-  } finally {
-    saving.value = false;
-  }
-};
+    try {
+      await ElMessageBox.confirm(
+        `确定删除词根「${root.name}」？关联的单词和例句将一并删除。`,
+        '确认删除',
+        { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+      );
+      await deleteRoot(root.id);
+      ElMessage.success('删除成功');
+      fetchRoots(searchKeyword.value);
+    } catch {
+      // 取消删除
+    }
+  };
 
-const handleDeleteRoot = async (root) => {
-  if (root.isDefault) {
-    return ElMessage.warning('「未分类」词根不能删除，它用于存放无词根的单词');
-  }
-  try {
-    await ElMessageBox.confirm(
-      `确定删除词根「${root.name}」？关联的单词和例句将一并删除。`,
-      '确认删除',
-      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
-    );
-    await deleteRoot(root.id);
-    ElMessage.success('删除成功');
-    fetchRoots(searchKeyword.value);
-  } catch {
-    // 取消删除
-  }
-};
-
-onMounted(() => fetchRoots());
+  onMounted(() => fetchRoots());
 </script>

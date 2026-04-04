@@ -19,9 +19,20 @@ router.get('/stats', async (req, res) => {
     weekStart.setDate(todayDate.getDate() - mondayOffset);
     const weekStartStr = weekStart.toISOString().slice(0, 10);
 
-    const [totalCount, dueCount, newCount, learningCount, knownCount, todayReviewed, overdueCount, weekDueCount] = await Promise.all([
+    const [
+      totalCount,
+      dueCount,
+      newCount,
+      learningCount,
+      knownCount,
+      todayReviewed,
+      overdueCount,
+      weekDueCount,
+    ] = await Promise.all([
       WordReview.count({ where: { userId: req.userId } }),
-      WordReview.count({ where: { userId: req.userId, paused: false, dueDate: { [Op.lte]: today } } }),
+      WordReview.count({
+        where: { userId: req.userId, paused: false, dueDate: { [Op.lte]: today } },
+      }),
       WordReview.count({ where: { userId: req.userId, status: 'new' } }),
       WordReview.count({ where: { userId: req.userId, status: 'learning' } }),
       WordReview.count({ where: { userId: req.userId, status: 'known' } }),
@@ -31,8 +42,16 @@ router.get('/stats', async (req, res) => {
           lastReviewedAt: { [Op.gte]: todayStart },
         },
       }),
-      WordReview.count({ where: { userId: req.userId, paused: false, dueDate: { [Op.lt]: today } } }),
-      WordReview.count({ where: { userId: req.userId, paused: false, dueDate: { [Op.gte]: weekStartStr, [Op.lte]: addDays(weekStartStr, 6) } } }),
+      WordReview.count({
+        where: { userId: req.userId, paused: false, dueDate: { [Op.lt]: today } },
+      }),
+      WordReview.count({
+        where: {
+          userId: req.userId,
+          paused: false,
+          dueDate: { [Op.gte]: weekStartStr, [Op.lte]: addDays(weekStartStr, 6) },
+        },
+      }),
     ]);
 
     success(res, {

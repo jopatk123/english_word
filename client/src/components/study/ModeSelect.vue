@@ -4,9 +4,14 @@
     <div v-if="resumeInfo" class="resume-banner">
       <el-alert type="info" :closable="false" show-icon>
         <template #default>
-          检测到上次未完成记录（第 <strong>{{ resumeInfo.index + 1 }}</strong>/{{ queueLength }} 个，{{ modeNames[resumeInfo.mode] || resumeInfo.mode }} 模式）
-          <el-button size="small" type="primary" style="margin-left: 12px" @click="$emit('resume')">继续上次</el-button>
-          <el-button size="small" style="margin-left: 6px" @click="$emit('dismiss')">重新开始</el-button>
+          检测到上次未完成记录（第 <strong>{{ resumeInfo.index + 1 }}</strong
+          >/{{ queueLength }} 个，{{ modeNames[resumeInfo.mode] || resumeInfo.mode }} 模式）
+          <el-button size="small" type="primary" style="margin-left: 12px" @click="$emit('resume')"
+            >继续上次</el-button
+          >
+          <el-button size="small" style="margin-left: 6px" @click="$emit('dismiss')"
+            >重新开始</el-button
+          >
         </template>
       </el-alert>
     </div>
@@ -38,11 +43,11 @@
 </template>
 
 <script setup>
-defineProps({
-  queueLength: { type: Number, required: true },
-  resumeInfo: { type: Object, default: null },
-  modeNames: { type: Object, required: true },
-});
+  defineProps({
+    queueLength: { type: Number, required: true },
+    resumeInfo: { type: Object, default: null },
+    modeNames: { type: Object, required: true },
+  });
 
-defineEmits(['select', 'resume', 'dismiss']);
+  defineEmits(['select', 'resume', 'dismiss']);
 </script>

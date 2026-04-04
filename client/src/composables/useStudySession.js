@@ -41,7 +41,8 @@ export function useStudySession() {
     if (!currentCard.value) return '输入单词...';
     const name = currentCard.value.word.name;
     if (spellingHintLevel.value === 0) return '输入单词拼写...';
-    if (spellingHintLevel.value === 1) return `${name[0]}${'_'.repeat(name.length - 1)} (${name.length}个字母)`;
+    if (spellingHintLevel.value === 1)
+      return `${name[0]}${'_'.repeat(name.length - 1)} (${name.length}个字母)`;
     return `${name.slice(0, Math.ceil(name.length / 2))}${'_'.repeat(name.length - Math.ceil(name.length / 2))}`;
   });
 
@@ -98,12 +99,18 @@ export function useStudySession() {
         try {
           const progress = JSON.parse(saved);
           if (progress.queueIds && queue.value.length > 0) {
-            const currentIds = queue.value.map(r => r.wordId).join(',');
-            if (progress.queueIds === currentIds && progress.index > 0 && progress.index < queue.value.length) {
+            const currentIds = queue.value.map((r) => r.wordId).join(',');
+            if (
+              progress.queueIds === currentIds &&
+              progress.index > 0 &&
+              progress.index < queue.value.length
+            ) {
               resumeInfo.value = progress;
             }
           }
-        } catch { /* ignore corrupt data */ }
+        } catch {
+          /* ignore corrupt data */
+        }
       }
 
       if (queue.value.length === 0) {
@@ -149,7 +156,7 @@ export function useStudySession() {
 
   const replayAgainWords = () => {
     const ids = new Set(againWordIds.value);
-    queue.value = originalQueue.value.filter(item => ids.has(item.wordId));
+    queue.value = originalQueue.value.filter((item) => ids.has(item.wordId));
     originalQueue.value = [...queue.value];
     resetSession();
   };
@@ -161,7 +168,7 @@ export function useStudySession() {
       stats: sessionStats.value,
       againMap: againCountMap.value,
       mode: studyMode.value,
-      queueIds: queue.value.map(r => r.wordId).join(','),
+      queueIds: queue.value.map((r) => r.wordId).join(','),
     };
     localStorage.setItem('study-session-progress', JSON.stringify(data));
   };
@@ -232,7 +239,9 @@ export function useStudySession() {
       const all = [res.data.correct, ...res.data.distractors];
       choiceOptions.value = all.sort(() => Math.random() - 0.5);
     } catch {
-      choiceOptions.value = [{ id: currentCard.value.word.id, meaning: currentCard.value.word.meaning }];
+      choiceOptions.value = [
+        { id: currentCard.value.word.id, meaning: currentCard.value.word.meaning },
+      ];
     }
   };
 
@@ -262,7 +271,8 @@ export function useStudySession() {
   const checkSpelling = async () => {
     if (!spellingInput.value.trim() || spellingAnswered.value) return;
     spellingAnswered.value = true;
-    spellingCorrect.value = spellingInput.value.trim().toLowerCase() === currentCard.value.word.name.toLowerCase();
+    spellingCorrect.value =
+      spellingInput.value.trim().toLowerCase() === currentCard.value.word.name.toLowerCase();
 
     const quality = spellingCorrect.value ? 3 : 1;
     submitting.value = true;
@@ -289,7 +299,12 @@ export function useStudySession() {
   // 键盘快捷键
   const handleKeyDown = (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    if (studyMode.value === 'flashcard' && modeSelected.value && !finished.value && currentCard.value) {
+    if (
+      studyMode.value === 'flashcard' &&
+      modeSelected.value &&
+      !finished.value &&
+      currentCard.value
+    ) {
       if (e.code === 'Space') {
         e.preventDefault();
         if (!showAnswer.value) {
@@ -318,21 +333,44 @@ export function useStudySession() {
 
   return {
     // 状态
-    loading, queue, currentIndex, showAnswer, submitting, finished,
-    sessionStats, againCountMap, resumeInfo,
-    studyMode, modeSelected, modeNames,
+    loading,
+    queue,
+    currentIndex,
+    showAnswer,
+    submitting,
+    finished,
+    sessionStats,
+    againCountMap,
+    resumeInfo,
+    studyMode,
+    modeSelected,
+    modeNames,
     currentCard,
     // 选择题
-    choiceOptions, choiceSelected, choiceAnswered,
+    choiceOptions,
+    choiceSelected,
+    choiceAnswered,
     // 拼写 & 听力
-    spellingInput, spellingAnswered, spellingCorrect, spellingHint,
+    spellingInput,
+    spellingAnswered,
+    spellingCorrect,
+    spellingHint,
     // 错误单词
-    hasAgainWords, againWordCount,
+    hasAgainWords,
+    againWordCount,
     // 方法
-    selectMode, applyResume, dismissResume,
-    replayWithNewMode, replayAgainWords,
-    flipCard, submitRating,
-    loadChoices, handleChoice, choiceNext,
-    checkSpelling, showSpellingHint, spellingNext,
+    selectMode,
+    applyResume,
+    dismissResume,
+    replayWithNewMode,
+    replayAgainWords,
+    flipCard,
+    submitRating,
+    loadChoices,
+    handleChoice,
+    choiceNext,
+    checkSpelling,
+    showSpellingHint,
+    spellingNext,
   };
 }

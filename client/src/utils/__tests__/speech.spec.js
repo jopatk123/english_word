@@ -24,16 +24,19 @@ const setupSpeechMock = (voices = []) => {
     addEventListener: vi.fn((_event, cb) => cb()), // 立即触发 voiceschanged
   });
 
-  vi.stubGlobal('SpeechSynthesisUtterance', class {
-    constructor(text) {
-      this.text = text;
-      this.lang = '';
-      this.rate = 1;
-      this.voice = null;
-      this.onend = null;
-      this.onerror = null;
+  vi.stubGlobal(
+    'SpeechSynthesisUtterance',
+    class {
+      constructor(text) {
+        this.text = text;
+        this.lang = '';
+        this.rate = 1;
+        this.voice = null;
+        this.onend = null;
+        this.onerror = null;
+      }
     }
-  });
+  );
 
   return { speakMock, cancelMock, getVoicesMock };
 };
@@ -65,7 +68,7 @@ describe('useSpeech().speak()', () => {
     // getVoices 第一次返回空，模拟需要等待
     const { speechSynthesis } = globalThis;
     speechSynthesis.getVoices
-      .mockReturnValueOnce([])            // 第一次为空
+      .mockReturnValueOnce([]) // 第一次为空
       .mockReturnValue([makeVoice('Samantha', 'en-US')]); // 之后有值
 
     const { speak } = useSpeech();
@@ -103,10 +106,7 @@ describe('语音选择策略', () => {
   });
 
   it('无优先语音时选择 en-US 语音', () => {
-    const voices = [
-      makeVoice('RandomUS', 'en-US'),
-      makeVoice('随机', 'zh-CN'),
-    ];
+    const voices = [makeVoice('RandomUS', 'en-US'), makeVoice('随机', 'zh-CN')];
     const { speakMock } = setupSpeechMock(voices);
     const { speak } = useSpeech();
     speak('voice-enus-test');
@@ -116,10 +116,7 @@ describe('语音选择策略', () => {
   });
 
   it('无 en-US 时兜底选择任意英语语音', () => {
-    const voices = [
-      makeVoice('BritVoice', 'en-GB'),
-      makeVoice('中文', 'zh-TW'),
-    ];
+    const voices = [makeVoice('BritVoice', 'en-GB'), makeVoice('中文', 'zh-TW')];
     const { speakMock } = setupSpeechMock(voices);
     const { speak } = useSpeech();
     speak('voice-engb-test');

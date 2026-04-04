@@ -162,7 +162,7 @@ describe('SRS 算法 getNextReview', () => {
    */
   function getNextReview(quality, currentInterval, easeFactor) {
     let newInterval;
-    let newEase = easeFactor;
+    let newEase;
     const isNew = currentInterval < 1;
 
     if (quality === 1) {
@@ -181,7 +181,7 @@ describe('SRS 算法 getNextReview', () => {
 
     const MAX_INTERVAL = 365;
     newInterval = Math.min(newInterval, MAX_INTERVAL);
-    const status = quality === 1 ? 'learning' : (newInterval >= 21 ? 'known' : 'review');
+    const status = quality === 1 ? 'learning' : newInterval >= 21 ? 'known' : 'review';
     return { interval: newInterval, easeFactor: newEase, status };
   }
 

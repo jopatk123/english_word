@@ -61,7 +61,8 @@ export const getWord = (id) => api.get(`/words/${id}`);
 export const createWord = (data) => api.post('/words', data);
 export const updateWord = (id, data) => api.put(`/words/${id}`, data);
 export const deleteWord = (id) => api.delete(`/words/${id}`);
-export const moveWord = (id, fromRootId, toRootId) => api.put(`/words/${id}/move`, { fromRootId, toRootId });
+export const moveWord = (id, fromRootId, toRootId) =>
+  api.put(`/words/${id}/move`, { fromRootId, toRootId });
 
 // ========== 例句 API ==========
 export const getExamples = (params) => api.get('/examples', { params });
@@ -72,41 +73,52 @@ export const deleteExample = (id) => api.delete(`/examples/${id}`);
 
 // ========== 背单词 API ==========
 const getUserTz = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
-export const getReviewDue = (params = {}) => api.get('/review/due', { params: { tz: getUserTz(), ...params } });
+export const getReviewDue = (params = {}) =>
+  api.get('/review/due', { params: { tz: getUserTz(), ...params } });
 export const getReviewStats = () => api.get('/review/stats', { params: { tz: getUserTz() } });
 export const enqueueRoot = (rootId) => api.post('/review/enqueue', { rootId, tz: getUserTz() });
-export const submitReviewResult = (wordId, quality) => api.post(`/review/${wordId}/result`, { quality, tz: getUserTz() });
+export const submitReviewResult = (wordId, quality) =>
+  api.post(`/review/${wordId}/result`, { quality, tz: getUserTz() });
 export const getRootsProgress = () => api.get('/review/roots-progress');
 export const resetWordReview = (wordId) => api.post(`/review/${wordId}/reset`);
 export const removeWordReview = (wordId) => api.delete(`/review/${wordId}`);
-export const getQuizChoices = (wordId, count = 3) => api.get(`/review/quiz-choices/${wordId}`, { params: { count } });
-export const getReviewHistory = (days = 30) => api.get('/review/history', { params: { tz: getUserTz(), days } });
-export const getReviewHistorySummary = (days = 30) => api.get('/review/history/summary', { params: { tz: getUserTz(), days } });
-export const exportReviewData = (format = 'json') => api.get('/review/export', { params: { format, tz: getUserTz() } });
+export const getQuizChoices = (wordId, count = 3) =>
+  api.get(`/review/quiz-choices/${wordId}`, { params: { count } });
+export const getReviewHistory = (days = 30) =>
+  api.get('/review/history', { params: { tz: getUserTz(), days } });
+export const getReviewHistorySummary = (days = 30) =>
+  api.get('/review/history/summary', { params: { tz: getUserTz(), days } });
+export const exportReviewData = (format = 'json') =>
+  api.get('/review/export', { params: { format, tz: getUserTz() } });
 export const exportAllData = () => api.get('/review/data/export');
 export const importAllData = (data) => api.post('/review/data/import', data);
 export const pauseWordReview = (wordId) => api.post(`/review/${wordId}/pause`);
-export const pauseRootReview = (rootId, paused) => api.post(`/review/roots/${rootId}/pause`, { paused });
+export const pauseRootReview = (rootId, paused) =>
+  api.post(`/review/roots/${rootId}/pause`, { paused });
 
 // ========== AI API ==========
 export const testAiConnection = (config) => aiApi.post('/ai/test', { config });
 export const getAiRootSuggestions = (config) => aiApi.post('/ai/suggest-roots', { config });
-export const getAiWordSuggestions = (rootId, config, options = {}) => aiApi.post('/ai/suggest-words', {
-  rootId,
-  config,
-  excludedWords: options.excludedWords || [],
-});
-export const getAiExampleSuggestions = (wordId, config, options = {}) => aiApi.post('/ai/suggest-examples', {
-  wordId,
-  config,
-  excludedSentences: options.excludedSentences || [],
-});
-export const analyzeWord = (word, config, options = {}) => aiApi.post('/ai/analyze-word', {
-  word,
-  config,
-  excludedSentences: options.excludedSentences || [],
-  singleExample: Boolean(options.singleExample),
-});
-export const analyzeSentence = (sentence, config) => aiApi.post('/ai/analyze-sentence', { sentence, config });
+export const getAiWordSuggestions = (rootId, config, options = {}) =>
+  aiApi.post('/ai/suggest-words', {
+    rootId,
+    config,
+    excludedWords: options.excludedWords || [],
+  });
+export const getAiExampleSuggestions = (wordId, config, options = {}) =>
+  aiApi.post('/ai/suggest-examples', {
+    wordId,
+    config,
+    excludedSentences: options.excludedSentences || [],
+  });
+export const analyzeWord = (word, config, options = {}) =>
+  aiApi.post('/ai/analyze-word', {
+    word,
+    config,
+    excludedSentences: options.excludedSentences || [],
+    singleExample: Boolean(options.singleExample),
+  });
+export const analyzeSentence = (sentence, config) =>
+  aiApi.post('/ai/analyze-sentence', { sentence, config });
 
 export default api;

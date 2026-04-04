@@ -3,7 +3,10 @@
     <!-- 面包屑导航 -->
     <el-breadcrumb separator="/">
       <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-      <el-breadcrumb-item v-if="word?.roots?.length === 1" :to="{ path: `/root/${word.roots[0].id}` }">
+      <el-breadcrumb-item
+        v-if="word?.roots?.length === 1"
+        :to="{ path: `/root/${word.roots[0].id}` }"
+      >
         词根：{{ word.roots[0].name }}
       </el-breadcrumb-item>
       <el-breadcrumb-item v-else>单词详情</el-breadcrumb-item>
@@ -22,7 +25,7 @@
       </template>
       <p class="remark-text">
         所属词根：
-        <template v-for="(root, idx) in (word?.roots || [])" :key="root.id">
+        <template v-for="(root, idx) in word?.roots || []" :key="root.id">
           <el-link type="primary" @click="$router.push(`/root/${root.id}`)">
             {{ root.name }}（{{ root.meaning }}）
           </el-link>
@@ -37,9 +40,16 @@
     <div class="section-header">
       <h3>例句（{{ examples.length }}）</h3>
       <div class="section-actions">
-        <el-button v-if="word?.roots?.length === 1" type="info" @click="$router.push(`/root/${word.roots[0].id}`)">返回词根</el-button>
+        <el-button
+          v-if="word?.roots?.length === 1"
+          type="info"
+          @click="$router.push(`/root/${word.roots[0].id}`)"
+          >返回词根</el-button
+        >
         <el-button v-else type="info" @click="$router.push('/')">返回首页</el-button>
-        <el-button type="success" @click="$router.push(`/word/${wordId}/ai-examples`)">智能添加例句</el-button>
+        <el-button type="success" @click="$router.push(`/word/${wordId}/ai-examples`)"
+          >智能添加例句</el-button
+        >
         <el-button type="primary" @click="openExampleDialog()">添加例句</el-button>
       </div>
     </div>
@@ -49,12 +59,7 @@
     </div>
 
     <div v-loading="examplesLoading" class="example-list">
-      <el-card
-        v-for="example in examples"
-        :key="example.id"
-        class="example-card"
-        shadow="hover"
-      >
+      <el-card v-for="example in examples" :key="example.id" class="example-card" shadow="hover">
         <div class="example-content">
           <p class="example-sentence">{{ example.sentence }}</p>
           <p class="example-translation">{{ example.translation }}</p>
@@ -71,13 +76,28 @@
     </div>
 
     <!-- 例句表单对话框 -->
-    <el-dialog v-model="exampleDialogVisible" :title="editingExample ? '编辑例句' : '添加例句'" width="600px" destroy-on-close>
+    <el-dialog
+      v-model="exampleDialogVisible"
+      :title="editingExample ? '编辑例句' : '添加例句'"
+      width="600px"
+      destroy-on-close
+    >
       <el-form :model="exampleForm" label-width="80px">
         <el-form-item label="例句原文" required>
-          <el-input v-model="exampleForm.sentence" type="textarea" :rows="3" placeholder="英文例句" />
+          <el-input
+            v-model="exampleForm.sentence"
+            type="textarea"
+            :rows="3"
+            placeholder="英文例句"
+          />
         </el-form-item>
         <el-form-item label="翻译" required>
-          <el-input v-model="exampleForm.translation" type="textarea" :rows="2" placeholder="中文翻译" />
+          <el-input
+            v-model="exampleForm.translation"
+            type="textarea"
+            :rows="2"
+            placeholder="中文翻译"
+          />
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="exampleForm.remark" placeholder="如：高频考点、来源等" />
@@ -92,98 +112,108 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { getWord, getExamples, createExample, updateExample, deleteExample } from '../api/index.js';
-import SpeakButton from '../components/SpeakButton.vue';
+  import { ref, onMounted } from 'vue';
+  import { useRoute } from 'vue-router';
+  import { ElMessage, ElMessageBox } from 'element-plus';
+  import {
+    getWord,
+    getExamples,
+    createExample,
+    updateExample,
+    deleteExample,
+  } from '../api/index.js';
+  import SpeakButton from '../components/SpeakButton.vue';
 
-const props = defineProps({ id: String });
-const route = useRoute();
+  const props = defineProps({ id: String });
+  const route = useRoute();
 
-const word = ref(null);
-const examples = ref([]);
-const loading = ref(false);
-const examplesLoading = ref(false);
+  const word = ref(null);
+  const examples = ref([]);
+  const loading = ref(false);
+  const examplesLoading = ref(false);
 
-const exampleDialogVisible = ref(false);
-const editingExample = ref(null);
-const exampleForm = ref({ sentence: '', translation: '', remark: '' });
-const saving = ref(false);
+  const exampleDialogVisible = ref(false);
+  const editingExample = ref(null);
+  const exampleForm = ref({ sentence: '', translation: '', remark: '' });
+  const saving = ref(false);
 
-const wordId = props.id || route.params.id;
+  const wordId = props.id || route.params.id;
 
-const fetchWord = async () => {
-  loading.value = true;
-  try {
-    const res = await getWord(wordId);
-    word.value = res.data;
-  } catch {
-    ElMessage.error('获取单词信息失败');
-  } finally {
-    loading.value = false;
-  }
-};
-
-const fetchExamples = async () => {
-  examplesLoading.value = true;
-  try {
-    const res = await getExamples({ wordId });
-    examples.value = res.data;
-  } catch {
-    ElMessage.error('获取例句列表失败');
-  } finally {
-    examplesLoading.value = false;
-  }
-};
-
-const openExampleDialog = (example = null) => {
-  editingExample.value = example;
-  exampleForm.value = example
-    ? { sentence: example.sentence, translation: example.translation, remark: example.remark || '' }
-    : { sentence: '', translation: '', remark: '' };
-  exampleDialogVisible.value = true;
-};
-
-const handleSaveExample = async () => {
-  if (!exampleForm.value.sentence || !exampleForm.value.translation) {
-    return ElMessage.warning('请填写例句原文和翻译');
-  }
-  saving.value = true;
-  try {
-    if (editingExample.value) {
-      await updateExample(editingExample.value.id, exampleForm.value);
-      ElMessage.success('更新成功');
-    } else {
-      await createExample({ ...exampleForm.value, wordId });
-      ElMessage.success('添加成功');
+  const fetchWord = async () => {
+    loading.value = true;
+    try {
+      const res = await getWord(wordId);
+      word.value = res.data;
+    } catch {
+      ElMessage.error('获取单词信息失败');
+    } finally {
+      loading.value = false;
     }
-    exampleDialogVisible.value = false;
-    fetchExamples();
-  } catch {
-    ElMessage.error('保存失败');
-  } finally {
-    saving.value = false;
-  }
-};
+  };
 
-const handleDeleteExample = async (example) => {
-  try {
-    await ElMessageBox.confirm(
-      '确定删除这条例句？',
-      '确认删除',
-      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
-    );
-    await deleteExample(example.id);
-    ElMessage.success('删除成功');
-    fetchExamples();
-  } catch {
-    // 取消
-  }
-};
+  const fetchExamples = async () => {
+    examplesLoading.value = true;
+    try {
+      const res = await getExamples({ wordId });
+      examples.value = res.data;
+    } catch {
+      ElMessage.error('获取例句列表失败');
+    } finally {
+      examplesLoading.value = false;
+    }
+  };
 
-onMounted(() => {
-  fetchWord();
-  fetchExamples();
-});
+  const openExampleDialog = (example = null) => {
+    editingExample.value = example;
+    exampleForm.value = example
+      ? {
+          sentence: example.sentence,
+          translation: example.translation,
+          remark: example.remark || '',
+        }
+      : { sentence: '', translation: '', remark: '' };
+    exampleDialogVisible.value = true;
+  };
+
+  const handleSaveExample = async () => {
+    if (!exampleForm.value.sentence || !exampleForm.value.translation) {
+      return ElMessage.warning('请填写例句原文和翻译');
+    }
+    saving.value = true;
+    try {
+      if (editingExample.value) {
+        await updateExample(editingExample.value.id, exampleForm.value);
+        ElMessage.success('更新成功');
+      } else {
+        await createExample({ ...exampleForm.value, wordId });
+        ElMessage.success('添加成功');
+      }
+      exampleDialogVisible.value = false;
+      fetchExamples();
+    } catch {
+      ElMessage.error('保存失败');
+    } finally {
+      saving.value = false;
+    }
+  };
+
+  const handleDeleteExample = async (example) => {
+    try {
+      await ElMessageBox.confirm('确定删除这条例句？', '确认删除', {
+        type: 'warning',
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+      });
+      await deleteExample(example.id);
+      ElMessage.success('删除成功');
+      fetchExamples();
+    } catch {
+      // 取消
+    }
+  };
+
+  onMounted(() => {
+    fetchWord();
+    fetchExamples();
+  });
 </script>

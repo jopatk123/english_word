@@ -18,7 +18,10 @@ import { ensureDefaultRoot } from '../utils/defaultRoot.js';
 const buildApp = (userId) => {
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => { req.userId = userId; next(); });
+  app.use((req, _res, next) => {
+    req.userId = userId;
+    next();
+  });
   app.use('/roots', rootsRouter);
   return app;
 };
@@ -46,7 +49,7 @@ describe('GET /roots/', () => {
 
   it('包含 wordCount 字段', async () => {
     const res = await request(app).get('/roots/');
-    expect(res.body.data.every(r => typeof r.wordCount === 'number')).toBe(true);
+    expect(res.body.data.every((r) => typeof r.wordCount === 'number')).toBe(true);
   });
 
   it('keyword 搜索过滤结果', async () => {
@@ -81,9 +84,7 @@ describe('POST /roots/', () => {
   });
 
   it('缺少必填字段返回错误', async () => {
-    const res = await request(app)
-      .post('/roots/')
-      .send({ name: 'no_meaning' });
+    const res = await request(app).post('/roots/').send({ name: 'no_meaning' });
     expect(res.status).toBeGreaterThanOrEqual(400);
     expect(res.body.msg).toBeTruthy();
   });
@@ -136,16 +137,18 @@ describe('PUT /roots/:id', () => {
   });
 
   it('缺少必填字段返回错误', async () => {
-    const res = await request(app)
-      .put(`/roots/${rootId}`)
-      .send({ name: 'only_name' });
+    const res = await request(app).put(`/roots/${rootId}`).send({ name: 'only_name' });
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 
   it('修改其他用户的词根返回错误', async () => {
     // 创建另一个用户的词根
     const otherUser = await User.create({ username: `other_${suffix()}`, password: 'x' });
-    const otherRoot = await Root.create({ name: `other_root_${suffix()}`, meaning: '他人', userId: otherUser.id });
+    const otherRoot = await Root.create({
+      name: `other_root_${suffix()}`,
+      meaning: '他人',
+      userId: otherUser.id,
+    });
 
     const res = await request(app)
       .put(`/roots/${otherRoot.id}`)

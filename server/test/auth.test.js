@@ -44,9 +44,7 @@ describe('POST /api/auth/register', () => {
   });
 
   it('缺少用户名/密码返回 400', async () => {
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send({ username: 'only_user' });
+    const res = await request(app).post('/api/auth/register').send({ username: 'only_user' });
     expect(res.status).toBe(400);
     expect(res.body.msg).toMatch(/必填/);
   });
@@ -88,9 +86,7 @@ describe('POST /api/auth/login', () => {
   });
 
   it('正确凭证登录成功，返回 token', async () => {
-    const res = await request(app)
-      .post('/api/auth/login')
-      .send({ username, password });
+    const res = await request(app).post('/api/auth/login').send({ username, password });
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveProperty('token');
   });
@@ -110,9 +106,7 @@ describe('POST /api/auth/login', () => {
   });
 
   it('缺少参数返回 400', async () => {
-    const res = await request(app)
-      .post('/api/auth/login')
-      .send({ username });
+    const res = await request(app).post('/api/auth/login').send({ username });
     expect(res.status).toBe(400);
   });
 });
@@ -130,9 +124,7 @@ describe('GET /api/auth/me', () => {
   });
 
   it('有效 token 返回用户信息', async () => {
-    const res = await request(app)
-      .get('/api/auth/me')
-      .set('Authorization', `Bearer ${token}`);
+    const res = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveProperty('id');
     expect(res.body.data).toHaveProperty('username');
@@ -157,9 +149,7 @@ describe('authMiddleware', () => {
   });
 
   it('携带有效 token 可访问受保护路由', async () => {
-    const res = await request(app)
-      .get('/protected')
-      .set('Authorization', `Bearer ${token}`);
+    const res = await request(app).get('/protected').set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
     expect(typeof res.body.userId).toBe('number');
@@ -171,9 +161,7 @@ describe('authMiddleware', () => {
   });
 
   it('格式不正确的 Authorization 头返回 401', async () => {
-    const res = await request(app)
-      .get('/protected')
-      .set('Authorization', 'InvalidFormat token');
+    const res = await request(app).get('/protected').set('Authorization', 'InvalidFormat token');
     expect(res.status).toBe(401);
   });
 

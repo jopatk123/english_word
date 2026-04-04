@@ -23,45 +23,45 @@
 </template>
 
 <script setup>
-import { ref, watchEffect, computed, onUnmounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+  import { ref, watchEffect, computed, onUnmounted } from 'vue';
+  import { useRouter, useRoute } from 'vue-router';
 
-const router = useRouter();
-const route = useRoute();
-const user = ref(null);
+  const router = useRouter();
+  const route = useRoute();
+  const user = ref(null);
 
-const now = ref(new Date());
-const timer = setInterval(() => {
-  now.value = new Date();
-}, 1000);
+  const now = ref(new Date());
+  const timer = setInterval(() => {
+    now.value = new Date();
+  }, 1000);
 
-onUnmounted(() => {
-  clearInterval(timer);
-});
+  onUnmounted(() => {
+    clearInterval(timer);
+  });
 
-const formattedTime = computed(() =>
-  now.value.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
-);
+  const formattedTime = computed(() =>
+    now.value.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+  );
 
-watchEffect(() => {
-  // Re-evaluate on route change to pick up login/logout
-  void route.path;
-  try {
-    const raw = localStorage.getItem('user');
-    user.value = raw ? JSON.parse(raw) : null;
-  } catch {
+  watchEffect(() => {
+    // Re-evaluate on route change to pick up login/logout
+    void route.path;
+    try {
+      const raw = localStorage.getItem('user');
+      user.value = raw ? JSON.parse(raw) : null;
+    } catch {
+      user.value = null;
+    }
+  });
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     user.value = null;
-  }
-});
-
-const handleLogout = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  user.value = null;
-  router.push('/login');
-};
+    router.push('/login');
+  };
 </script>

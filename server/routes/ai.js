@@ -7,12 +7,7 @@ import {
   sanitizeWordSuggestions,
   validateAiConfig,
 } from '../utils/ai.js';
-import {
-  createDebugInfo,
-  logAiError,
-  logAiInfo,
-  withDuration,
-} from '../utils/aiDebug.js';
+import { createDebugInfo, logAiError, logAiInfo, withDuration } from '../utils/aiDebug.js';
 import {
   buildAnalyzeSentencePrompt,
   buildAnalyzeWordPrompt,
@@ -85,14 +80,18 @@ router.post('/test', async (req, res) => {
 
     const payload = await requestAiJson(config, {
       systemPrompt: '你是一个 API 连通性测试助手。你只能返回 JSON。',
-      userPrompt: '请只返回 JSON：{"message":"ok","hasMore":false,"items":[]}。不要输出任何其他内容。',
+      userPrompt:
+        '请只返回 JSON：{"message":"ok","hasMore":false,"items":[]}。不要输出任何其他内容。',
     });
 
     logAiInfo('test.success', debugInfo, { ok: true });
     success(
       res,
-      { ok: payload?.message === 'ok' || Array.isArray(payload?.items), debug: withDuration(debugInfo) },
-      '连接测试成功',
+      {
+        ok: payload?.message === 'ok' || Array.isArray(payload?.items),
+        debug: withDuration(debugInfo),
+      },
+      '连接测试成功'
     );
   } catch (e) {
     handleAiError(res, req, startedAt, 'test', e);
@@ -113,7 +112,7 @@ router.post('/suggest-roots', async (req, res) => {
     const { rawCount, items, hasMore, filteredCount } = processSuggestionResult(
       payload,
       sanitizeRootSuggestions,
-      roots.map((r) => r.name),
+      roots.map((r) => r.name)
     );
     const message = items.length
       ? `本次生成了 ${rawCount} 个词根候选，过滤重复或无效项后保留 ${items.length} 个可添加词根。`
@@ -150,17 +149,20 @@ router.post('/suggest-words', async (req, res) => {
 
     const words = await root.getWords({ order: [['name', 'ASC']] });
     const normalizedExcludedWords = Array.isArray(excludedWords)
-      ? excludedWords.filter((w) => w && typeof w === 'string').map((w) => w.trim().toLowerCase()).slice(0, 50)
+      ? excludedWords
+          .filter((w) => w && typeof w === 'string')
+          .map((w) => w.trim().toLowerCase())
+          .slice(0, 50)
       : [];
-    
+
     const payload = await requestAiJson(
       validatedConfig,
-      buildWordPrompt(root, words, normalizedExcludedWords),
+      buildWordPrompt(root, words, normalizedExcludedWords)
     );
     const { rawCount, items, hasMore, filteredCount } = processSuggestionResult(
       payload,
       sanitizeWordSuggestions,
-      [...words.map((w) => w.name), ...normalizedExcludedWords],
+      [...words.map((w) => w.name), ...normalizedExcludedWords]
     );
     const message = items.length
       ? `本次生成了 ${rawCount} 个单词候选，过滤重复或无效项后保留 ${items.length} 个可添加单词。`
@@ -202,20 +204,28 @@ router.post('/suggest-examples', async (req, res) => {
     logAiInfo('suggest-examples.start', debugInfo, { wordId });
 
     const word = await Word.findByPk(wordId, {
-      include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'name', 'meaning', 'userId'] }],
+      include: [
+        {
+          model: Root,
+          as: 'roots',
+          through: { attributes: [] },
+          attributes: ['id', 'name', 'meaning', 'userId'],
+        },
+      ],
     });
-    if (!word || !word.roots?.some((r) => r.userId === req.userId)) return error(res, '单词不存在', 404);
+    if (!word || !word.roots?.some((r) => r.userId === req.userId))
+      return error(res, '单词不存在', 404);
 
     const examples = await Example.findAll({ where: { wordId }, order: [['create_time', 'ASC']] });
     const normalizedExcludedSentences = normalizeSentenceList(excludedSentences);
     const payload = await requestAiJson(
       validatedConfig,
-      buildExamplePrompt(word, examples, normalizedExcludedSentences),
+      buildExamplePrompt(word, examples, normalizedExcludedSentences)
     );
     const { rawCount, items, hasMore, filteredCount } = processSuggestionResult(
       payload,
       sanitizeExampleSuggestions,
-      [...examples.map((e) => e.sentence), ...normalizedExcludedSentences],
+      [...examples.map((e) => e.sentence), ...normalizedExcludedSentences]
     );
     const message = items.length
       ? `本次生成了 ${rawCount} 条例句候选，过滤重复或无效项后保留 ${items.length} 条可添加例句。`
@@ -258,18 +268,24 @@ router.post('/analyze-word', async (req, res) => {
     // 单词若已收录（且关联词根属于当前用户），直接返回缓存数据，不消耗 AI 配额
     const existingWord = await Word.findOne({
       where: { name: trimmedWord },
-      include: [{
-        model: Root,
-        as: 'roots',
-        through: { attributes: [] },
-        attributes: ['id', 'name', 'meaning', 'userId'],
-        where: { userId: req.userId },
-        required: true,
-      }],
+      include: [
+        {
+          model: Root,
+          as: 'roots',
+          through: { attributes: [] },
+          attributes: ['id', 'name', 'meaning', 'userId'],
+          where: { userId: req.userId },
+          required: true,
+        },
+      ],
     });
 
     if (existingWord) {
-      const existingRoots = existingWord.roots.map((r) => ({ id: r.id, name: r.name, meaning: r.meaning }));
+      const existingRoots = existingWord.roots.map((r) => ({
+        id: r.id,
+        name: r.name,
+        meaning: r.meaning,
+      }));
       return success(res, {
         analysis: {
           word: existingWord.name,
@@ -279,7 +295,12 @@ router.post('/analyze-word', async (req, res) => {
           roots: existingWord.roots.map((r) => ({ name: r.name, meaning: r.meaning })),
           examples: [],
         },
-        existingWord: { id: existingWord.id, name: existingWord.name, meaning: existingWord.meaning, roots: existingRoots },
+        existingWord: {
+          id: existingWord.id,
+          name: existingWord.name,
+          meaning: existingWord.meaning,
+          roots: existingRoots,
+        },
         existingRoots,
         debug: withDuration(createDebugInfo(req, config || {}, startedAt)),
       });
@@ -295,16 +316,23 @@ router.post('/analyze-word', async (req, res) => {
       singleExample: shouldGenerateSingleExample,
     });
 
-    const payload = await requestAiJson(validatedConfig, buildAnalyzeWordPrompt(trimmedWord, {
-      excludedSentences: normalizedExcludedSentences,
-      singleExample: shouldGenerateSingleExample,
-    }));
+    const payload = await requestAiJson(
+      validatedConfig,
+      buildAnalyzeWordPrompt(trimmedWord, {
+        excludedSentences: normalizedExcludedSentences,
+        singleExample: shouldGenerateSingleExample,
+      })
+    );
     const analysis = sanitizeAnalyzeWordResult(payload, trimmedWord);
     if (!analysis) return error(res, 'AI 返回的分析结果无效，请重试', 400);
 
     if (normalizedExcludedSentences.length && Array.isArray(analysis.examples)) {
-      const excludedSet = new Set(normalizedExcludedSentences.map((sentence) => sentence.toLowerCase()));
-      analysis.examples = analysis.examples.filter((item) => !excludedSet.has(item.sentence.toLowerCase()));
+      const excludedSet = new Set(
+        normalizedExcludedSentences.map((sentence) => sentence.toLowerCase())
+      );
+      analysis.examples = analysis.examples.filter(
+        (item) => !excludedSet.has(item.sentence.toLowerCase())
+      );
     }
 
     if (shouldGenerateSingleExample) {
@@ -348,7 +376,10 @@ router.post('/analyze-sentence', async (req, res) => {
     const debugInfo = createDebugInfo(req, validatedConfig, startedAt);
     logAiInfo('analyze-sentence.start', debugInfo, { sentenceLength: trimmedSentence.length });
 
-    const payload = await requestAiJson(validatedConfig, buildAnalyzeSentencePrompt(trimmedSentence));
+    const payload = await requestAiJson(
+      validatedConfig,
+      buildAnalyzeSentencePrompt(trimmedSentence)
+    );
     const analysis = sanitizeAnalyzeSentenceResult(payload, trimmedSentence);
     if (!analysis) return error(res, 'AI 返回的分析结果无效，请重试', 400);
 

@@ -20,15 +20,25 @@ router.get('/due', async (req, res) => {
         dueDate: { [Op.lte]: dueDeadline },
         paused: false,
       },
-      include: [{
-        model: Word,
-        as: 'word',
-        include: [
-          { model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'name', 'meaning'] },
-          { model: Example, as: 'examples', attributes: ['id', 'sentence', 'translation'] },
-        ],
-      }],
-      order: [['due_date', 'ASC'], ['ease_factor', 'ASC']],
+      include: [
+        {
+          model: Word,
+          as: 'word',
+          include: [
+            {
+              model: Root,
+              as: 'roots',
+              through: { attributes: [] },
+              attributes: ['id', 'name', 'meaning'],
+            },
+            { model: Example, as: 'examples', attributes: ['id', 'sentence', 'translation'] },
+          ],
+        },
+      ],
+      order: [
+        ['due_date', 'ASC'],
+        ['ease_factor', 'ASC'],
+      ],
     };
 
     if (limit > 0) {
@@ -37,7 +47,7 @@ router.get('/due', async (req, res) => {
     }
 
     const reviews = await WordReview.findAll(queryOpts);
-    const valid = reviews.filter(r => r.word);
+    const valid = reviews.filter((r) => r.word);
     success(res, valid);
   } catch (e) {
     error(res, e.message);

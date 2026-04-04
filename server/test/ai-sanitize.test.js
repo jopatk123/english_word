@@ -83,7 +83,11 @@ describe('validateAiConfig', () => {
   });
 
   it('anthropic providerId 返回正确的 providerMode', () => {
-    const result = validateAiConfig({ ...validConfig, providerId: 'anthropic', providerType: 'anthropic' });
+    const result = validateAiConfig({
+      ...validConfig,
+      providerId: 'anthropic',
+      providerType: 'anthropic',
+    });
     expect(result.providerMode).toBe('anthropic');
   });
 
@@ -129,16 +133,16 @@ describe('sanitizeRootSuggestions', () => {
 
   it('名称含非法字符时过滤', () => {
     const items = [
-      { name: 'SPEC', meaning: '看' },       // 大写 - 会被转小写后通过
-      { name: 'sp3ct', meaning: '看' },       // 含数字 - 过滤
-      { name: 'sp ct', meaning: '看' },       // 含空格 - 过滤
-      { name: 'sp', meaning: '看' },          // 长度合法
+      { name: 'SPEC', meaning: '看' }, // 大写 - 会被转小写后通过
+      { name: 'sp3ct', meaning: '看' }, // 含数字 - 过滤
+      { name: 'sp ct', meaning: '看' }, // 含空格 - 过滤
+      { name: 'sp', meaning: '看' }, // 长度合法
     ];
     const result = sanitizeRootSuggestions(items);
     // SPEC→spec 合法，sp3ct 和 'sp ct' 被过滤，sp 合法
-    expect(result.some(r => r.name === 'spec')).toBe(true);
-    expect(result.some(r => r.name === 'sp')).toBe(true);
-    expect(result.some(r => r.name === 'sp3ct')).toBe(false);
+    expect(result.some((r) => r.name === 'spec')).toBe(true);
+    expect(result.some((r) => r.name === 'sp')).toBe(true);
+    expect(result.some((r) => r.name === 'sp3ct')).toBe(false);
   });
 
   it('已有名称中的词根被过滤（去重）', () => {
@@ -169,7 +173,10 @@ describe('sanitizeRootSuggestions', () => {
   });
 
   it('超过 10 个词根时截断', () => {
-    const items = Array.from({ length: 15 }, (_, i) => ({ name: `root${(i + 10).toString(36)}`, meaning: '测试' }));
+    const items = Array.from({ length: 15 }, (_, i) => ({
+      name: `root${(i + 10).toString(36)}`,
+      meaning: '测试',
+    }));
     const result = sanitizeRootSuggestions(items);
     expect(result.length).toBeLessThanOrEqual(10);
   });
@@ -231,8 +238,8 @@ describe('sanitizeWordSuggestions', () => {
     const item = {
       ...validItem,
       partOfSpeech: [
-        { type: 'x.', meaning: '未知' },     // 非法词性
-        { type: 'v.', meaning: '检查' },      // 合法
+        { type: 'x.', meaning: '未知' }, // 非法词性
+        { type: 'v.', meaning: '检查' }, // 合法
       ],
     };
     const result = sanitizeWordSuggestions([item]);
@@ -284,15 +291,27 @@ describe('sanitizeWordSuggestions', () => {
   });
 
   it('所有合法词性类型均被接受（最多保留 8 条）', () => {
-    const validTypes = ['n.', 'v.', 'adj.', 'adv.', 'prep.', 'pron.', 'conj.', 'interj.', 'num.', 'art.', 'aux.'];
+    const validTypes = [
+      'n.',
+      'v.',
+      'adj.',
+      'adv.',
+      'prep.',
+      'pron.',
+      'conj.',
+      'interj.',
+      'num.',
+      'art.',
+      'aux.',
+    ];
     const item = {
       ...validItem,
-      partOfSpeech: validTypes.map(type => ({ type, meaning: '测试' })),
+      partOfSpeech: validTypes.map((type) => ({ type, meaning: '测试' })),
     };
     const result = sanitizeWordSuggestions([item]);
     // 每种类型合法，但最多保留 8 条
     expect(result[0].partOfSpeech.length).toBe(8);
-    expect(result[0].partOfSpeech.every(p => validTypes.includes(p.type))).toBe(true);
+    expect(result[0].partOfSpeech.every((p) => validTypes.includes(p.type))).toBe(true);
   });
 });
 
@@ -323,11 +342,15 @@ describe('sanitizeExampleSuggestions', () => {
   });
 
   it('翻译为空时过滤', () => {
-    expect(sanitizeExampleSuggestions([{ sentence: validItem.sentence, translation: '' }])).toHaveLength(0);
+    expect(
+      sanitizeExampleSuggestions([{ sentence: validItem.sentence, translation: '' }])
+    ).toHaveLength(0);
   });
 
   it('句子太短（少于 8 字符）时过滤', () => {
-    expect(sanitizeExampleSuggestions([{ sentence: 'Short', translation: '翻译' }])).toHaveLength(0);
+    expect(sanitizeExampleSuggestions([{ sentence: 'Short', translation: '翻译' }])).toHaveLength(
+      0
+    );
   });
 
   it('已有句子去重（不区分大小写）', () => {

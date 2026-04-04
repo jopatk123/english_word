@@ -15,7 +15,9 @@
           <div class="page-actions">
             <el-button @click="$router.push('/')">返回</el-button>
             <el-button @click="$router.push('/ai/settings')">修改配置</el-button>
-            <el-button type="primary" :loading="loading" @click="generateSuggestions">重新生成</el-button>
+            <el-button type="primary" :loading="loading" @click="generateSuggestions"
+              >重新生成</el-button
+            >
           </div>
         </div>
       </template>
@@ -66,109 +68,119 @@
         </el-table>
 
         <div v-if="suggestions.length" class="page-actions ai-footer-actions">
-          <el-button @click="toggleAllSelection">{{ allSelected ? '取消全选' : '全选建议' }}</el-button>
-          <el-button type="primary" :loading="saving" @click="handleSaveSelected">保存选中词根</el-button>
+          <el-button @click="toggleAllSelection">{{
+            allSelected ? '取消全选' : '全选建议'
+          }}</el-button>
+          <el-button type="primary" :loading="saving" @click="handleSaveSelected"
+            >保存选中词根</el-button
+          >
         </div>
-
       </template>
     </el-card>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
-import { ElMessage } from 'element-plus';
-import { createRoot, getAiRootSuggestions } from '../api/index.js';
-import SpeakButton from '../components/SpeakButton.vue';
-import { getProviderById } from '../constants/aiProviders.js';
-import { isAiSettingsReady, loadAiSettings } from '../utils/aiSettings.js';
+  import { computed, onMounted, ref } from 'vue';
+  import { ElMessage } from 'element-plus';
+  import { createRoot, getAiRootSuggestions } from '../api/index.js';
+  import SpeakButton from '../components/SpeakButton.vue';
+  import { getProviderById } from '../constants/aiProviders.js';
+  import { isAiSettingsReady, loadAiSettings } from '../utils/aiSettings.js';
 
-const settings = ref(loadAiSettings());
-const ready = computed(() => isAiSettingsReady(settings.value));
-const providerName = computed(() => getProviderById(settings.value.providerId).name);
+  const settings = ref(loadAiSettings());
+  const ready = computed(() => isAiSettingsReady(settings.value));
+  const providerName = computed(() => getProviderById(settings.value.providerId).name);
 
-const loading = ref(false);
-const saving = ref(false);
-const suggestions = ref([]);
-const selectedRows = ref([]);
-const resultMessage = ref('');
-const tableRef = ref(null);
-const debugSummary = ref(null);
+  const loading = ref(false);
+  const saving = ref(false);
+  const suggestions = ref([]);
+  const selectedRows = ref([]);
+  const resultMessage = ref('');
+  const tableRef = ref(null);
+  const debugSummary = ref(null);
 
-const allSelected = computed(() => suggestions.value.length > 0 && selectedRows.value.length === suggestions.value.length);
+  const allSelected = computed(
+    () => suggestions.value.length > 0 && selectedRows.value.length === suggestions.value.length
+  );
 
-const handleSelectionChange = (rows) => {
-  selectedRows.value = rows;
-};
+  const handleSelectionChange = (rows) => {
+    selectedRows.value = rows;
+  };
 
-const toggleAllSelection = () => {
-  if (!tableRef.value) return;
-  tableRef.value.toggleAllSelection();
-};
+  const toggleAllSelection = () => {
+    if (!tableRef.value) return;
+    tableRef.value.toggleAllSelection();
+  };
 
-const generateSuggestions = async () => {
-  if (!ready.value) {
-    return ElMessage.warning('请先完成 AI 配置');
-  }
+  const generateSuggestions = async () => {
+    if (!ready.value) {
+      return ElMessage.warning('请先完成 AI 配置');
+    }
 
-  loading.value = true;
-  suggestions.value = [];
-  selectedRows.value = [];
-  resultMessage.value = '';
-  debugSummary.value = null;
-
-  try {
-    const res = await getAiRootSuggestions(settings.value);
-    suggestions.value = res.data.items || [];
-    resultMessage.value = res.data.message || '建议生成完成';
-    debugSummary.value = res.data.debug || null;
-  } catch (e) {
-    resultMessage.value = '';
-    ElMessage.error(e?.response?.data?.msg || (e?.code === 'ECONNABORTED' ? 'AI 请求超时，请稍后重试' : '生成词根建议失败'));
-  } finally {
-    loading.value = false;
-  }
-};
-
-const handleSaveSelected = async () => {
-  if (!selectedRows.value.length) {
-    return ElMessage.warning('请先选择至少一个词根');
-  }
-
-  saving.value = true;
-  try {
-    const results = await Promise.allSettled(
-      selectedRows.value.map((item) => createRoot({
-        name: item.name,
-        meaning: item.meaning,
-      }))
-    );
-
-    const successCount = results.filter((item) => item.status === 'fulfilled').length;
-    const failedCount = results.length - successCount;
-
-    suggestions.value = suggestions.value.filter(
-      (item) => !selectedRows.value.some((selected) => selected.name === item.name)
-    );
+    loading.value = true;
+    suggestions.value = [];
     selectedRows.value = [];
+    resultMessage.value = '';
+    debugSummary.value = null;
 
-    if (successCount) {
-      ElMessage.success(`已保存 ${successCount} 个词根`);
+    try {
+      const res = await getAiRootSuggestions(settings.value);
+      suggestions.value = res.data.items || [];
+      resultMessage.value = res.data.message || '建议生成完成';
+      debugSummary.value = res.data.debug || null;
+    } catch (e) {
+      resultMessage.value = '';
+      ElMessage.error(
+        e?.response?.data?.msg ||
+          (e?.code === 'ECONNABORTED' ? 'AI 请求超时，请稍后重试' : '生成词根建议失败')
+      );
+    } finally {
+      loading.value = false;
     }
-    if (failedCount) {
-      ElMessage.warning(`${failedCount} 个词根保存失败，可能已存在`);
-    }
-    if (!suggestions.value.length) {
-      resultMessage.value = '当前这批建议已处理完成，如需更多建议可以再次生成';
-    }
-  } finally {
-    saving.value = false;
-  }
-};
+  };
 
-onMounted(() => {
-  if (ready.value) {
-    generateSuggestions();
-  }
-});
+  const handleSaveSelected = async () => {
+    if (!selectedRows.value.length) {
+      return ElMessage.warning('请先选择至少一个词根');
+    }
+
+    saving.value = true;
+    try {
+      const results = await Promise.allSettled(
+        selectedRows.value.map((item) =>
+          createRoot({
+            name: item.name,
+            meaning: item.meaning,
+          })
+        )
+      );
+
+      const successCount = results.filter((item) => item.status === 'fulfilled').length;
+      const failedCount = results.length - successCount;
+
+      suggestions.value = suggestions.value.filter(
+        (item) => !selectedRows.value.some((selected) => selected.name === item.name)
+      );
+      selectedRows.value = [];
+
+      if (successCount) {
+        ElMessage.success(`已保存 ${successCount} 个词根`);
+      }
+      if (failedCount) {
+        ElMessage.warning(`${failedCount} 个词根保存失败，可能已存在`);
+      }
+      if (!suggestions.value.length) {
+        resultMessage.value = '当前这批建议已处理完成，如需更多建议可以再次生成';
+      }
+    } finally {
+      saving.value = false;
+    }
+  };
+
+  onMounted(() => {
+    if (ready.value) {
+      generateSuggestions();
+    }
+  });
 </script>

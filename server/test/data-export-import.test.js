@@ -14,7 +14,10 @@ const buildApp = (userId) => {
   const app = express();
   app.use(express.json({ limit: '10mb' }));
   // 模拟认证中间件：直接注入 userId
-  app.use((req, _res, next) => { req.userId = userId; next(); });
+  app.use((req, _res, next) => {
+    req.userId = userId;
+    next();
+  });
   app.use('/review', reviewDataRouter);
   return app;
 };
@@ -44,7 +47,11 @@ describe('GET /review/data/export', () => {
     rootId = root.id;
     const word = await Word.create({ name: 'exportword', meaning: '导出单词', phonetic: '/test/' });
     await WordRoot.create({ wordId: word.id, rootId });
-    await Example.create({ wordId: word.id, sentence: 'Test sentence.', translation: '测试句子。' });
+    await Example.create({
+      wordId: word.id,
+      sentence: 'Test sentence.',
+      translation: '测试句子。',
+    });
   });
 
   it('返回正确的 JSON 结构', async () => {
@@ -58,14 +65,14 @@ describe('GET /review/data/export', () => {
 
   it('导出包含创建的词根', async () => {
     const res = await request(app).get('/review/data/export');
-    const exportedRoot = res.body.roots.find(r => r.name === 'exportroot');
+    const exportedRoot = res.body.roots.find((r) => r.name === 'exportroot');
     expect(exportedRoot).toBeDefined();
     expect(exportedRoot.meaning).toBe('测试导出词根');
   });
 
   it('导出包含单词及其词根关联和例句', async () => {
     const res = await request(app).get('/review/data/export');
-    const word = res.body.words.find(w => w.name === 'exportword');
+    const word = res.body.words.find((w) => w.name === 'exportword');
     expect(word).toBeDefined();
     expect(word.rootNames).toContain('exportroot');
     expect(word.examples.length).toBeGreaterThan(0);
@@ -90,9 +97,7 @@ describe('POST /review/data/import', () => {
         phonetic: '/w1/',
         remark: null,
         rootNames: ['importroot1'],
-        examples: [
-          { sentence: 'Import word one.', translation: '导入单词一。', remark: null },
-        ],
+        examples: [{ sentence: 'Import word one.', translation: '导入单词一。', remark: null }],
       },
       {
         name: 'importword2',
@@ -146,7 +151,9 @@ describe('POST /review/data/import', () => {
 
   it('例句正确创建且不重复', async () => {
     const word = await Word.findOne({ where: { name: 'importword1' } });
-    const examples = await Example.findAll({ where: { wordId: word.id, sentence: 'Import word one.' } });
+    const examples = await Example.findAll({
+      where: { wordId: word.id, sentence: 'Import word one.' },
+    });
     expect(examples.length).toBe(1);
   });
 
@@ -156,7 +163,9 @@ describe('POST /review/data/import', () => {
   });
 
   it('版本不匹配时返回 400', async () => {
-    const res = await request(app).post('/review/data/import').send({ version: '2.0', roots: [], words: [] });
+    const res = await request(app)
+      .post('/review/data/import')
+      .send({ version: '2.0', roots: [], words: [] });
     expect(res.status).toBe(400);
   });
 });

@@ -31,16 +31,16 @@ describe('AI_PROVIDERS', () => {
   });
 
   it('所有 id 唯一', () => {
-    const ids = AI_PROVIDERS.map(p => p.id);
+    const ids = AI_PROVIDERS.map((p) => p.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
   it('包含 deepseek 厂商', () => {
-    expect(AI_PROVIDERS.some(p => p.id === 'deepseek')).toBe(true);
+    expect(AI_PROVIDERS.some((p) => p.id === 'deepseek')).toBe(true);
   });
 
   it('包含 anthropic 厂商', () => {
-    expect(AI_PROVIDERS.some(p => p.id === 'anthropic')).toBe(true);
+    expect(AI_PROVIDERS.some((p) => p.id === 'anthropic')).toBe(true);
   });
 
   it('每个 provider 至少有一个 model', () => {
@@ -63,7 +63,7 @@ describe('DEFAULT_PROVIDER_ID', () => {
   });
 
   it('对应 AI_PROVIDERS 中存在的厂商', () => {
-    expect(AI_PROVIDERS.some(p => p.id === DEFAULT_PROVIDER_ID)).toBe(true);
+    expect(AI_PROVIDERS.some((p) => p.id === DEFAULT_PROVIDER_ID)).toBe(true);
   });
 });
 

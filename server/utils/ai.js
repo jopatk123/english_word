@@ -110,9 +110,8 @@ export const validateAiConfig = (config = {}) => {
   }
 
   const rawTemp = parseFloat(config.temperature);
-  const temperature = (!isNaN(rawTemp) && rawTemp >= 0 && rawTemp <= 2)
-    ? Math.round(rawTemp * 100) / 100
-    : 0.2;
+  const temperature =
+    !isNaN(rawTemp) && rawTemp >= 0 && rawTemp <= 2 ? Math.round(rawTemp * 100) / 100 : 0.2;
 
   return {
     apiKey,
@@ -125,7 +124,14 @@ export const validateAiConfig = (config = {}) => {
   };
 };
 
-const callOpenAICompatible = async ({ apiKey, baseUrl, model, temperature, systemPrompt, userPrompt }) => {
+const callOpenAICompatible = async ({
+  apiKey,
+  baseUrl,
+  model,
+  temperature,
+  systemPrompt,
+  userPrompt,
+}) => {
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -165,9 +171,7 @@ const callAnthropic = async ({ apiKey, baseUrl, model, temperature, systemPrompt
       max_tokens: 1800,
       temperature: typeof temperature === 'number' ? temperature : 0.2,
       system: systemPrompt,
-      messages: [
-        { role: 'user', content: userPrompt },
-      ],
+      messages: [{ role: 'user', content: userPrompt }],
     }),
   });
 
@@ -188,9 +192,10 @@ export const requestAiJson = async (config, prompts) => {
     userPrompt: prompts.userPrompt,
   };
 
-  const rawText = normalizedConfig.providerMode === 'anthropic'
-    ? await callAnthropic(requestPayload)
-    : await callOpenAICompatible(requestPayload);
+  const rawText =
+    normalizedConfig.providerMode === 'anthropic'
+      ? await callAnthropic(requestPayload)
+      : await callOpenAICompatible(requestPayload);
 
   if (!rawText) {
     throw new Error('AI 未返回有效内容');
@@ -204,7 +209,19 @@ export const requestAiJson = async (config, prompts) => {
   return parsed;
 };
 
-const VALID_POS_TYPES = new Set(['n.', 'v.', 'adj.', 'adv.', 'prep.', 'pron.', 'conj.', 'interj.', 'num.', 'art.', 'aux.']);
+const VALID_POS_TYPES = new Set([
+  'n.',
+  'v.',
+  'adj.',
+  'adv.',
+  'prep.',
+  'pron.',
+  'conj.',
+  'interj.',
+  'num.',
+  'art.',
+  'aux.',
+]);
 
 export const sanitizeRootSuggestions = (items, existingNames = []) => {
   const nameSet = new Set(existingNames.map((name) => name.trim().toLowerCase()));

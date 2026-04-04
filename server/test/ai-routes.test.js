@@ -42,7 +42,10 @@ const validConfig = {
 const buildApp = (userId) => {
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => { req.userId = userId; next(); });
+  app.use((req, _res, next) => {
+    req.userId = userId;
+    next();
+  });
   app.use('/ai', aiRouter);
   return app;
 };
@@ -94,7 +97,9 @@ describe('POST /ai/test', () => {
   });
 
   it('配置不完整时返回 400', async () => {
-    const res = await request(app).post('/ai/test').send({ config: { apiKey: '' } });
+    const res = await request(app)
+      .post('/ai/test')
+      .send({ config: { apiKey: '' } });
     expect(res.status).toBe(400);
   });
 
@@ -160,7 +165,14 @@ describe('POST /ai/suggest-words', () => {
   it('成功推荐单词', async () => {
     requestAiJson.mockResolvedValue({
       hasMore: true,
-      items: [{ name: 'transport', meaning: '运输', phonetic: '/trænsˈpɔːrt/', partOfSpeech: [{ type: 'v.', meaning: '运输' }] }],
+      items: [
+        {
+          name: 'transport',
+          meaning: '运输',
+          phonetic: '/trænsˈpɔːrt/',
+          partOfSpeech: [{ type: 'v.', meaning: '运输' }],
+        },
+      ],
     });
 
     const res = await request(app).post('/ai/suggest-words').send({ config: validConfig, rootId });
@@ -176,14 +188,22 @@ describe('POST /ai/suggest-words', () => {
 
   it('词根不存在时返回 404', async () => {
     requestAiJson.mockResolvedValue({ hasMore: false, items: [] });
-    const res = await request(app).post('/ai/suggest-words').send({ config: validConfig, rootId: 9999999 });
+    const res = await request(app)
+      .post('/ai/suggest-words')
+      .send({ config: validConfig, rootId: 9999999 });
     expect(res.status).toBe(404);
   });
 
   it('他人词根返回 404', async () => {
     const otherUser = await User.create({ username: `other_${suf()}`, password: 'y' });
-    const otherRoot = await Root.create({ name: `otherroot_${suf()}`, meaning: '他人', userId: otherUser.id });
-    const res = await request(app).post('/ai/suggest-words').send({ config: validConfig, rootId: otherRoot.id });
+    const otherRoot = await Root.create({
+      name: `otherroot_${suf()}`,
+      meaning: '他人',
+      userId: otherUser.id,
+    });
+    const res = await request(app)
+      .post('/ai/suggest-words')
+      .send({ config: validConfig, rootId: otherRoot.id });
     expect(res.status).toBe(404);
   });
 
@@ -212,7 +232,9 @@ describe('POST /ai/suggest-examples', () => {
       items: [{ sentence: 'She inspects the room carefully.', translation: '她仔细检查了房间。' }],
     });
 
-    const res = await request(app).post('/ai/suggest-examples').send({ config: validConfig, wordId });
+    const res = await request(app)
+      .post('/ai/suggest-examples')
+      .send({ config: validConfig, wordId });
     expect(res.status).toBe(200);
     expect(res.body.data.items).toHaveLength(1);
     expect(res.body.data.word).toHaveProperty('id', wordId);
@@ -224,7 +246,9 @@ describe('POST /ai/suggest-examples', () => {
   });
 
   it('单词不存在时返回 404', async () => {
-    const res = await request(app).post('/ai/suggest-examples').send({ config: validConfig, wordId: 9999999 });
+    const res = await request(app)
+      .post('/ai/suggest-examples')
+      .send({ config: validConfig, wordId: 9999999 });
     expect(res.status).toBe(404);
   });
 
@@ -257,14 +281,18 @@ describe('POST /ai/analyze-word', () => {
       examples: [{ sentence: 'She is brilliant.', translation: '她很聪明。' }],
     });
 
-    const res = await request(app).post('/ai/analyze-word').send({ config: validConfig, word: 'brilliant' });
+    const res = await request(app)
+      .post('/ai/analyze-word')
+      .send({ config: validConfig, word: 'brilliant' });
     expect(res.status).toBe(200);
     expect(res.body.data.analysis.word).toBe('brilliant');
     expect(res.body.data.existingWord).toBeNull();
   });
 
   it('单词非法时返回 400', async () => {
-    const res = await request(app).post('/ai/analyze-word').send({ config: validConfig, word: '123abc!' });
+    const res = await request(app)
+      .post('/ai/analyze-word')
+      .send({ config: validConfig, word: '123abc!' });
     expect(res.status).toBe(400);
   });
 
@@ -280,7 +308,9 @@ describe('POST /ai/analyze-word', () => {
 
   it('AI 返回无效数据时返回 400', async () => {
     requestAiJson.mockResolvedValue(null);
-    const res = await request(app).post('/ai/analyze-word').send({ config: validConfig, word: 'unique' });
+    const res = await request(app)
+      .post('/ai/analyze-word')
+      .send({ config: validConfig, word: 'unique' });
     expect(res.status).toBe(400);
   });
 
@@ -326,17 +356,23 @@ describe('POST /ai/analyze-sentence', () => {
   });
 
   it('句子为空时返回 400', async () => {
-    const res = await request(app).post('/ai/analyze-sentence').send({ config: validConfig, sentence: '' });
+    const res = await request(app)
+      .post('/ai/analyze-sentence')
+      .send({ config: validConfig, sentence: '' });
     expect(res.status).toBe(400);
   });
 
   it('句子只有 1 个字符时返回 400', async () => {
-    const res = await request(app).post('/ai/analyze-sentence').send({ config: validConfig, sentence: 'A' });
+    const res = await request(app)
+      .post('/ai/analyze-sentence')
+      .send({ config: validConfig, sentence: 'A' });
     expect(res.status).toBe(400);
   });
 
   it('sentence 为非字符串时返回 400', async () => {
-    const res = await request(app).post('/ai/analyze-sentence').send({ config: validConfig, sentence: 123 });
+    const res = await request(app)
+      .post('/ai/analyze-sentence')
+      .send({ config: validConfig, sentence: 123 });
     expect(res.status).toBe(400);
   });
 

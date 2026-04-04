@@ -10,22 +10,26 @@ router.get('/data/export', async (req, res) => {
   try {
     const roots = await Root.findAll({
       where: { userId: req.userId },
-      include: [{
-        model: Word,
-        as: 'words',
-        through: { attributes: [] },
-        include: [{
-          model: Example,
-          as: 'examples',
-          attributes: ['sentence', 'translation', 'remark'],
-        }],
-      }],
+      include: [
+        {
+          model: Word,
+          as: 'words',
+          through: { attributes: [] },
+          include: [
+            {
+              model: Example,
+              as: 'examples',
+              attributes: ['sentence', 'translation', 'remark'],
+            },
+          ],
+        },
+      ],
       order: [['create_time', 'ASC']],
     });
 
     // 收集所有单词（可能跨多根），避免重复
     const wordMap = new Map(); // wordId -> { name, meaning, phonetic, remark, rootNames, examples }
-    const rootList = roots.map(r => ({
+    const rootList = roots.map((r) => ({
       name: r.name,
       meaning: r.meaning,
       remark: r.remark || null,
@@ -41,7 +45,7 @@ router.get('/data/export', async (req, res) => {
             phonetic: word.phonetic || null,
             remark: word.remark || null,
             rootNames: [],
-            examples: (word.examples || []).map(e => ({
+            examples: (word.examples || []).map((e) => ({
               sentence: e.sentence,
               translation: e.translation,
               remark: e.remark || null,
@@ -89,13 +93,16 @@ router.post('/data/import', async (req, res) => {
     for (const rootData of data.roots) {
       if (!rootData.name || !rootData.meaning) continue;
       if (!rootNameToId.has(rootData.name)) {
-        const newRoot = await Root.create({
-          name: rootData.name,
-          meaning: rootData.meaning,
-          remark: rootData.remark || null,
-          userId: req.userId,
-          isDefault: rootData.isDefault || false,
-        }, { transaction: t });
+        const newRoot = await Root.create(
+          {
+            name: rootData.name,
+            meaning: rootData.meaning,
+            remark: rootData.remark || null,
+            userId: req.userId,
+            isDefault: rootData.isDefault || false,
+          },
+          { transaction: t }
+        );
         rootNameToId.set(rootData.name, newRoot.id);
         stats.rootsAdded++;
       }
@@ -119,7 +126,7 @@ router.post('/data/import', async (req, res) => {
       if (wordCreated) stats.wordsAdded++;
 
       // 步骤3：建立单词与该用户词根的关联
-      const targetRootNames = (wordData.rootNames || []).filter(n => rootNameToId.has(n));
+      const targetRootNames = (wordData.rootNames || []).filter((n) => rootNameToId.has(n));
       for (const rootName of targetRootNames) {
         const rootId = rootNameToId.get(rootName);
         const [, linkCreated] = await WordRoot.findOrCreate({
@@ -137,17 +144,20 @@ router.post('/data/import', async (req, res) => {
           attributes: ['sentence'],
           transaction: t,
         });
-        const existingSentences = new Set(existingExamples.map(e => e.sentence.trim()));
+        const existingSentences = new Set(existingExamples.map((e) => e.sentence.trim()));
 
         for (const exData of wordData.examples) {
           if (!exData.sentence || !exData.translation) continue;
           if (existingSentences.has(exData.sentence.trim())) continue;
-          await Example.create({
-            wordId: word.id,
-            sentence: exData.sentence,
-            translation: exData.translation,
-            remark: exData.remark || null,
-          }, { transaction: t });
+          await Example.create(
+            {
+              wordId: word.id,
+              sentence: exData.sentence,
+              translation: exData.translation,
+              remark: exData.remark || null,
+            },
+            { transaction: t }
+          );
           existingSentences.add(exData.sentence.trim());
           stats.examplesAdded++;
         }
@@ -155,7 +165,11 @@ router.post('/data/import', async (req, res) => {
     }
   });
 
-  success(res, stats, `导入完成：新增词根 ${stats.rootsAdded} 个，单词 ${stats.wordsAdded} 个，例句 ${stats.examplesAdded} 条`);
+  success(
+    res,
+    stats,
+    `导入完成：新增词根 ${stats.rootsAdded} 个，单词 ${stats.wordsAdded} 个，例句 ${stats.examplesAdded} 条`
+  );
 });
 
 export default router;

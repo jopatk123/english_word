@@ -32,13 +32,21 @@ router.get('/', async (req, res) => {
       where,
       include: [{ model: Word, as: 'words', through: { attributes: [] }, attributes: ['id'] }],
       // 「未分类」默认词根排在最前，其余词根按词根名称首字母升序排列
-      order: [['is_default', 'DESC'], ['name', 'ASC']],
+      order: [
+        ['is_default', 'DESC'],
+        ['name', 'ASC'],
+      ],
     });
-    const result = roots.map(r => {
+    const result = roots.map((r) => {
       const json = r.toJSON();
       delete json.userId;
       delete json.user_id;
-      return { ...json, wordCount: r.words ? r.words.length : 0, words: undefined, isDefault: r.isDefault };
+      return {
+        ...json,
+        wordCount: r.words ? r.words.length : 0,
+        words: undefined,
+        isDefault: r.isDefault,
+      };
     });
     success(res, result);
   } catch (e) {
@@ -56,7 +64,12 @@ router.get('/:id', async (req, res) => {
     const json = root.toJSON();
     delete json.userId;
     delete json.user_id;
-    const result = { ...json, wordCount: root.words ? root.words.length : 0, words: undefined, isDefault: root.isDefault };
+    const result = {
+      ...json,
+      wordCount: root.words ? root.words.length : 0,
+      words: undefined,
+      isDefault: root.isDefault,
+    };
     success(res, result);
   } catch (e) {
     error(res, e.message);
@@ -71,7 +84,12 @@ router.post('/', async (req, res) => {
     const trimmedName = name.trim();
     const existedRoot = await Root.findOne({ where: { name: trimmedName, userId: req.userId } });
     if (existedRoot) return error(res, '词根已存在，请勿重复添加', 400);
-    const root = await Root.create({ name: trimmedName, meaning: meaning.trim(), remark: remark?.trim(), userId: req.userId });
+    const root = await Root.create({
+      name: trimmedName,
+      meaning: meaning.trim(),
+      remark: remark?.trim(),
+      userId: req.userId,
+    });
     success(res, root, '添加成功');
   } catch (e) {
     error(res, e.message);
@@ -87,7 +105,8 @@ router.put('/:id', async (req, res) => {
     if (!name || !meaning) return error(res, '词根和核心含义为必填项');
     const trimmedName = name.trim();
     const existedRoot = await Root.findOne({ where: { name: trimmedName, userId: req.userId } });
-    if (existedRoot && existedRoot.id !== root.id) return error(res, '词根已存在，请勿重复命名', 400);
+    if (existedRoot && existedRoot.id !== root.id)
+      return error(res, '词根已存在，请勿重复命名', 400);
     await root.update({ name: trimmedName, meaning: meaning.trim(), remark: remark?.trim() });
     success(res, root, '更新成功');
   } catch (e) {
@@ -103,8 +122,11 @@ router.delete('/:id', async (req, res) => {
     if (root.isDefault) return error(res, '「未分类」词根不能删除，它用于存放无词根的单词', 400);
 
     // 获取该词根关联的所有单词 ID
-    const wordRoots = await WordRoot.findAll({ where: { rootId: root.id }, attributes: ['wordId'] });
-    const wordIds = wordRoots.map(wr => wr.wordId);
+    const wordRoots = await WordRoot.findAll({
+      where: { rootId: root.id },
+      attributes: ['wordId'],
+    });
+    const wordIds = wordRoots.map((wr) => wr.wordId);
 
     // 移除该词根的所有关联
     await WordRoot.destroy({ where: { rootId: root.id } });
@@ -115,8 +137,8 @@ router.delete('/:id', async (req, res) => {
         where: { wordId: wordIds },
         attributes: ['wordId'],
       });
-      const stillLinkedIds = new Set(remainingAssocs.map(wr => wr.wordId));
-      const orphanedIds = wordIds.filter(id => !stillLinkedIds.has(id));
+      const stillLinkedIds = new Set(remainingAssocs.map((wr) => wr.wordId));
+      const orphanedIds = wordIds.filter((id) => !stillLinkedIds.has(id));
 
       if (orphanedIds.length) {
         await Example.destroy({ where: { wordId: orphanedIds } });

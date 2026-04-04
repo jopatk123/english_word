@@ -3,7 +3,9 @@
     <div class="complete-icon">🎉</div>
     <h2>学习完成！</h2>
     <div class="complete-stats">
-      <p>本次复习 <strong>{{ sessionStats.total }}</strong> 个单词</p>
+      <p>
+        本次复习 <strong>{{ sessionStats.total }}</strong> 个单词
+      </p>
       <div class="result-bars">
         <div class="result-item" v-if="sessionStats.again > 0">
           <span class="result-label result-again">再来一遍</span>
@@ -26,18 +28,20 @@
     <div class="complete-actions">
       <el-button type="primary" @click="$router.push('/study')">返回仪表盘</el-button>
       <el-button @click="$emit('replay')">换模式再来一遍</el-button>
-      <el-button v-if="hasAgainWords" type="warning" plain @click="$emit('replay-again')">重练错误单词（{{ againWordCount }} 个）</el-button>
+      <el-button v-if="hasAgainWords" type="warning" plain @click="$emit('replay-again')"
+        >重练错误单词（{{ againWordCount }} 个）</el-button
+      >
       <el-button @click="$router.push('/')">回到首页</el-button>
     </div>
   </div>
 </template>
 
 <script setup>
-defineProps({
-  sessionStats: { type: Object, required: true },
-  hasAgainWords: { type: Boolean, default: false },
-  againWordCount: { type: Number, default: 0 },
-});
+  defineProps({
+    sessionStats: { type: Object, required: true },
+    hasAgainWords: { type: Boolean, default: false },
+    againWordCount: { type: Number, default: 0 },
+  });
 
-defineEmits(['replay', 'replay-again']);
+  defineEmits(['replay', 'replay-again']);
 </script>

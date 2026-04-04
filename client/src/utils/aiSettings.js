@@ -38,9 +38,10 @@ const getAllAiSettings = () => {
       currentProviderId: parsed?.currentProviderId || DEFAULT_PROVIDER_ID,
       providers: parsed?.providers || {},
       customProviders: Array.isArray(parsed?.customProviders) ? parsed.customProviders : [],
-      customModels: (typeof parsed?.customModels === 'object' && parsed?.customModels !== null)
-        ? parsed.customModels
-        : {},
+      customModels:
+        typeof parsed?.customModels === 'object' && parsed?.customModels !== null
+          ? parsed.customModels
+          : {},
     };
   } catch {
     return {
@@ -72,10 +73,7 @@ export const getCustomProviders = () => {
 /**
  * 返回内置厂商 + 自定义厂商的合并列表
  */
-export const getAllProviders = () => [
-  ...AI_PROVIDERS,
-  ...getCustomProviders(),
-];
+export const getAllProviders = () => [...AI_PROVIDERS, ...getCustomProviders()];
 
 /**
  * 返回某厂商的自定义模型列表
@@ -101,18 +99,17 @@ export const getAllModels = (providerId) => {
  * 规范化单个提供者的配置（兼容内置厂商和自定义厂商）
  */
 const normalizeProviderSettings = (settings) => {
-  const provider = getAllProviders().find((p) => p.id === settings.providerId)
-    || getAllProviders()[0];
+  const provider =
+    getAllProviders().find((p) => p.id === settings.providerId) || getAllProviders()[0];
   const allModels = getAllModels(provider.id);
   const rawTemp = parseFloat(settings.temperature);
-  const temperature = (!isNaN(rawTemp) && rawTemp >= 0 && rawTemp <= 2)
-    ? Math.round(rawTemp * 10) / 10
-    : 0.2;
+  const temperature =
+    !isNaN(rawTemp) && rawTemp >= 0 && rawTemp <= 2 ? Math.round(rawTemp * 10) / 10 : 0.2;
   return {
     providerId: provider.id,
     providerType: provider.providerType,
     baseUrl: settings.baseUrl?.trim() || provider.baseUrl,
-    model: allModels.includes(settings.model) ? settings.model : (allModels[0] || ''),
+    model: allModels.includes(settings.model) ? settings.model : allModels[0] || '',
     apiKey: settings.apiKey?.trim() || '',
     temperature,
   };
@@ -124,21 +121,20 @@ const normalizeProviderSettings = (settings) => {
 export const loadAiSettings = () => {
   const allSettings = getAllAiSettings();
   const currentProviderId = allSettings.currentProviderId;
-  const provider = getAllProviders().find((p) => p.id === currentProviderId)
-    || getAllProviders()[0];
+  const provider =
+    getAllProviders().find((p) => p.id === currentProviderId) || getAllProviders()[0];
   const allModels = getAllModels(provider.id);
 
   const saved = allSettings.providers[provider.id];
   if (saved) {
     const rawTemp = parseFloat(saved.temperature);
-    const temperature = (!isNaN(rawTemp) && rawTemp >= 0 && rawTemp <= 2)
-      ? Math.round(rawTemp * 10) / 10
-      : 0.2;
+    const temperature =
+      !isNaN(rawTemp) && rawTemp >= 0 && rawTemp <= 2 ? Math.round(rawTemp * 10) / 10 : 0.2;
     return {
       providerId: provider.id,
       providerType: provider.providerType,
       baseUrl: saved.baseUrl || provider.baseUrl,
-      model: allModels.includes(saved.model) ? saved.model : (allModels[0] || ''),
+      model: allModels.includes(saved.model) ? saved.model : allModels[0] || '',
       apiKey: saved.apiKey || '',
       temperature,
     };
@@ -160,7 +156,7 @@ export const loadAiSettings = () => {
 export const saveAiSettings = (settings) => {
   const normalized = normalizeProviderSettings(settings);
   const allSettings = getAllAiSettings();
-  
+
   // 保存到该提供者的配置
   allSettings.providers[normalized.providerId] = {
     baseUrl: normalized.baseUrl,
@@ -168,10 +164,10 @@ export const saveAiSettings = (settings) => {
     apiKey: normalized.apiKey,
     temperature: normalized.temperature,
   };
-  
+
   // 更新当前选中的提供者
   allSettings.currentProviderId = normalized.providerId;
-  
+
   saveAllAiSettings(allSettings);
   return normalized;
 };
@@ -198,22 +194,20 @@ export const getCurrentProviderId = () => {
  * 加载特定提供者的配置（用于切换提供者时）
  */
 export const loadProviderSettings = (providerId) => {
-  const provider = getAllProviders().find((p) => p.id === providerId)
-    || getAllProviders()[0];
+  const provider = getAllProviders().find((p) => p.id === providerId) || getAllProviders()[0];
   const allModels = getAllModels(provider.id);
   const allSettings = getAllAiSettings();
 
   const saved = allSettings.providers[provider.id];
   if (saved && saved.apiKey) {
     const rawTemp = parseFloat(saved.temperature);
-    const temperature = (!isNaN(rawTemp) && rawTemp >= 0 && rawTemp <= 2)
-      ? Math.round(rawTemp * 10) / 10
-      : 0.2;
+    const temperature =
+      !isNaN(rawTemp) && rawTemp >= 0 && rawTemp <= 2 ? Math.round(rawTemp * 10) / 10 : 0.2;
     return {
       providerId: provider.id,
       providerType: provider.providerType,
       baseUrl: saved.baseUrl || provider.baseUrl,
-      model: allModels.includes(saved.model) ? saved.model : (allModels[0] || ''),
+      model: allModels.includes(saved.model) ? saved.model : allModels[0] || '',
       apiKey: saved.apiKey,
       temperature,
     };
@@ -235,9 +229,14 @@ export const maskApiKey = (apiKey) => {
   return `${apiKey.slice(0, 4)}****${apiKey.slice(-4)}`;
 };
 
-export const isAiSettingsReady = (settings) => Boolean(
-  settings?.providerId && settings?.providerType && settings?.baseUrl && settings?.model && settings?.apiKey
-);
+export const isAiSettingsReady = (settings) =>
+  Boolean(
+    settings?.providerId &&
+    settings?.providerType &&
+    settings?.baseUrl &&
+    settings?.model &&
+    settings?.apiKey
+  );
 
 // ── 自定义厂商 写操作 ──────────────────────────────────────────────────────────
 
@@ -298,7 +297,7 @@ export const deleteCustomModel = (providerId, modelName) => {
   const allSettings = getAllAiSettings();
   if (!allSettings.customModels[providerId]) return;
   allSettings.customModels[providerId] = allSettings.customModels[providerId].filter(
-    (m) => m !== modelName,
+    (m) => m !== modelName
   );
   saveAllAiSettings(allSettings);
 };

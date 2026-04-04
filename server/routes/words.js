@@ -29,36 +29,43 @@ router.get('/', async (req, res) => {
 
     const words = await Word.findAll({
       where,
-      include: [
-        rootInclude,
-        { model: Example, as: 'examples', attributes: ['id'] },
-      ],
+      include: [rootInclude, { model: Example, as: 'examples', attributes: ['id'] }],
       order: [['create_time', 'DESC']],
     });
 
     // 若按 rootId 筛选，查询结果的 roots 只含该词根；补充完整词根列表
     let result;
     if (rootId) {
-      const wordIds = words.map(w => w.id);
-      const allRoots = wordIds.length ? await WordRoot.findAll({
-        where: { wordId: wordIds },
-        include: [{ model: Root, as: 'root', attributes: ['id', 'name', 'meaning'] }],
-      }) : [];
+      const wordIds = words.map((w) => w.id);
+      const allRoots = wordIds.length
+        ? await WordRoot.findAll({
+            where: { wordId: wordIds },
+            include: [{ model: Root, as: 'root', attributes: ['id', 'name', 'meaning'] }],
+          })
+        : [];
       const rootsByWord = {};
       for (const wr of allRoots) {
         if (!rootsByWord[wr.wordId]) rootsByWord[wr.wordId] = [];
-        if (wr.root) rootsByWord[wr.wordId].push({ id: wr.root.id, name: wr.root.name, meaning: wr.root.meaning });
+        if (wr.root)
+          rootsByWord[wr.wordId].push({
+            id: wr.root.id,
+            name: wr.root.name,
+            meaning: wr.root.meaning,
+          });
       }
-      result = words.map(w => ({
+      result = words.map((w) => ({
         ...w.toJSON(),
-        roots: rootsByWord[w.id] || w.roots?.map(r => ({ id: r.id, name: r.name, meaning: r.meaning })) || [],
+        roots:
+          rootsByWord[w.id] ||
+          w.roots?.map((r) => ({ id: r.id, name: r.name, meaning: r.meaning })) ||
+          [],
         exampleCount: w.examples ? w.examples.length : 0,
         examples: undefined,
       }));
     } else {
-      result = words.map(w => ({
+      result = words.map((w) => ({
         ...w.toJSON(),
-        roots: w.roots?.map(r => ({ id: r.id, name: r.name, meaning: r.meaning })) || [],
+        roots: w.roots?.map((r) => ({ id: r.id, name: r.name, meaning: r.meaning })) || [],
         exampleCount: w.examples ? w.examples.length : 0,
         examples: undefined,
       }));
@@ -74,14 +81,21 @@ router.get('/:id', async (req, res) => {
   try {
     const word = await Word.findByPk(req.params.id, {
       include: [
-        { model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'name', 'meaning'], where: { userId: req.userId }, required: true },
+        {
+          model: Root,
+          as: 'roots',
+          through: { attributes: [] },
+          attributes: ['id', 'name', 'meaning'],
+          where: { userId: req.userId },
+          required: true,
+        },
         { model: Example, as: 'examples', attributes: ['id'] },
       ],
     });
     if (!word) return error(res, '单词不存在');
     const result = {
       ...word.toJSON(),
-      roots: word.roots?.map(r => ({ id: r.id, name: r.name, meaning: r.meaning })) || [],
+      roots: word.roots?.map((r) => ({ id: r.id, name: r.name, meaning: r.meaning })) || [],
       exampleCount: word.examples ? word.examples.length : 0,
       examples: undefined,
     };
@@ -118,13 +132,21 @@ router.post('/', async (req, res) => {
     // 检查该用户是否已有同名单词
     const existingWord = await Word.findOne({
       where: { name: trimmedName },
-      include: [{ model: Root, as: 'roots', through: { attributes: [] }, where: { userId: req.userId }, required: true }],
+      include: [
+        {
+          model: Root,
+          as: 'roots',
+          through: { attributes: [] },
+          where: { userId: req.userId },
+          required: true,
+        },
+      ],
     });
 
     if (existingWord) {
       // 单词已存在：追加新的词根关联
-      const existingRootIds = existingWord.roots.map(r => r.id);
-      const newRootIds = rootIds.filter(id => !existingRootIds.includes(id));
+      const existingRootIds = existingWord.roots.map((r) => r.id);
+      const newRootIds = rootIds.filter((id) => !existingRootIds.includes(id));
       if (newRootIds.length === 0) {
         return error(res, '该单词已存在且已关联相同词根，请勿重复添加', 400);
       }
@@ -132,7 +154,14 @@ router.post('/', async (req, res) => {
         await WordRoot.findOrCreate({ where: { wordId: existingWord.id, rootId: rid } });
       }
       const updatedWord = await Word.findByPk(existingWord.id, {
-        include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'name', 'meaning'] }],
+        include: [
+          {
+            model: Root,
+            as: 'roots',
+            through: { attributes: [] },
+            attributes: ['id', 'name', 'meaning'],
+          },
+        ],
       });
       return success(res, updatedWord, `单词已存在，已追加 ${newRootIds.length} 个新词根关联`);
     }
@@ -151,7 +180,14 @@ router.post('/', async (req, res) => {
     }
 
     const fullWord = await Word.findByPk(word.id, {
-      include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'name', 'meaning'] }],
+      include: [
+        {
+          model: Root,
+          as: 'roots',
+          through: { attributes: [] },
+          attributes: ['id', 'name', 'meaning'],
+        },
+      ],
     });
     success(res, fullWord, '添加成功');
   } catch (e) {
@@ -163,9 +199,11 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const word = await Word.findByPk(req.params.id, {
-      include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'userId'] }],
+      include: [
+        { model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'userId'] },
+      ],
     });
-    if (!word || !word.roots?.some(r => r.userId === req.userId)) return error(res, '单词不存在');
+    if (!word || !word.roots?.some((r) => r.userId === req.userId)) return error(res, '单词不存在');
 
     const { name, meaning, phonetic, remark, rootIds: rawRootIds } = req.body;
     if (!name || !meaning) return error(res, '单词和含义为必填项');
@@ -175,7 +213,15 @@ router.put('/:id', async (req, res) => {
     // 检查同名单词
     const existingWord = await Word.findOne({
       where: { name: trimmedName },
-      include: [{ model: Root, as: 'roots', through: { attributes: [] }, where: { userId: req.userId }, required: true }],
+      include: [
+        {
+          model: Root,
+          as: 'roots',
+          through: { attributes: [] },
+          where: { userId: req.userId },
+          required: true,
+        },
+      ],
     });
     if (existingWord && existingWord.id !== word.id) {
       return error(res, '已存在同名单词，请勿重复命名', 400);
@@ -199,7 +245,14 @@ router.put('/:id', async (req, res) => {
     }
 
     const updatedWord = await Word.findByPk(word.id, {
-      include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'name', 'meaning'] }],
+      include: [
+        {
+          model: Root,
+          as: 'roots',
+          through: { attributes: [] },
+          attributes: ['id', 'name', 'meaning'],
+        },
+      ],
     });
     success(res, updatedWord, '更新成功');
   } catch (e) {
@@ -215,9 +268,11 @@ router.put('/:id/move', async (req, res) => {
     if (Number(fromRootId) === Number(toRootId)) return error(res, '来源词根和目标词根不能相同');
 
     const word = await Word.findByPk(req.params.id, {
-      include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'userId'] }],
+      include: [
+        { model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'userId'] },
+      ],
     });
-    if (!word || !word.roots?.some(r => r.userId === req.userId)) return error(res, '单词不存在');
+    if (!word || !word.roots?.some((r) => r.userId === req.userId)) return error(res, '单词不存在');
 
     const fromRoot = await Root.findOne({ where: { id: fromRootId, userId: req.userId } });
     if (!fromRoot) return error(res, '来源词根不存在');
@@ -238,9 +293,11 @@ router.put('/:id/move', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const word = await Word.findByPk(req.params.id, {
-      include: [{ model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'userId'] }],
+      include: [
+        { model: Root, as: 'roots', through: { attributes: [] }, attributes: ['id', 'userId'] },
+      ],
     });
-    if (!word || !word.roots?.some(r => r.userId === req.userId)) return error(res, '单词不存在');
+    if (!word || !word.roots?.some((r) => r.userId === req.userId)) return error(res, '单词不存在');
 
     await Example.destroy({ where: { wordId: word.id } });
     await WordRoot.destroy({ where: { wordId: word.id } });

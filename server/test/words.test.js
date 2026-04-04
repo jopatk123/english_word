@@ -17,7 +17,10 @@ import { ensureDefaultRoot } from '../utils/defaultRoot.js';
 const buildApp = (userId) => {
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => { req.userId = userId; next(); });
+  app.use((req, _res, next) => {
+    req.userId = userId;
+    next();
+  });
   app.use('/words', wordsRouter);
   return app;
 };
@@ -79,8 +82,12 @@ describe('POST /words/', () => {
 
   it('同名单词重复添加相同词根返回 400', async () => {
     const name = `dup_${suf()}`;
-    await request(app).post('/words/').send({ name, meaning: '含义', rootIds: [rootId] });
-    const res = await request(app).post('/words/').send({ name, meaning: '含义', rootIds: [rootId] });
+    await request(app)
+      .post('/words/')
+      .send({ name, meaning: '含义', rootIds: [rootId] });
+    const res = await request(app)
+      .post('/words/')
+      .send({ name, meaning: '含义', rootIds: [rootId] });
     expect(res.status).toBe(400);
     expect(res.body.msg).toMatch(/已存在/);
   });
@@ -103,22 +110,24 @@ describe('GET /words/', () => {
 
   it('每条结果含 exampleCount 字段', async () => {
     const res = await request(app).get('/words/');
-    expect(res.body.data.every(w => typeof w.exampleCount === 'number')).toBe(true);
+    expect(res.body.data.every((w) => typeof w.exampleCount === 'number')).toBe(true);
   });
 
   it('keyword 搜索过滤', async () => {
     const uniqueName = `kwsearch_${suf()}`;
-    await request(app).post('/words/').send({ name: uniqueName, meaning: '搜索测试', rootIds: [rootId] });
+    await request(app)
+      .post('/words/')
+      .send({ name: uniqueName, meaning: '搜索测试', rootIds: [rootId] });
     const res = await request(app).get(`/words/?keyword=kwsearch`);
     expect(res.status).toBe(200);
-    expect(res.body.data.some(w => w.name.includes('kwsearch'))).toBe(true);
+    expect(res.body.data.some((w) => w.name.includes('kwsearch'))).toBe(true);
   });
 
   it('rootId 过滤只返回该词根下的单词', async () => {
     const res = await request(app).get(`/words/?rootId=${rootId}`);
     expect(res.status).toBe(200);
-    res.body.data.forEach(w => {
-      expect(w.roots.some(r => r.id === rootId)).toBe(true);
+    res.body.data.forEach((w) => {
+      expect(w.roots.some((r) => r.id === rootId)).toBe(true);
     });
   });
 });
@@ -166,9 +175,7 @@ describe('PUT /words/:id', () => {
   });
 
   it('更新不存在的单词返回错误', async () => {
-    const res = await request(app)
-      .put('/words/99999999')
-      .send({ meaning: '不存在' });
+    const res = await request(app).put('/words/99999999').send({ meaning: '不存在' });
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 });
@@ -187,7 +194,11 @@ describe('DELETE /words/:id', () => {
   it('删除其他用户的单词返回错误', async () => {
     // 创建另一个用户及其词根/单词
     const otherUser = await User.create({ username: `otherword_${suf()}`, password: 'x' });
-    const otherRoot = await Root.create({ name: `or_${suf()}`, meaning: 'x', userId: otherUser.id });
+    const otherRoot = await Root.create({
+      name: `or_${suf()}`,
+      meaning: 'x',
+      userId: otherUser.id,
+    });
     const otherWord = await Word.create({ name: `ow_${suf()}`, meaning: 'x' });
     await WordRoot.create({ wordId: otherWord.id, rootId: otherRoot.id });
 

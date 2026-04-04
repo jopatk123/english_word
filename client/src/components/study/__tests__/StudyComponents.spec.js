@@ -91,8 +91,8 @@ describe('ModeSelect', () => {
   it('断点续学显示 resume 和 dismiss 按钮', async () => {
     const wrapper = createWrapper({ resumeInfo: { index: 1, mode: 'spelling' } });
     const buttons = wrapper.findAll('.el-btn');
-    const resumeBtn = buttons.find(b => b.text().includes('继续'));
-    const dismissBtn = buttons.find(b => b.text().includes('重新'));
+    const resumeBtn = buttons.find((b) => b.text().includes('继续'));
+    const dismissBtn = buttons.find((b) => b.text().includes('重新'));
     await resumeBtn?.trigger('click');
     expect(wrapper.emitted('resume')).toBeTruthy();
     await dismissBtn?.trigger('click');
@@ -145,7 +145,7 @@ describe('SessionComplete', () => {
   it('点击换模式触发 replay 事件', async () => {
     const wrapper = createWrapper();
     const buttons = wrapper.findAll('.el-btn');
-    const replayBtn = buttons.find(b => b.text().includes('换模式'));
+    const replayBtn = buttons.find((b) => b.text().includes('换模式'));
     await replayBtn?.trigger('click');
     expect(wrapper.emitted('replay')).toBeTruthy();
   });
@@ -247,7 +247,7 @@ describe('FlashcardMode', () => {
 
   it('点击评分按钮触发 rate 事件', async () => {
     const wrapper = createWrapper({ showAnswer: true });
-    const rateBtn = wrapper.findAll('.el-btn').find(b => b.text().includes('认识'));
+    const rateBtn = wrapper.findAll('.el-btn').find((b) => b.text().includes('认识'));
     await rateBtn?.trigger('click');
     expect(wrapper.emitted('rate')).toBeTruthy();
     expect(wrapper.emitted('rate')[0]).toEqual([3]);
@@ -332,7 +332,12 @@ describe('SpellingMode', () => {
   });
 
   it('listening 模式 answered + wrong 显示释义', () => {
-    const wrapper = createWrapper({ mode: 'listening', answered: true, correct: false, inputValue: 'wrong' });
+    const wrapper = createWrapper({
+      mode: 'listening',
+      answered: true,
+      correct: false,
+      inputValue: 'wrong',
+    });
     expect(wrapper.text()).toContain('建造；构建');
   });
 
