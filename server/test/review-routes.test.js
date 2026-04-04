@@ -50,9 +50,37 @@ beforeAll(async () => {
   // 创建词根和单词
   const root = await Root.create({ name: `rroot_${suf()}`, meaning: '词根', userId });
   rootId = root.id;
-  const word = await Word.create({ name: `rword_${suf()}`, meaning: '含义' });
+  const word = await Word.create({ name: `rword_${suf()}`, meaning: '含义', userId });
   await WordRoot.create({ wordId: word.id, rootId: root.id });
   wordId = word.id;
+});
+
+describe('GET /review/quiz-choices/:wordId', () => {
+  it('只返回当前用户自己的正确项和干扰项', async () => {
+    const isolatedUser = await User.create({ username: `quiz_user_${suf()}`, password: 'x' });
+    const isolatedRoot = await Root.create({ name: `quiz_root_${suf()}`, meaning: '隔离词根', userId: isolatedUser.id });
+    const isolatedWord = await Word.create({ name: `quiz_target_${suf()}`, meaning: '目标释义', userId: isolatedUser.id });
+    const isolatedDistractor = await Word.create({
+      name: `quiz_local_${suf()}`,
+      meaning: '本地干扰项',
+      userId: isolatedUser.id,
+    });
+    const otherUser = await User.create({ username: `quiz_other_${suf()}`, password: 'x' });
+    const otherRoot = await Root.create({ name: `quiz_other_root_${suf()}`, meaning: '他人词根', userId: otherUser.id });
+    const otherWord = await Word.create({ name: `quiz_other_word_${suf()}`, meaning: '他人释义', userId: otherUser.id });
+
+    await WordRoot.create({ wordId: isolatedWord.id, rootId: isolatedRoot.id });
+    await WordRoot.create({ wordId: isolatedDistractor.id, rootId: isolatedRoot.id });
+    await WordRoot.create({ wordId: otherWord.id, rootId: otherRoot.id });
+
+    const isolatedApp = buildApp(isolatedUser.id);
+    const res = await request(isolatedApp).get(`/review/quiz-choices/${isolatedWord.id}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.correct.id).toBe(isolatedWord.id);
+    expect(res.body.data.distractors.some((item) => item.id === isolatedDistractor.id)).toBe(true);
+    expect(res.body.data.distractors.some((item) => item.id === otherWord.id)).toBe(false);
+  });
 });
 
 // ─── POST /review/enqueue ─────────────────────────────────────
@@ -289,7 +317,7 @@ describe('POST /review/:wordId/result', () => {
 
   it('未入队的单词返回 404', async () => {
     // 创建一个未入队的新单词
-    const word2 = await Word.create({ name: `rword2_${suf()}`, meaning: '含义2' });
+    const word2 = await Word.create({ name: `rword2_${suf()}`, meaning: '含义2', userId });
     await WordRoot.create({ wordId: word2.id, rootId });
     const res = await request(app).post(`/review/${word2.id}/result`).send({ quality: 3 });
     expect(res.status).toBe(404);
@@ -309,7 +337,7 @@ describe('POST /review/:wordId/pause', () => {
   });
 
   it('未入队的单词返回 404', async () => {
-    const word3 = await Word.create({ name: `rword3_${suf()}`, meaning: 'x' });
+    const word3 = await Word.create({ name: `rword3_${suf()}`, meaning: 'x', userId });
     await WordRoot.create({ wordId: word3.id, rootId });
     const res = await request(app).post(`/review/${word3.id}/pause`).send({});
     expect(res.status).toBe(404);
@@ -333,7 +361,7 @@ describe('POST /review/:wordId/reset', () => {
 describe('DELETE /review/:wordId', () => {
   it('成功从队列移除单词', async () => {
     // 创建一个新单词并入队
-    const word4 = await Word.create({ name: `rword4_${suf()}`, meaning: 'x' });
+    const word4 = await Word.create({ name: `rword4_${suf()}`, meaning: 'x', userId });
     await WordRoot.create({ wordId: word4.id, rootId });
     await request(app).post('/review/enqueue').send({ rootId });
 
@@ -344,7 +372,7 @@ describe('DELETE /review/:wordId', () => {
   });
 
   it('未入队的单词返回 404', async () => {
-    const word5 = await Word.create({ name: `rword5_${suf()}`, meaning: 'x' });
+    const word5 = await Word.create({ name: `rword5_${suf()}`, meaning: 'x', userId });
     await WordRoot.create({ wordId: word5.id, rootId });
     const res = await request(app).delete(`/review/${word5.id}`);
     expect(res.status).toBe(404);

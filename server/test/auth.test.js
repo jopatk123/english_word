@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { initDB, User } from '../models/index.js';
+import { initDB } from '../models/index.js';
 import authRouter from '../routes/auth.js';
 import { authMiddleware } from '../middleware/auth.js';
 

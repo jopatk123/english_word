@@ -73,6 +73,12 @@ async function createWrapper(statsOverrides = {}) {
   const wrapper = mount(StudyDashboardView, {
     global: {
       stubs: globalStubs,
+      directives: {
+        loading: {
+          mounted() {},
+          updated() {},
+        },
+      },
     },
   });
 

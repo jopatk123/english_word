@@ -151,7 +151,7 @@
     try {
       const res = await getRoots(keyword);
       roots.value = res.data;
-    } catch (e) {
+    } catch {
       ElMessage.error('获取词根列表失败');
     } finally {
       loading.value = false;

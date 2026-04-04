@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { initDB, sequelize, Root, Word, User, WordRoot } from '../models/index.js';
+import { initDB, Root, Word, User } from '../models/index.js';
 import {
   ensureDefaultRoot,
   DEFAULT_ROOT_NAME,
@@ -81,6 +81,7 @@ describe('Word 无 rootId 自动归入默认词根', () => {
       name: 'run',
       meaning: '跑；运行',
       phonetic: '/rʌn/',
+      userId: user.id,
     });
     await word.addRoot(defaultRoot);
 

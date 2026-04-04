@@ -15,6 +15,8 @@ router.get('/data/export', async (req, res) => {
           model: Word,
           as: 'words',
           through: { attributes: [] },
+          where: { userId: req.userId },
+          required: false,
           include: [
             {
               model: Example,
@@ -112,14 +114,19 @@ router.post('/data/import', async (req, res) => {
     for (const wordData of data.words) {
       if (!wordData.name || !wordData.meaning) continue;
 
-      // 查找或创建全局单词记录
+      const normalizedWordName = wordData.name.trim().toLowerCase();
+      const normalizedMeaning = wordData.meaning.trim();
+      if (!normalizedWordName || !normalizedMeaning) continue;
+
+      // 为当前用户查找或创建单词，避免不同用户共享同一条单词记录。
       let [word, wordCreated] = await Word.findOrCreate({
-        where: { name: wordData.name },
+        where: { name: normalizedWordName, userId: req.userId },
         defaults: {
-          name: wordData.name,
-          meaning: wordData.meaning,
-          phonetic: wordData.phonetic || null,
-          remark: wordData.remark || null,
+          name: normalizedWordName,
+          meaning: normalizedMeaning,
+          phonetic: wordData.phonetic?.trim() || null,
+          remark: wordData.remark?.trim() || null,
+          userId: req.userId,
         },
         transaction: t,
       });
@@ -148,17 +155,19 @@ router.post('/data/import', async (req, res) => {
 
         for (const exData of wordData.examples) {
           if (!exData.sentence || !exData.translation) continue;
-          if (existingSentences.has(exData.sentence.trim())) continue;
+          const sentence = exData.sentence.trim();
+          const translation = exData.translation.trim();
+          if (!sentence || !translation || existingSentences.has(sentence)) continue;
           await Example.create(
             {
               wordId: word.id,
-              sentence: exData.sentence,
-              translation: exData.translation,
-              remark: exData.remark || null,
+              sentence,
+              translation,
+              remark: exData.remark?.trim() || null,
             },
             { transaction: t }
           );
-          existingSentences.add(exData.sentence.trim());
+          existingSentences.add(sentence);
           stats.examplesAdded++;
         }
       }

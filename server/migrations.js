@@ -84,6 +84,43 @@ async function m005_words_add_user_id() {
   console.log('[migration] M005: words.user_id 已添加并回填');
 }
 
+// M006：补齐历史遗留的 words.user_id 空值（仅处理能唯一推断所属用户的数据）
+async function m006_words_backfill_missing_user_id() {
+  const info = await qi.describeTable('words').catch(() => ({}));
+  if (!info.user_id) return;
+
+  await sequelize.query(`
+    UPDATE words
+    SET user_id = (
+      SELECT MIN(roots.user_id)
+      FROM word_roots
+      JOIN roots ON roots.id = word_roots.root_id
+      WHERE word_roots.word_id = words.id
+      GROUP BY word_roots.word_id
+      HAVING COUNT(DISTINCT roots.user_id) = 1
+    )
+    WHERE user_id IS NULL
+  `);
+
+  const [ambiguousRows] = await sequelize.query(`
+    SELECT word_roots.word_id AS wordId
+    FROM word_roots
+    JOIN roots ON roots.id = word_roots.root_id
+    JOIN words ON words.id = word_roots.word_id
+    WHERE words.user_id IS NULL
+    GROUP BY word_roots.word_id
+    HAVING COUNT(DISTINCT roots.user_id) > 1
+  `);
+
+  if (ambiguousRows.length) {
+    console.warn(
+      `[migration] M006: 发现 ${ambiguousRows.length} 个跨用户共享的历史单词记录，需人工核查并拆分`
+    );
+  }
+
+  console.log('[migration] M006: 已回填可安全推断的 words.user_id');
+}
+
 /**
  * 按顺序执行所有迁移。每个迁移函数都是幂等的，可以安全重复运行。
  */
@@ -93,4 +130,5 @@ export async function runMigrations() {
   await m003_word_reviews_add_paused();
   await m004_words_migrate_root_id_to_word_roots();
   await m005_words_add_user_id();
+  await m006_words_backfill_missing_user_id();
 }

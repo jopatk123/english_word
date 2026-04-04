@@ -93,7 +93,6 @@
 <script setup>
   import { ref } from 'vue';
   import { useRouter } from 'vue-router';
-  import { User, Lock } from '@element-plus/icons-vue';
   import { login, register } from '../api/index.js';
   import { showMsg } from '../utils/msg.js';
 

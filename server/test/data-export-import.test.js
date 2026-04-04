@@ -45,7 +45,12 @@ describe('GET /review/data/export', () => {
     // 创建词根 + 单词 + 例句
     const root = await Root.create({ name: 'exportroot', meaning: '测试导出词根', userId });
     rootId = root.id;
-    const word = await Word.create({ name: 'exportword', meaning: '导出单词', phonetic: '/test/' });
+    const word = await Word.create({
+      name: 'exportword',
+      meaning: '导出单词',
+      phonetic: '/test/',
+      userId,
+    });
     await WordRoot.create({ wordId: word.id, rootId });
     await Example.create({
       wordId: word.id,
@@ -77,6 +82,21 @@ describe('GET /review/data/export', () => {
     expect(word.rootNames).toContain('exportroot');
     expect(word.examples.length).toBeGreaterThan(0);
     expect(word.examples[0].sentence).toBe('Test sentence.');
+  });
+
+  it('导出不会带出其他用户的单词', async () => {
+    const otherUser = await User.create({ username: 'data_export_other_' + Date.now(), password: 'x' });
+    const otherRoot = await Root.create({ name: 'other-export-root', meaning: '他人词根', userId: otherUser.id });
+    const otherWord = await Word.create({
+      name: 'other-export-word',
+      meaning: '他人单词',
+      userId: otherUser.id,
+    });
+    await WordRoot.create({ wordId: otherWord.id, rootId: otherRoot.id });
+
+    const res = await request(app).get('/review/data/export');
+    expect(res.status).toBe(200);
+    expect(res.body.words.some((w) => w.name === 'other-export-word')).toBe(false);
   });
 });
 
@@ -134,7 +154,7 @@ describe('POST /review/data/import', () => {
 
   it('导入后词根-单词关联正确', async () => {
     const root = await Root.findOne({ where: { name: 'importroot1', userId } });
-    const word = await Word.findOne({ where: { name: 'importword1' } });
+    const word = await Word.findOne({ where: { name: 'importword1', userId } });
     const link = await WordRoot.findOne({ where: { wordId: word.id, rootId: root.id } });
     expect(link).toBeTruthy();
   });
@@ -142,7 +162,7 @@ describe('POST /review/data/import', () => {
   it('多词根单词的所有关联均创建正确', async () => {
     const root1 = await Root.findOne({ where: { name: 'importroot1', userId } });
     const root2 = await Root.findOne({ where: { name: 'importroot2', userId } });
-    const word = await Word.findOne({ where: { name: 'importword2' } });
+    const word = await Word.findOne({ where: { name: 'importword2', userId } });
     const link1 = await WordRoot.findOne({ where: { wordId: word.id, rootId: root1.id } });
     const link2 = await WordRoot.findOne({ where: { wordId: word.id, rootId: root2.id } });
     expect(link1).toBeTruthy();
@@ -150,11 +170,35 @@ describe('POST /review/data/import', () => {
   });
 
   it('例句正确创建且不重复', async () => {
-    const word = await Word.findOne({ where: { name: 'importword1' } });
+    const word = await Word.findOne({ where: { name: 'importword1', userId } });
     const examples = await Example.findAll({
       where: { wordId: word.id, sentence: 'Import word one.' },
     });
     expect(examples.length).toBe(1);
+  });
+
+  it('导入后的单词属于当前用户', async () => {
+    const word = await Word.findOne({ where: { name: 'importword1', userId } });
+    expect(word).toBeTruthy();
+    expect(word.userId).toBe(userId);
+  });
+
+  it('不同用户导入同名单词时会创建各自独立的记录', async () => {
+    const otherUser = await User.create({ username: 'data_import_other_' + Date.now(), password: 'x' });
+    const otherApp = buildApp(otherUser.id);
+
+    const res = await request(otherApp).post('/review/data/import').send(sampleData);
+    expect(res.status).toBe(200);
+    expect(res.body.data.wordsAdded).toBe(2);
+
+    const [currentUserWord, otherUserWord] = await Promise.all([
+      Word.findOne({ where: { name: 'importword1', userId } }),
+      Word.findOne({ where: { name: 'importword1', userId: otherUser.id } }),
+    ]);
+
+    expect(currentUserWord).toBeTruthy();
+    expect(otherUserWord).toBeTruthy();
+    expect(currentUserWord.id).not.toBe(otherUserWord.id);
   });
 
   it('格式无效时返回 400', async () => {

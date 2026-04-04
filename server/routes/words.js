@@ -56,7 +56,14 @@ router.get('/', async (req, res) => {
       const allRoots = wordIds.length
         ? await WordRoot.findAll({
             where: { wordId: wordIds },
-            include: [{ model: Root, as: 'root', attributes: ['id', 'name', 'meaning'] }],
+            include: [
+              {
+                model: Root,
+                as: 'root',
+                attributes: ['id', 'name', 'meaning'],
+                where: { userId: req.userId },
+              },
+            ],
           })
         : [];
       const rootsByWord = {};
@@ -103,6 +110,8 @@ router.get('/:id', async (req, res) => {
           as: 'roots',
           through: { attributes: [] },
           attributes: ['id', 'name', 'meaning'],
+          where: { userId: req.userId },
+          required: false,
         },
         { model: Example, as: 'examples', attributes: ['id'] },
       ],
@@ -146,7 +155,7 @@ router.post('/', async (req, res) => {
 
     // 检查该用户是否已有同名单词
     const existingWord = await Word.findOne({
-      where: { name: trimmedName },
+      where: { name: trimmedName, userId: req.userId },
       include: [
         {
           model: Root,
@@ -175,6 +184,8 @@ router.post('/', async (req, res) => {
             as: 'roots',
             through: { attributes: [] },
             attributes: ['id', 'name', 'meaning'],
+            where: { userId: req.userId },
+            required: false,
           },
         ],
       });
@@ -202,6 +213,8 @@ router.post('/', async (req, res) => {
           as: 'roots',
           through: { attributes: [] },
           attributes: ['id', 'name', 'meaning'],
+          where: { userId: req.userId },
+          required: false,
         },
       ],
     });
@@ -252,6 +265,8 @@ router.put('/:id', async (req, res) => {
           as: 'roots',
           through: { attributes: [] },
           attributes: ['id', 'name', 'meaning'],
+          where: { userId: req.userId },
+          required: false,
         },
       ],
     });

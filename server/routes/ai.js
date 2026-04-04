@@ -147,7 +147,7 @@ router.post('/suggest-words', async (req, res) => {
     const root = await Root.findByPk(rootId);
     if (!root || root.userId !== req.userId) return error(res, '词根不存在', 404);
 
-    const words = await root.getWords({ order: [['name', 'ASC']] });
+    const words = await root.getWords({ where: { userId: req.userId }, order: [['name', 'ASC']] });
     const normalizedExcludedWords = Array.isArray(excludedWords)
       ? excludedWords
           .filter((w) => w && typeof w === 'string')
@@ -203,18 +203,20 @@ router.post('/suggest-examples', async (req, res) => {
     const debugInfo = createDebugInfo(req, validatedConfig, startedAt);
     logAiInfo('suggest-examples.start', debugInfo, { wordId });
 
-    const word = await Word.findByPk(wordId, {
+    const word = await Word.findOne({
+      where: { id: wordId, userId: req.userId },
       include: [
         {
           model: Root,
           as: 'roots',
           through: { attributes: [] },
           attributes: ['id', 'name', 'meaning', 'userId'],
+          where: { userId: req.userId },
+          required: false,
         },
       ],
     });
-    if (!word || !word.roots?.some((r) => r.userId === req.userId))
-      return error(res, '单词不存在', 404);
+    if (!word) return error(res, '单词不存在', 404);
 
     const examples = await Example.findAll({ where: { wordId }, order: [['create_time', 'ASC']] });
     const normalizedExcludedSentences = normalizeSentenceList(excludedSentences);
@@ -267,7 +269,7 @@ router.post('/analyze-word', async (req, res) => {
 
     // 单词若已收录（且关联词根属于当前用户），直接返回缓存数据，不消耗 AI 配额
     const existingWord = await Word.findOne({
-      where: { name: trimmedWord },
+      where: { name: trimmedWord, userId: req.userId },
       include: [
         {
           model: Root,
@@ -275,7 +277,7 @@ router.post('/analyze-word', async (req, res) => {
           through: { attributes: [] },
           attributes: ['id', 'name', 'meaning', 'userId'],
           where: { userId: req.userId },
-          required: true,
+          required: false,
         },
       ],
     });

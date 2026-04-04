@@ -283,8 +283,6 @@
     }
   };
 
-  const canAddWord = computed(() => !localExistingWord.value);
-
   const willGoToUncategorized = computed(() => {
     if (!addWord.value) return false;
     const roots = props.wordResult.analysis.roots || [];

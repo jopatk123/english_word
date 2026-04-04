@@ -164,7 +164,11 @@ describe('WordReview 学习队列数据库操作', () => {
     if (existingWords.length) {
       testWordId = existingWords[0].id;
     } else {
-      const word = await Word.create({ name: 'srs_test_word', meaning: 'SRS测试单词' });
+      const word = await Word.create({
+        name: 'srs_test_word',
+        meaning: 'SRS测试单词',
+        userId: testUserId,
+      });
       await word.addRoot(root);
       testWordId = word.id;
     }

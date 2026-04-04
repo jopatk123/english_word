@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Op, literal } from 'sequelize';
-import { Word, Root, WordRoot, WordReview, ReviewHistory } from '../../models/index.js';
+import { Word, Root, WordReview, ReviewHistory } from '../../models/index.js';
 import { success, error } from '../../utils/response.js';
 import { getNextReview, todayStr, addDays } from '../../utils/srs.js';
 
@@ -15,7 +15,7 @@ router.post('/enqueue', async (req, res) => {
     const root = await Root.findByPk(rootId);
     if (!root || root.userId !== req.userId) return error(res, '词根不存在', 404);
 
-    const words = await root.getWords();
+    const words = await root.getWords({ where: { userId: req.userId } });
     if (words.length === 0) return error(res, '该词根下没有单词', 400);
 
     const today = todayStr(req.body.tz);
@@ -105,11 +105,14 @@ router.get('/quiz-choices/:wordId', async (req, res) => {
     const { wordId } = req.params;
     const count = Math.min(parseInt(req.query.count) || 3, 5);
 
-    const word = await Word.findByPk(wordId);
+    const word = await Word.findOne({
+      where: { id: wordId, userId: req.userId },
+      attributes: ['id', 'name', 'meaning'],
+    });
     if (!word) return error(res, '单词不存在', 404);
 
     const distractors = await Word.findAll({
-      where: { id: { [Op.ne]: wordId } },
+      where: { userId: req.userId, id: { [Op.ne]: wordId } },
       attributes: ['id', 'name', 'meaning'],
       order: literal('RANDOM()'),
       limit: count,

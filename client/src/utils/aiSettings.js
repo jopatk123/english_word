@@ -176,7 +176,6 @@ export const saveAiSettings = (settings) => {
  * 切换当前使用的提供者，并加载该提供者的配置
  */
 export const setCurrentProviderId = (providerId) => {
-  const provider = getProviderById(providerId);
   const allSettings = getAllAiSettings();
   allSettings.currentProviderId = providerId;
   saveAllAiSettings(allSettings);

@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AI_SETTINGS_STORAGE_KEY } from '../aiSettings.js';
 import {
   addCustomModel,
   deleteCustomModel,

@@ -1,10 +1,9 @@
 import jwt from 'jsonwebtoken';
 import { error } from '../utils/response.js';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'english-word-jwt-secret-key';
+import { getJwtSecret } from '../utils/env.js';
 
 export const generateToken = (userId) => {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ userId }, getJwtSecret(), { expiresIn: '7d' });
 };
 
 export const authMiddleware = (req, res, next) => {
@@ -15,10 +14,13 @@ export const authMiddleware = (req, res, next) => {
 
   const token = authHeader.slice(7);
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     req.userId = decoded.userId;
     next();
-  } catch {
+  } catch (e) {
+    if (e.message?.includes('JWT_SECRET')) {
+      return error(res, e.message, 500);
+    }
     return error(res, '登录已过期，请重新登录', 401);
   }
 };

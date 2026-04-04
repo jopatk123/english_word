@@ -30,7 +30,16 @@ router.get('/', async (req, res) => {
     if (keyword) where.name = { [Op.like]: `%${keyword}%` };
     const roots = await Root.findAll({
       where,
-      include: [{ model: Word, as: 'words', through: { attributes: [] }, attributes: ['id'] }],
+      include: [
+        {
+          model: Word,
+          as: 'words',
+          through: { attributes: [] },
+          attributes: ['id'],
+          where: { userId: req.userId },
+          required: false,
+        },
+      ],
       // 「未分类」默认词根排在最前，其余词根按词根名称首字母升序排列
       order: [
         ['is_default', 'DESC'],
@@ -58,7 +67,16 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const root = await Root.findByPk(req.params.id, {
-      include: [{ model: Word, as: 'words', through: { attributes: [] }, attributes: ['id'] }],
+      include: [
+        {
+          model: Word,
+          as: 'words',
+          through: { attributes: [] },
+          attributes: ['id'],
+          where: { userId: req.userId },
+          required: false,
+        },
+      ],
     });
     if (!root || root.userId !== req.userId) return error(res, '词根不存在');
     const json = root.toJSON();

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Op } from 'sequelize';
-import { Word, Root, WordRoot, WordReview } from '../../models/index.js';
+import { Word, Root, WordReview } from '../../models/index.js';
 import { success, error } from '../../utils/response.js';
 import { todayStr } from '../../utils/srs.js';
 
@@ -17,6 +17,8 @@ router.get('/roots-progress', async (req, res) => {
           as: 'words',
           through: { attributes: [] },
           attributes: ['id'],
+          where: { userId: req.userId },
+          required: false,
           include: [
             {
               model: WordReview,
@@ -123,8 +125,8 @@ router.post('/roots/:rootId/pause', async (req, res) => {
     const root = await Root.findByPk(rootId);
     if (!root || root.userId !== req.userId) return error(res, '词根不存在', 404);
 
-    const wordRoots = await WordRoot.findAll({ where: { rootId }, attributes: ['wordId'] });
-    const wordIds = wordRoots.map((wr) => wr.wordId);
+    const words = await root.getWords({ where: { userId: req.userId }, attributes: ['id'] });
+    const wordIds = words.map((word) => word.id);
 
     if (wordIds.length > 0) {
       await WordReview.update(

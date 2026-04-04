@@ -13,7 +13,7 @@
 import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { initDB, User, Root, Word, WordRoot, Example } from '../models/index.js';
+import { initDB, User, Root, Word, WordRoot } from '../models/index.js';
 import aiRouter from '../routes/ai.js';
 
 // ── mock requestAiJson（保留其他真实实现）────────────────────
@@ -66,7 +66,7 @@ beforeAll(async () => {
   const root = await Root.create({ name: `airoot_${suf()}`, meaning: '测试词根', userId });
   rootId = root.id;
 
-  const word = await Word.create({ name: `inspect_${suf()}`, meaning: '检查' });
+  const word = await Word.create({ name: `inspect_${suf()}`, meaning: '检查', userId });
   await WordRoot.create({ wordId: word.id, rootId: root.id });
   wordId = word.id;
 });
