@@ -1,0 +1,13 @@
+{
+  "name": "english-word",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test:client": "npm --prefix client run test:run",
+    "test:server": "npm --prefix server test",
+    "test": "npm run test:client && npm run test:server",
+    "test:coverage": "npm run test:coverage:client && npm run test:coverage:server",
+    "test:coverage:client": "npm --prefix client run test:coverage",
+    "test:coverage:server": "npm --prefix server run test:coverage"
+  }
+}
