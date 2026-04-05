@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { Op } from 'sequelize';
 import { Word, Root, Example, WordReview } from '../../models/index.js';
 import { success, error } from '../../utils/response.js';
-import { todayStr, todayStart, addDays } from '../../utils/srs.js';
+import { todayStr, todayStart } from '../../utils/srs.js';
 
 const router = Router();
 
@@ -31,7 +31,6 @@ router.get('/due', async (req, res) => {
     const todayStartDate = todayStart(req.query.tz);
     const limit = parseInt(req.query.limit) || 0;
     const offset = parseInt(req.query.offset) || 0;
-    const advance = Math.min(parseInt(req.query.advance) || 0, 30);
     const requestedScope = String(req.query.scope || 'due');
     const scope = [
       'due',
@@ -45,8 +44,6 @@ router.get('/due', async (req, res) => {
     ].includes(requestedScope)
       ? requestedScope
       : 'due';
-    const dueDeadline = advance > 0 ? addDays(today, advance) : today;
-
     const where = {
       userId: req.userId,
       paused: false,
@@ -63,7 +60,7 @@ router.get('/due', async (req, res) => {
     } else if (scope === 'known') {
       where.status = 'known';
     } else if (scope === 'due') {
-      where.dueDate = { [Op.lte]: dueDeadline };
+      where.dueDate = { [Op.lte]: today };
     }
 
     const queryOpts = {

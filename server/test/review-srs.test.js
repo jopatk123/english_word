@@ -1,5 +1,5 @@
 /**
- * 测试：SRS 算法（当前版本）& advance 提前复习逻辑 & WordReview 数据库操作
+ * 测试：SRS 算法（当前版本）、日期工具与 WordReview 数据库操作
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -106,46 +106,13 @@ describe('SRS 算法 getNextReview（当前版本）', () => {
   });
 });
 
-// ======================== advance 参数逻辑测试 ========================
+// ======================== 日期工具测试 ========================
 
-describe('提前复习 advance 参数逻辑', () => {
+describe('日期工具 addDays', () => {
   it('addDays 正确计算日期偏移', () => {
     expect(addDays('2026-03-17', 7)).toBe('2026-03-24');
     expect(addDays('2026-03-17', 0)).toBe('2026-03-17');
     expect(addDays('2026-03-28', 5)).toBe('2026-04-02');
-  });
-
-  it('advance=0 截止日期等于今天', () => {
-    const today = '2026-03-17';
-    const advance = 0;
-    const deadline = advance > 0 ? addDays(today, advance) : today;
-    expect(deadline).toBe(today);
-  });
-
-  it('advance=7 截止日期为 7 天后', () => {
-    const today = '2026-03-17';
-    const advance = 7;
-    const deadline = addDays(today, advance);
-    expect(deadline).toBe('2026-03-24');
-  });
-
-  it('advance 上限 30 天防止滥用', () => {
-    const advance = Math.min(parseInt('999') || 0, 30);
-    expect(advance).toBe(30);
-  });
-
-  it('5 天后到期的词在 advance=7 时可被查到', () => {
-    const today = '2026-03-17';
-    const futureDate = addDays(today, 5); // 2026-03-22
-    const deadline7 = addDays(today, 7); // 2026-03-24
-    expect(futureDate <= deadline7).toBe(true);
-  });
-
-  it('5 天后到期的词在 advance=3 时查不到', () => {
-    const today = '2026-03-17';
-    const futureDate = addDays(today, 5); // 2026-03-22
-    const deadline3 = addDays(today, 3); // 2026-03-20
-    expect(futureDate <= deadline3).toBe(false);
   });
 });
 

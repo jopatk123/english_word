@@ -106,10 +106,8 @@ export function useStudySession() {
     loading.value = true;
     try {
       const saved = localStorage.getItem('study-session-progress');
-      const advanceDays = Math.min(parseInt(route.query.advance) || 0, 30);
       const scope = typeof route.query.scope === 'string' ? route.query.scope : '';
       const params = {
-        ...(advanceDays > 0 ? { advance: advanceDays } : {}),
         ...(scope ? { scope } : {}),
       };
       const res = await getReviewDue(params);

@@ -68,17 +68,15 @@
       <el-button
         type="primary"
         size="large"
-        :disabled="stats.due === 0 && stats.weekDue === 0 && stats.total === 0"
+        :disabled="stats.due === 0 && stats.total === 0"
         @click="handlePrimaryStudyAction"
       >
         {{
           stats.due > 0
             ? `开始复习（${stats.due} 个）`
-            : stats.weekDue > 0
-              ? `提前复习（${stats.weekDue} 个）`
-              : stats.total > 0
-                ? `继续复习（${stats.total} 个）`
-                : '暂无待复习单词'
+            : stats.total > 0
+              ? `继续复习（${stats.total} 个）`
+              : '暂无待复习单词'
         }}
       </el-button>
       <el-button size="large" @click="$router.push('/study/report')"> 学习报表 </el-button>
@@ -93,10 +91,7 @@
         @change="handleImportFile"
       />
     </div>
-    <p v-if="stats.due === 0 && stats.weekDue > 0" class="advance-hint">
-      🎉 今日任务已完成！本周还有 <strong>{{ stats.weekDue }}</strong> 个单词可提前复习。
-    </p>
-    <p v-else-if="stats.due === 0 && stats.weekDue === 0 && stats.total > 0" class="advance-hint">
+    <p v-if="stats.due === 0 && stats.total > 0" class="advance-hint">
       ✅ 今日没有待完成任务了，你仍然可以点击“继续复习”巩固全部单词。
     </p>
 
@@ -192,7 +187,6 @@
     known: 0,
     todayReviewed: 0,
     overdue: 0,
-    weekDue: 0,
   });
   const statsLoading = ref(false);
   const rootsProgress = ref([]);
@@ -281,10 +275,6 @@
     if (stats.value.due > 0) router.push('/study/session');
   };
 
-  const startAdvanceStudy = () => {
-    router.push({ path: '/study/session', query: { advance: 7 } });
-  };
-
   const startContinueStudy = () => {
     if (stats.value.total > 0) {
       router.push({ path: '/study/session', query: { scope: 'continue' } });
@@ -294,8 +284,6 @@
   const handlePrimaryStudyAction = () => {
     if (stats.value.due > 0) {
       startStudy();
-    } else if (stats.value.weekDue > 0) {
-      startAdvanceStudy();
     } else {
       startContinueStudy();
     }

@@ -62,7 +62,6 @@ async function createWrapper(statsOverrides = {}) {
       known: 3,
       todayReviewed: 2,
       overdue: 1,
-      weekDue: 0,
       ...statsOverrides,
     },
   });
@@ -108,13 +107,13 @@ describe('StudyDashboardView', () => {
   });
 
   it('无待复习但有单词时，主按钮显示继续复习', async () => {
-    const wrapper = await createWrapper({ due: 0, weekDue: 0, total: 8 });
+    const wrapper = await createWrapper({ due: 0, total: 8 });
     expect(wrapper.text()).toContain('继续复习（8 个）');
     expect(wrapper.text()).toContain('总单词数');
   });
 
   it('点击主按钮继续复习时跳转到 continue scope', async () => {
-    const wrapper = await createWrapper({ due: 0, weekDue: 0, total: 8 });
+    const wrapper = await createWrapper({ due: 0, total: 8 });
     const primaryBtn = wrapper.findAll('.el-btn')[0];
     await primaryBtn.trigger('click');
     expect(pushMock).toHaveBeenCalledWith({ path: '/study/session', query: { scope: 'continue' } });

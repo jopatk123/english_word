@@ -117,10 +117,23 @@ describe('GET /review/due', () => {
     expect(Array.isArray(res.body.data)).toBe(true);
   });
 
-  it('advance 参数扩大查询范围', async () => {
-    const res = await request(app).get('/review/due?advance=7');
+  it('未来到期的单词不会进入今日待复习列表', async () => {
+    const futureWord = await Word.create({ name: `future_${suf()}`, meaning: '未来到期', userId });
+    await WordRoot.create({ wordId: futureWord.id, rootId });
+    await WordReview.create({
+      userId,
+      wordId: futureWord.id,
+      status: 'review',
+      interval: 5,
+      easeFactor: 2.5,
+      dueDate: '2099-01-10',
+      reviewCount: 1,
+    });
+
+    const res = await request(app).get('/review/due');
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.data)).toBe(true);
+    const ids = res.body.data.map((item) => item.wordId);
+    expect(ids).not.toContain(futureWord.id);
   });
 
   it('limit=1 只返回 1 条', async () => {
@@ -281,6 +294,7 @@ describe('GET /review/stats', () => {
     expect(typeof s.learning).toBe('number');
     expect(typeof s.known).toBe('number');
     expect(typeof s.todayReviewed).toBe('number');
+    expect(s).not.toHaveProperty('weekDue');
     expect(s.total).toBe(s.learning + s.known);
     expect(s.new).toBe(0);
     expect(s.learning).toBeGreaterThan(0);
