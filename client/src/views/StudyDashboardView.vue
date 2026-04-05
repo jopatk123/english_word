@@ -169,7 +169,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted } from 'vue';
+  import { ref, computed, onMounted, onUnmounted } from 'vue';
   import { useRouter } from 'vue-router';
   import { ElMessage } from 'element-plus';
   import {
@@ -204,10 +204,14 @@
   const importFileInput = ref(null);
   const streak = ref(0);
   const totalReviews30d = ref(0);
+  let statsRefreshTimer = null;
+  let lastStatsDate = '';
 
   const hasUnenrolledRoots = computed(() =>
     rootsProgress.value.some((r) => r.wordCount > 0 && r.enrolled < r.wordCount)
   );
+
+  const getLocalDateKey = () => new Date().toLocaleDateString('en-CA');
 
   const fetchStats = async () => {
     statsLoading.value = true;
@@ -236,6 +240,27 @@
     } finally {
       rootsLoading.value = false;
     }
+  };
+
+  const refreshStatsForCurrentDay = () => {
+    lastStatsDate = getLocalDateKey();
+    fetchStats();
+  };
+
+  const refreshStatsIfDateChanged = () => {
+    const currentDate = getLocalDateKey();
+    if (currentDate === lastStatsDate) return;
+    lastStatsDate = currentDate;
+    fetchStats();
+  };
+
+  const handleVisibilityChange = () => {
+    if (document.visibilityState !== 'visible') return;
+    refreshStatsForCurrentDay();
+  };
+
+  const handleWindowFocus = () => {
+    refreshStatsForCurrentDay();
   };
 
   const handleEnqueue = async (root) => {
@@ -351,7 +376,20 @@
   };
 
   onMounted(() => {
+    lastStatsDate = getLocalDateKey();
     fetchStats();
     fetchRootsProgress();
+    statsRefreshTimer = window.setInterval(refreshStatsIfDateChanged, 60 * 1000);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleWindowFocus);
+  });
+
+  onUnmounted(() => {
+    if (statsRefreshTimer) {
+      window.clearInterval(statsRefreshTimer);
+      statsRefreshTimer = null;
+    }
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.removeEventListener('focus', handleWindowFocus);
   });
 </script>

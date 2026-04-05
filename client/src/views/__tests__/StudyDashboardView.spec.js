@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import StudyDashboardView from '../StudyDashboardView.vue';
 
 const pushMock = vi.fn();
@@ -49,6 +49,8 @@ const globalStubs = {
   'el-tag': { template: '<span><slot /></span>' },
 };
 
+const mountedWrappers = [];
+
 async function createWrapper(statsOverrides = {}) {
   getReviewStatsMock.mockResolvedValue({
     data: {
@@ -82,6 +84,8 @@ async function createWrapper(statsOverrides = {}) {
     },
   });
 
+  mountedWrappers.push(wrapper);
+
   await flushPromises();
   return wrapper;
 }
@@ -89,6 +93,18 @@ async function createWrapper(statsOverrides = {}) {
 describe('StudyDashboardView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'visible',
+    });
+  });
+
+  afterEach(() => {
+    while (mountedWrappers.length > 0) {
+      mountedWrappers.pop()?.unmount();
+    }
+    vi.useRealTimers();
   });
 
   it('无待复习但有单词时，主按钮显示继续复习', async () => {
@@ -125,5 +141,40 @@ describe('StudyDashboardView', () => {
     await cards[5].trigger('click');
     expect(pushMock).toHaveBeenNthCalledWith(1, { path: '/study/session', query: { scope: 'learning' } });
     expect(pushMock).toHaveBeenNthCalledWith(2, { path: '/study/session', query: { scope: 'known' } });
+  });
+
+  it('标签页重新可见时会刷新统计', async () => {
+    await createWrapper();
+    expect(getReviewStatsMock).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'hidden',
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+    await flushPromises();
+    expect(getReviewStatsMock).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'visible',
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+    await flushPromises();
+    expect(getReviewStatsMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('跨天后会自动刷新统计', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-05T23:59:10'));
+
+    const wrapper = await createWrapper();
+    expect(getReviewStatsMock).toHaveBeenCalledTimes(1);
+
+    vi.setSystemTime(new Date('2026-04-06T00:00:20'));
+    await vi.advanceTimersByTimeAsync(60 * 1000);
+    await flushPromises();
+
+    expect(getReviewStatsMock).toHaveBeenCalledTimes(2);
   });
 });
