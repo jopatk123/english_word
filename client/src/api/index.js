@@ -1,14 +1,15 @@
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: '/api',
-  timeout: 10000,
-});
+const createApiClient = (timeout) => {
+  const client = axios.create({
+    baseURL: '/api',
+    timeout,
+  });
 
-const aiApi = axios.create({
-  baseURL: '/api',
-  timeout: 90000,
-});
+  client.interceptors.request.use(addAuthHeader);
+  client.interceptors.response.use(handleResponse, handleError);
+  return client;
+};
 
 // 请求拦截器 - 添加 token
 const addAuthHeader = (config) => {
@@ -18,9 +19,6 @@ const addAuthHeader = (config) => {
   }
   return config;
 };
-
-api.interceptors.request.use(addAuthHeader);
-aiApi.interceptors.request.use(addAuthHeader);
 
 // 响应拦截器 - 处理 401
 const handleResponse = (response) => response.data;
@@ -39,8 +37,9 @@ const handleError = (err) => {
   return Promise.reject(err);
 };
 
-api.interceptors.response.use(handleResponse, handleError);
-aiApi.interceptors.response.use(handleResponse, handleError);
+const api = createApiClient(10000);
+// AI 请求通常耗时更长，单独放宽超时时间。
+const aiApi = createApiClient(90000);
 
 // ========== 认证 API ==========
 export const login = (data) => api.post('/auth/login', data);

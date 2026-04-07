@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { Op } from 'sequelize';
 import { Word, Root, Example, WordReview } from '../../models/index.js';
 import { success, error } from '../../utils/response.js';
-import { todayStr, todayStart } from '../../utils/srs.js';
+import { REVIEW_STATUS, todayStr, todayStart } from '../../utils/srs.js';
 
 const router = Router();
 
@@ -19,8 +19,8 @@ function compareByLastReviewedDesc(a, b) {
 }
 
 function compareLearningFirst(a, b) {
-  const aRank = a.status === 'known' ? 1 : 0;
-  const bRank = b.status === 'known' ? 1 : 0;
+  const aRank = a.status === REVIEW_STATUS.KNOWN ? 1 : 0;
+  const bRank = b.status === REVIEW_STATUS.KNOWN ? 1 : 0;
   if (aRank !== bRank) return aRank - bRank;
   return compareByDueAndEase(a, b);
 }
@@ -56,9 +56,9 @@ router.get('/due', async (req, res) => {
     } else if (scope === 'today-reviewed') {
       where.lastReviewedAt = { [Op.gte]: todayStartDate };
     } else if (scope === 'learning') {
-      where.status = { [Op.ne]: 'known' };
+      where.status = { [Op.ne]: REVIEW_STATUS.KNOWN };
     } else if (scope === 'known') {
-      where.status = 'known';
+      where.status = REVIEW_STATUS.KNOWN;
     } else if (scope === 'due') {
       where.dueDate = { [Op.lte]: today };
     }

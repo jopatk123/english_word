@@ -1,8 +1,19 @@
 export const MAX_INTERVAL = 365;
 
+export const REVIEW_STATUS = Object.freeze({
+  NEW: 'new',
+  LEARNING: 'learning',
+  REVIEW: 'review',
+  KNOWN: 'known',
+});
+
+export const KNOWN_STATUS_THRESHOLD = 21;
+
 export function getNextReview(quality, currentInterval, easeFactor, currentStatus) {
-  const isNew = currentStatus === 'new' || (currentStatus === undefined && currentInterval < 1);
-  const isLearning = currentStatus === 'learning';
+  const isNew =
+    currentStatus === REVIEW_STATUS.NEW ||
+    (currentStatus === undefined && currentInterval < 1);
+  const isLearning = currentStatus === REVIEW_STATUS.LEARNING;
 
   if (isNew) {
     // 新词：首次见面，需要进入学习阶段验证
@@ -10,22 +21,22 @@ export function getNextReview(quality, currentInterval, easeFactor, currentStatu
       return {
         interval: 0,
         easeFactor: Math.max(1.3, easeFactor - 0.2),
-        status: 'learning',
+        status: REVIEW_STATUS.LEARNING,
       };
     }
     if (quality === 2) {
       return {
         interval: 1,
         easeFactor: Math.max(1.3, easeFactor - 0.15),
-        status: 'learning',
+        status: REVIEW_STATUS.LEARNING,
       };
     }
     if (quality === 3) {
       // 认识但还需明天验证一次
-      return { interval: 1, easeFactor, status: 'learning' };
+      return { interval: 1, easeFactor, status: REVIEW_STATUS.LEARNING };
     }
     // quality === 4: 很熟悉，跳过学习阶段直接毕业
-    return { interval: 4, easeFactor: easeFactor + 0.15, status: 'review' };
+    return { interval: 4, easeFactor: easeFactor + 0.15, status: REVIEW_STATUS.REVIEW };
   }
 
   if (isLearning) {
@@ -34,22 +45,22 @@ export function getNextReview(quality, currentInterval, easeFactor, currentStatu
       return {
         interval: 0,
         easeFactor: Math.max(1.3, easeFactor - 0.2),
-        status: 'learning',
+        status: REVIEW_STATUS.LEARNING,
       };
     }
     if (quality === 2) {
       return {
         interval: 1,
         easeFactor: Math.max(1.3, easeFactor - 0.15),
-        status: 'learning',
+        status: REVIEW_STATUS.LEARNING,
       };
     }
     if (quality === 3) {
       // 毕业！进入正式复习
-      return { interval: 3, easeFactor, status: 'review' };
+      return { interval: 3, easeFactor, status: REVIEW_STATUS.REVIEW };
     }
     // quality === 4: 毕业且加分
-    return { interval: 7, easeFactor: easeFactor + 0.15, status: 'review' };
+    return { interval: 7, easeFactor: easeFactor + 0.15, status: REVIEW_STATUS.REVIEW };
   }
 
   // review / known 阶段 —— 正式间隔复习
@@ -61,7 +72,7 @@ export function getNextReview(quality, currentInterval, easeFactor, currentStatu
     return {
       interval: 0,
       easeFactor: Math.max(1.3, easeFactor - 0.2),
-      status: 'learning',
+      status: REVIEW_STATUS.LEARNING,
     };
   } else if (quality === 2) {
     newInterval = Math.max(1, Math.ceil(currentInterval * 1.2));
@@ -75,7 +86,7 @@ export function getNextReview(quality, currentInterval, easeFactor, currentStatu
   }
 
   newInterval = Math.min(newInterval, MAX_INTERVAL);
-  const status = newInterval >= 21 ? 'known' : 'review';
+  const status = newInterval >= KNOWN_STATUS_THRESHOLD ? REVIEW_STATUS.KNOWN : REVIEW_STATUS.REVIEW;
   return { interval: newInterval, easeFactor: newEase, status };
 }
 

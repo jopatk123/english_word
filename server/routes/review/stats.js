@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { Op } from 'sequelize';
 import { WordReview } from '../../models/index.js';
 import { success, error } from '../../utils/response.js';
-import { todayStr, todayStart } from '../../utils/srs.js';
+import { REVIEW_STATUS, todayStr, todayStart } from '../../utils/srs.js';
 
 const router = Router();
 
@@ -18,7 +18,7 @@ router.get('/stats', async (req, res) => {
       WordReview.count({
         where: { userId: req.userId, paused: false, dueDate: today },
       }),
-      WordReview.count({ where: { userId: req.userId, paused: false, status: 'known' } }),
+      WordReview.count({ where: { userId: req.userId, paused: false, status: REVIEW_STATUS.KNOWN } }),
       WordReview.count({
         where: {
           userId: req.userId,

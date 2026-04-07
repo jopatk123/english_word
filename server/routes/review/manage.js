@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { Op } from 'sequelize';
 import { Word, Root, WordReview } from '../../models/index.js';
 import { success, error } from '../../utils/response.js';
-import { todayStr } from '../../utils/srs.js';
+import { REVIEW_STATUS, todayStr } from '../../utils/srs.js';
 
 const router = Router();
 
@@ -40,7 +40,7 @@ router.get('/roots-progress', async (req, res) => {
       r.words.forEach((w) => {
         if (w.reviews && w.reviews.length > 0) {
           enrolled++;
-          if (w.reviews[0].status === 'known') known++;
+          if (w.reviews[0].status === REVIEW_STATUS.KNOWN) known++;
         }
       });
       return {
@@ -70,7 +70,7 @@ router.post('/:wordId/reset', async (req, res) => {
     if (!review) return error(res, '该单词不在学习队列中', 404);
 
     await review.update({
-      status: 'new',
+      status: REVIEW_STATUS.NEW,
       interval: 0,
       easeFactor: 2.5,
       dueDate: todayStr(req.body.tz),
