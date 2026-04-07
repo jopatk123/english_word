@@ -1,7 +1,7 @@
-import js from '@eslint/js'
-import pluginVue from 'eslint-plugin-vue'
-import globals from 'globals'
-import prettierConfig from 'eslint-config-prettier'
+import js from '@eslint/js';
+import pluginVue from 'eslint-plugin-vue';
+import globals from 'globals';
+import prettierConfig from 'eslint-config-prettier';
 
 /** 公共宽松规则（warn 级别，不阻断开发） */
 const looseRules = {
@@ -9,17 +9,12 @@ const looseRules = {
   'no-console': 'off',
   'no-debugger': 'warn',
   'no-undef': 'error',
-}
+};
 
 export default [
   // ── 忽略目录 ──────────────────────────────────────────────
   {
-    ignores: [
-      '**/node_modules/**',
-      '**/dist/**',
-      '**/coverage/**',
-      'data/**',
-    ],
+    ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**', 'data/**'],
   },
 
   // ── 服务端 JS（Node ESM）──────────────────────────────────
@@ -59,8 +54,8 @@ export default [
     },
     rules: {
       ...looseRules,
-      'vue/multi-word-component-names': 'off',  // 常见单词命名的组件（如 HomeView）
-      'vue/no-mutating-props': 'warn',  // 宽松：降为警告，修复需要重构组件 emit API
+      'vue/multi-word-component-names': 'off', // 常见单词命名的组件（如 HomeView）
+      'vue/no-mutating-props': 'warn', // 宽松：降为警告，修复需要重构组件 emit API
       'vue/no-unused-vars': 'warn',
       'vue/html-self-closing': 'off',
       'vue/singleline-html-element-content-newline': 'off',
@@ -81,4 +76,4 @@ export default [
 
   // ── 关闭与 Prettier 冲突的格式类规则 ────────────────────
   prettierConfig,
-]
+];

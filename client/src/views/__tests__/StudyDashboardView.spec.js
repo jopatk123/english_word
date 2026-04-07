@@ -123,7 +123,10 @@ describe('StudyDashboardView', () => {
     const wrapper = await createWrapper({ todayReviewed: 2 });
     const cards = wrapper.findAll('.stat-card');
     await cards[2].trigger('click');
-    expect(pushMock).toHaveBeenCalledWith({ path: '/study/session', query: { scope: 'today-reviewed' } });
+    expect(pushMock).toHaveBeenCalledWith({
+      path: '/study/session',
+      query: { scope: 'today-reviewed' },
+    });
   });
 
   it('点击总单词数卡片进入全部单词集合', async () => {
@@ -138,8 +141,14 @@ describe('StudyDashboardView', () => {
     const cards = wrapper.findAll('.stat-card');
     await cards[4].trigger('click');
     await cards[5].trigger('click');
-    expect(pushMock).toHaveBeenNthCalledWith(1, { path: '/study/session', query: { scope: 'learning' } });
-    expect(pushMock).toHaveBeenNthCalledWith(2, { path: '/study/session', query: { scope: 'known' } });
+    expect(pushMock).toHaveBeenNthCalledWith(1, {
+      path: '/study/session',
+      query: { scope: 'learning' },
+    });
+    expect(pushMock).toHaveBeenNthCalledWith(2, {
+      path: '/study/session',
+      query: { scope: 'known' },
+    });
   });
 
   it('标签页重新可见时会刷新统计', async () => {
@@ -167,7 +176,7 @@ describe('StudyDashboardView', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-05T23:59:10'));
 
-    const wrapper = await createWrapper();
+    await createWrapper();
     expect(getReviewStatsMock).toHaveBeenCalledTimes(1);
 
     vi.setSystemTime(new Date('2026-04-06T00:00:20'));

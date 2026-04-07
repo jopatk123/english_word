@@ -67,7 +67,13 @@ export function useStudySession() {
 
   // 初始化子模式 composable（依赖 currentCard、sessionStats、handleAgain、advanceCard）
   const choice = useChoiceMode({ currentCard, sessionStats, handleAgain, advanceCard, isReplay });
-  const spelling = useSpellingMode({ currentCard, sessionStats, handleAgain, advanceCard, isReplay });
+  const spelling = useSpellingMode({
+    currentCard,
+    sessionStats,
+    handleAgain,
+    advanceCard,
+    isReplay,
+  });
 
   // 自动朗读：进入卡片时朗读一次，翻牌时再朗读一次
   watch(

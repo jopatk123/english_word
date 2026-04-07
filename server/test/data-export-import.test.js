@@ -85,8 +85,15 @@ describe('GET /review/data/export', () => {
   });
 
   it('导出不会带出其他用户的单词', async () => {
-    const otherUser = await User.create({ username: 'data_export_other_' + Date.now(), password: 'x' });
-    const otherRoot = await Root.create({ name: 'other-export-root', meaning: '他人词根', userId: otherUser.id });
+    const otherUser = await User.create({
+      username: 'data_export_other_' + Date.now(),
+      password: 'x',
+    });
+    const otherRoot = await Root.create({
+      name: 'other-export-root',
+      meaning: '他人词根',
+      userId: otherUser.id,
+    });
     const otherWord = await Word.create({
       name: 'other-export-word',
       meaning: '他人单词',
@@ -184,7 +191,10 @@ describe('POST /review/data/import', () => {
   });
 
   it('不同用户导入同名单词时会创建各自独立的记录', async () => {
-    const otherUser = await User.create({ username: 'data_import_other_' + Date.now(), password: 'x' });
+    const otherUser = await User.create({
+      username: 'data_import_other_' + Date.now(),
+      password: 'x',
+    });
     const otherApp = buildApp(otherUser.id);
 
     const res = await request(otherApp).post('/review/data/import').send(sampleData);

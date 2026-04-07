@@ -58,10 +58,26 @@
   flex-shrink: 0;
 }
 
-.streak-icon { background: linear-gradient(135deg, #fdf6ec 0%, #faecd8 100%); color: #e6a23c; text-shadow: 0 2px 4px rgba(230,162,60,0.2); }
-.total-icon { background: linear-gradient(135deg, #ecf5ff 0%, #d9ecff 100%); color: #409eff; text-shadow: 0 2px 4px rgba(64,158,255,0.2); }
-.avg-icon { background: linear-gradient(135deg, #f0f9eb 0%, #e1f3d8 100%); color: #67c23a; text-shadow: 0 2px 4px rgba(103,194,58,0.2); }
-.mastery-icon { background: linear-gradient(135deg, #fef0f0 0%, #fde2e2 100%); color: #f56c6c; text-shadow: 0 2px 4px rgba(245,108,108,0.2); }
+.streak-icon {
+  background: linear-gradient(135deg, #fdf6ec 0%, #faecd8 100%);
+  color: #e6a23c;
+  text-shadow: 0 2px 4px rgba(230, 162, 60, 0.2);
+}
+.total-icon {
+  background: linear-gradient(135deg, #ecf5ff 0%, #d9ecff 100%);
+  color: #409eff;
+  text-shadow: 0 2px 4px rgba(64, 158, 255, 0.2);
+}
+.avg-icon {
+  background: linear-gradient(135deg, #f0f9eb 0%, #e1f3d8 100%);
+  color: #67c23a;
+  text-shadow: 0 2px 4px rgba(103, 194, 58, 0.2);
+}
+.mastery-icon {
+  background: linear-gradient(135deg, #fef0f0 0%, #fde2e2 100%);
+  color: #f56c6c;
+  text-shadow: 0 2px 4px rgba(245, 108, 108, 0.2);
+}
 
 .card-info {
   flex: 1;
@@ -137,7 +153,7 @@
   border-radius: 12px;
   padding: 80px 20px;
   text-align: center;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 }
 
 /* ========== 响应式 - 报表 ========== */
@@ -151,19 +167,19 @@
   .report-summary .el-col {
     margin-bottom: 16px;
   }
-  
+
   .data-card .el-card__body {
     padding: 16px;
     gap: 12px;
   }
-  
+
   .card-icon {
     width: 48px;
     height: 48px;
     font-size: 24px;
     border-radius: 12px;
   }
-  
+
   .card-value {
     font-size: 24px;
   }

@@ -275,10 +275,18 @@
   font-weight: 500;
 }
 
-.result-again { background: #f56c6c; }
-.result-hard { background: #e6a23c; }
-.result-good { background: #409eff; }
-.result-easy { background: #67c23a; }
+.result-again {
+  background: #f56c6c;
+}
+.result-hard {
+  background: #e6a23c;
+}
+.result-good {
+  background: #409eff;
+}
+.result-easy {
+  background: #67c23a;
+}
 
 .result-count {
   font-size: 16px;
@@ -347,14 +355,16 @@
   border-radius: 16px;
   padding: 24px 16px;
   cursor: pointer;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
   border: 2px solid transparent;
 }
 
 .mode-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
   border-color: #667eea;
 }
 
@@ -401,7 +411,9 @@
   border-radius: 10px;
   border: 2px solid #e4e7ed;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
 }
 
 .choice-option:hover {

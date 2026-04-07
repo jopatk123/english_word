@@ -208,7 +208,11 @@ describe('DELETE /words/:id', () => {
       meaning: 'x',
       userId: otherUser.id,
     });
-    const otherWord = await Word.create({ name: `ow_${suf()}`, meaning: 'x', userId: otherUser.id });
+    const otherWord = await Word.create({
+      name: `ow_${suf()}`,
+      meaning: 'x',
+      userId: otherUser.id,
+    });
     await WordRoot.create({ wordId: otherWord.id, rootId: otherRoot.id });
 
     const res = await request(app).delete(`/words/${otherWord.id}`);

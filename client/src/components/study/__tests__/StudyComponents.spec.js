@@ -371,7 +371,12 @@ describe('SpellingMode', () => {
   });
 
   it('answered + hard=false + correct=false 显示完全错误提示', () => {
-    const wrapper = createWrapper({ answered: true, correct: false, hard: false, inputValue: 'xyz' });
+    const wrapper = createWrapper({
+      answered: true,
+      correct: false,
+      hard: false,
+      inputValue: 'xyz',
+    });
     expect(wrapper.text()).toContain('正确答案');
     expect(wrapper.text()).not.toContain('接近正确');
   });

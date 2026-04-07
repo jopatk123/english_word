@@ -58,16 +58,32 @@ beforeAll(async () => {
 describe('GET /review/quiz-choices/:wordId', () => {
   it('只返回当前用户自己的正确项和干扰项', async () => {
     const isolatedUser = await User.create({ username: `quiz_user_${suf()}`, password: 'x' });
-    const isolatedRoot = await Root.create({ name: `quiz_root_${suf()}`, meaning: '隔离词根', userId: isolatedUser.id });
-    const isolatedWord = await Word.create({ name: `quiz_target_${suf()}`, meaning: '目标释义', userId: isolatedUser.id });
+    const isolatedRoot = await Root.create({
+      name: `quiz_root_${suf()}`,
+      meaning: '隔离词根',
+      userId: isolatedUser.id,
+    });
+    const isolatedWord = await Word.create({
+      name: `quiz_target_${suf()}`,
+      meaning: '目标释义',
+      userId: isolatedUser.id,
+    });
     const isolatedDistractor = await Word.create({
       name: `quiz_local_${suf()}`,
       meaning: '本地干扰项',
       userId: isolatedUser.id,
     });
     const otherUser = await User.create({ username: `quiz_other_${suf()}`, password: 'x' });
-    const otherRoot = await Root.create({ name: `quiz_other_root_${suf()}`, meaning: '他人词根', userId: otherUser.id });
-    const otherWord = await Word.create({ name: `quiz_other_word_${suf()}`, meaning: '他人释义', userId: otherUser.id });
+    const otherRoot = await Root.create({
+      name: `quiz_other_root_${suf()}`,
+      meaning: '他人词根',
+      userId: otherUser.id,
+    });
+    const otherWord = await Word.create({
+      name: `quiz_other_word_${suf()}`,
+      meaning: '他人释义',
+      userId: otherUser.id,
+    });
 
     await WordRoot.create({ wordId: isolatedWord.id, rootId: isolatedRoot.id });
     await WordRoot.create({ wordId: isolatedDistractor.id, rootId: isolatedRoot.id });
@@ -146,7 +162,11 @@ describe('GET /review/due', () => {
 
   it('scope=learning 仅返回未掌握单词', async () => {
     const knownWord = await Word.create({ name: `known_${suf()}`, meaning: '已掌握词', userId });
-    const learningWord = await Word.create({ name: `learning_${suf()}`, meaning: '学习词', userId });
+    const learningWord = await Word.create({
+      name: `learning_${suf()}`,
+      meaning: '学习词',
+      userId,
+    });
     await WordRoot.create({ wordId: knownWord.id, rootId });
     await WordRoot.create({ wordId: learningWord.id, rootId });
     await WordReview.create({
@@ -177,7 +197,11 @@ describe('GET /review/due', () => {
 
   it('scope=known 仅返回已掌握单词', async () => {
     const knownWord = await Word.create({ name: `known_only_${suf()}`, meaning: '已掌握', userId });
-    const learningWord = await Word.create({ name: `learning_only_${suf()}`, meaning: '学习中', userId });
+    const learningWord = await Word.create({
+      name: `learning_only_${suf()}`,
+      meaning: '学习中',
+      userId,
+    });
     await WordRoot.create({ wordId: knownWord.id, rootId });
     await WordRoot.create({ wordId: learningWord.id, rootId });
     await WordReview.create({
@@ -207,8 +231,16 @@ describe('GET /review/due', () => {
   });
 
   it('scope=today-reviewed 仅返回今日已复习单词', async () => {
-    const reviewedWord = await Word.create({ name: `reviewed_${suf()}`, meaning: '今日复习', userId });
-    const untouchedWord = await Word.create({ name: `untouched_${suf()}`, meaning: '未复习', userId });
+    const reviewedWord = await Word.create({
+      name: `reviewed_${suf()}`,
+      meaning: '今日复习',
+      userId,
+    });
+    const untouchedWord = await Word.create({
+      name: `untouched_${suf()}`,
+      meaning: '未复习',
+      userId,
+    });
     await WordRoot.create({ wordId: reviewedWord.id, rootId });
     await WordRoot.create({ wordId: untouchedWord.id, rootId });
     await WordReview.create({
@@ -240,8 +272,16 @@ describe('GET /review/due', () => {
   });
 
   it('scope=continue 时未掌握单词排在已掌握前面', async () => {
-    const knownWord = await Word.create({ name: `continue_known_${suf()}`, meaning: '已掌握', userId });
-    const learningWord = await Word.create({ name: `continue_learning_${suf()}`, meaning: '学习中', userId });
+    const knownWord = await Word.create({
+      name: `continue_known_${suf()}`,
+      meaning: '已掌握',
+      userId,
+    });
+    const learningWord = await Word.create({
+      name: `continue_learning_${suf()}`,
+      meaning: '学习中',
+      userId,
+    });
     await WordRoot.create({ wordId: knownWord.id, rootId });
     await WordRoot.create({ wordId: learningWord.id, rootId });
     await WordReview.create({
@@ -273,7 +313,11 @@ describe('GET /review/due', () => {
 // ─── GET /review/stats ────────────────────────────────────────
 describe('GET /review/stats', () => {
   it('返回用户视角统计，且总数等于学习中+已掌握', async () => {
-    const reviewWord = await Word.create({ name: `stats_review_${suf()}`, meaning: '复习中', userId });
+    const reviewWord = await Word.create({
+      name: `stats_review_${suf()}`,
+      meaning: '复习中',
+      userId,
+    });
     await WordRoot.create({ wordId: reviewWord.id, rootId });
     await WordReview.create({
       userId,

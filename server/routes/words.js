@@ -44,7 +44,16 @@ router.get('/', async (req, res) => {
       Word.findAll(queryOpts),
       Word.count({
         where,
-        include: [{ model: Root, as: 'roots', through: { attributes: [] }, where: { userId: req.userId }, required: true, ...(rootId ? { where: { userId: req.userId, id: rootId } } : {}) }],
+        include: [
+          {
+            model: Root,
+            as: 'roots',
+            through: { attributes: [] },
+            where: { userId: req.userId },
+            required: true,
+            ...(rootId ? { where: { userId: req.userId, id: rootId } } : {}),
+          },
+        ],
         distinct: true,
       }),
     ]);

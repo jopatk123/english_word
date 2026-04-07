@@ -4,7 +4,7 @@ services:
     image: english_word-english-word:latest
     container_name: english-word-app
     ports:
-      - "3010:3010"
+      - '3010:3010'
     volumes:
       - english-word-db:/app/data
     environment:

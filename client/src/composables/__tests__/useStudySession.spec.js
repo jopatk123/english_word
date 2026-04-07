@@ -61,4 +61,3 @@ describe('continueReview 排队策略', () => {
     expect(result.slice(0, 2).map((i) => i.wordId)).toEqual([2, 5]);
   });
 });
-

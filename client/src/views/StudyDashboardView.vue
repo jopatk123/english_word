@@ -7,7 +7,10 @@
 
     <!-- 统计卡片 -->
     <div class="stats-cards" v-loading="statsLoading">
-      <div class="stat-card stat-due clickable" @click="openSessionFor('today-due', stats.todayDue)">
+      <div
+        class="stat-card stat-due clickable"
+        @click="openSessionFor('today-due', stats.todayDue)"
+      >
         <div class="stat-number">{{ stats.todayDue }}</div>
         <div class="stat-label">今日到期</div>
       </div>

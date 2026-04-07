@@ -27,7 +27,9 @@
     </div>
     <div class="complete-actions">
       <el-button type="primary" @click="$emit('continue-review')">
-        继续复习{{ againWordCount > 0 ? `（先练 ${againWordCount} 个难词）` : `（共 ${totalWords} 个）` }}
+        继续复习{{
+          againWordCount > 0 ? `（先练 ${againWordCount} 个难词）` : `（共 ${totalWords} 个）`
+        }}
       </el-button>
       <el-button @click="$emit('replay')">换模式再来一遍</el-button>
       <el-button v-if="hasAgainWords" type="warning" plain @click="$emit('replay-again')"

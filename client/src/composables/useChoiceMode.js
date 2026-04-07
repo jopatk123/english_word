@@ -41,16 +41,16 @@ export function useChoiceMode({ currentCard, sessionStats, handleAgain, advanceC
     const meaning = currentCard.value.word.meaning;
 
     // 优先从本地队列取干扰项（排除当前词和含义完全相同的）
-    const candidates = queueWords.filter(
-      (w) => w.id !== wordId && w.meaning !== meaning
-    );
+    const candidates = queueWords.filter((w) => w.id !== wordId && w.meaning !== meaning);
 
     if (candidates.length >= 3) {
-      const distractors = shuffle(candidates).slice(0, 3).map((w) => ({
-        id: w.id,
-        name: w.name,
-        meaning: w.meaning,
-      }));
+      const distractors = shuffle(candidates)
+        .slice(0, 3)
+        .map((w) => ({
+          id: w.id,
+          name: w.name,
+          meaning: w.meaning,
+        }));
       const correct = { id: wordId, name: currentCard.value.word.name, meaning };
       choiceOptions.value = shuffle([correct, ...distractors]);
     } else {

@@ -9,9 +9,14 @@
     "test:coverage": "npm run test:coverage:client && npm run test:coverage:server",
     "test:coverage:client": "npm --prefix client run test:coverage",
     "test:coverage:server": "npm --prefix server run test:coverage",
-    "lint": "eslint . --fix",
-    "lint:check": "eslint .",
-    "format": "prettier --write \"client/src/**/*.{js,vue}\" \"server/**/*.js\""
+    "lint": "npm run lint:check",
+    "lint:check": "npm run lint:eslint && npm run lint:format",
+    "lint:fix": "eslint . --fix && npm run format",
+    "lint:eslint": "eslint .",
+    "lint:client": "eslint client/src",
+    "lint:server": "eslint server",
+    "lint:format": "prettier --check .",
+    "format": "prettier --write ."
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
