@@ -9,7 +9,7 @@
  *   - POST /review/:wordId/pause        暂停/恢复
  *   - DELETE /review/:wordId            从队列中移除
  */
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import { initDB, User, Root, Word, WordRoot, WordReview } from '../models/index.js';
@@ -312,6 +312,37 @@ describe('GET /review/due', () => {
 
 // ─── GET /review/stats ────────────────────────────────────────
 describe('GET /review/stats', () => {
+  it('按时区统计今日已复习，避免跨时区漏算', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-08T01:00:00Z'));
+
+    try {
+      const isolatedUser = await User.create({ username: `stats_user_${suf()}`, password: 'x' });
+      const isolatedApp = buildApp(isolatedUser.id);
+      const reviewedWord = await Word.create({
+        name: `stats_today_${suf()}`,
+        meaning: '今日已复习测试',
+        userId: isolatedUser.id,
+      });
+      await WordReview.create({
+        userId: isolatedUser.id,
+        wordId: reviewedWord.id,
+        status: 'review',
+        interval: 6,
+        easeFactor: 2.5,
+        dueDate: '2026-04-09',
+        reviewCount: 1,
+        lastReviewedAt: new Date('2026-04-07T17:00:00Z'),
+      });
+
+      const res = await request(isolatedApp).get('/review/stats?tz=Asia/Shanghai');
+      expect(res.status).toBe(200);
+      expect(res.body.data.todayReviewed).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('返回用户视角统计，且总数等于学习中+已掌握', async () => {
     const reviewWord = await Word.create({
       name: `stats_review_${suf()}`,

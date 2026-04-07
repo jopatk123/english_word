@@ -101,9 +101,49 @@ export function todayStr(timezone) {
   return new Date().toISOString().slice(0, 10);
 }
 
+function getTimeZoneParts(date, timezone) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    hourCycle: 'h23',
+  });
+
+  return Object.fromEntries(formatter.formatToParts(date).map((part) => [part.type, part.value]));
+}
+
+function getTimeZoneOffsetMs(date, timezone) {
+  const parts = getTimeZoneParts(date, timezone);
+  const zonedUtc = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second)
+  );
+  return zonedUtc - date.getTime();
+}
+
 export function todayStart(timezone) {
   const today = todayStr(timezone);
-  return new Date(today + 'T00:00:00');
+  if (!timezone) {
+    return new Date(today + 'T00:00:00');
+  }
+
+  try {
+    const [year, month, day] = today.split('-').map(Number);
+    const utcMidnight = Date.UTC(year, month - 1, day, 0, 0, 0);
+    const offset = getTimeZoneOffsetMs(new Date(utcMidnight), timezone);
+    return new Date(utcMidnight - offset);
+  } catch {
+    return new Date(today + 'T00:00:00');
+  }
 }
 
 export function addDays(dateStr, days) {

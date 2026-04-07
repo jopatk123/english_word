@@ -8,19 +8,14 @@
     <!-- 统计卡片 -->
     <div class="stats-cards" v-loading="statsLoading">
       <div
-        class="stat-card stat-due clickable"
-        @click="openSessionFor('today-due', stats.todayDue)"
+        class="stat-card stat-due"
+        :class="{ clickable: stats.due > 0 }"
+        @click="openSessionFor('due', stats.due)"
       >
-        <div class="stat-number">{{ stats.todayDue }}</div>
-        <div class="stat-label">今日到期</div>
-      </div>
-      <div
-        class="stat-card stat-overdue"
-        :class="{ clickable: stats.overdue > 0 }"
-        @click="openSessionFor('overdue', stats.overdue)"
-      >
-        <div class="stat-number">{{ stats.overdue }}</div>
-        <div class="stat-label">超期未复习</div>
+        <div class="stat-kicker">现在需要复习</div>
+        <div class="stat-number stat-number-primary">{{ stats.due }}</div>
+        <div class="stat-label">待复习</div>
+        <div class="stat-meta">今日到期 {{ stats.todayDue }} · 超期 {{ stats.overdue }}</div>
       </div>
       <div
         class="stat-card stat-today"

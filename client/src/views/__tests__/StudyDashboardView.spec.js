@@ -122,25 +122,32 @@ describe('StudyDashboardView', () => {
   it('点击今日已复习数字卡片进入今日已复习集合', async () => {
     const wrapper = await createWrapper({ todayReviewed: 2 });
     const cards = wrapper.findAll('.stat-card');
-    await cards[2].trigger('click');
+    await cards[1].trigger('click');
     expect(pushMock).toHaveBeenCalledWith({
       path: '/study/session',
       query: { scope: 'today-reviewed' },
     });
   });
 
+  it('点击待复习卡片进入今日待复习集合', async () => {
+    const wrapper = await createWrapper({ due: 6, todayDue: 2, overdue: 4 });
+    const cards = wrapper.findAll('.stat-card');
+    await cards[0].trigger('click');
+    expect(pushMock).toHaveBeenCalledWith({ path: '/study/session', query: { scope: 'due' } });
+  });
+
   it('点击总单词数卡片进入全部单词集合', async () => {
     const wrapper = await createWrapper({ total: 8 });
     const cards = wrapper.findAll('.stat-card');
-    await cards[3].trigger('click');
+    await cards[2].trigger('click');
     expect(pushMock).toHaveBeenCalledWith({ path: '/study/session', query: { scope: 'all' } });
   });
 
   it('点击学习中和已掌握卡片进入对应集合', async () => {
     const wrapper = await createWrapper({ learning: 5, known: 3 });
     const cards = wrapper.findAll('.stat-card');
+    await cards[3].trigger('click');
     await cards[4].trigger('click');
-    await cards[5].trigger('click');
     expect(pushMock).toHaveBeenNthCalledWith(1, {
       path: '/study/session',
       query: { scope: 'learning' },

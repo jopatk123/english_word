@@ -1,7 +1,7 @@
 /**
  * 测试：srs.js 工具模块的纯函数
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { getNextReview, addDays, todayStr, todayStart, MAX_INTERVAL } from '../utils/srs.js';
 
 describe('srs.js 工具模块', () => {
@@ -154,6 +154,35 @@ describe('srs.js 工具模块', () => {
       expect(result.getHours()).toBe(0);
       expect(result.getMinutes()).toBe(0);
       expect(result.getSeconds()).toBe(0);
+    });
+
+    it('有效时区返回该时区当天的零点', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-04-08T01:00:00Z'));
+
+      try {
+        const result = todayStart('Asia/Shanghai');
+        const parts = Object.fromEntries(
+          new Intl.DateTimeFormat('en-US', {
+            timeZone: 'Asia/Shanghai',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+            hourCycle: 'h23',
+          })
+            .formatToParts(result)
+            .map((part) => [part.type, part.value])
+        );
+
+        expect(`${parts.year}-${parts.month}-${parts.day}`).toBe('2026-04-08');
+        expect(`${parts.hour}:${parts.minute}:${parts.second}`).toBe('00:00:00');
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });
