@@ -2,6 +2,7 @@
 node_modules
 dist
 data/*.db
+server/data/*.db
 client/dist
 .DS_Store
 *.pid
