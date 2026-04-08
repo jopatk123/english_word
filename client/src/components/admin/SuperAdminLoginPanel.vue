@@ -27,7 +27,6 @@
             @keyup.enter="$emit('submit')"
           />
         </el-form-item>
-        <p class="sa-login-hint">默认密码 asd123123123，生产环境请通过 ADMIN_PASSWORD 环境变量覆盖</p>
         <el-button
           type="primary"
           size="large"
