@@ -11,6 +11,7 @@
         <el-button class="nav-btn" link @click="$router.push('/')">📚 学单词</el-button>
         <el-button class="nav-btn" link @click="$router.push('/study')">📝 背单词</el-button>
         <el-button class="nav-btn" link @click="$router.push('/ai/settings')">🤖 AI 配置</el-button>
+        <AlarmClock class="header-alarm" />
       </div>
       <div v-if="user" class="header-user">
         <span class="username">{{ user.username }}</span>
@@ -26,6 +27,7 @@
 <script setup>
   import { ref, watchEffect, computed, onUnmounted } from 'vue';
   import { useRouter, useRoute } from 'vue-router';
+  import AlarmClock from './components/AlarmClock.vue';
 
   const router = useRouter();
   const route = useRoute();

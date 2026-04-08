@@ -71,6 +71,11 @@
   color: #fff !important;
 }
 
+/* 闹钟组件在导航栏中的布局 */
+.header-alarm {
+  margin-left: 4px;
+}
+
 /* ========== 响应式 - 顶栏 ========== */
 @media (max-width: 768px) {
   .app-title {
