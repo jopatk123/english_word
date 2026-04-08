@@ -114,20 +114,19 @@ export function useStudySession() {
     isReplay,
   });
 
-  // 自动朗读：进入卡片时朗读一次，翻牌时再朗读一次
+  // 自动朗读：所有模式在新卡出现时朗读一次（闪卡翻牌时另由 flipCard 朗读）
   watch(
     [currentCard, studyMode, modeSelected],
     ([card, mode, selected], previousValues = []) => {
       const [prevCard, prevMode, prevSelected] = previousValues;
 
-      if (!card) return;
-      if (mode !== 'flashcard' || !selected) return;
+      if (!card || !selected) return;
 
       const isNewCard = card !== prevCard;
-      const justEnteredFlashcard = mode === 'flashcard' && prevMode !== 'flashcard';
+      const justEnteredMode = mode !== prevMode;
       const justStarted = selected && !prevSelected;
 
-      if (isNewCard || justEnteredFlashcard || justStarted) {
+      if (isNewCard || justEnteredMode || justStarted) {
         nextTick(() => {
           speak(card.word.name);
         });
@@ -313,18 +312,16 @@ export function useStudySession() {
 
   // 键盘快捷键
   const handleKeyDown = (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    if (
-      studyMode.value === 'flashcard' &&
-      modeSelected.value &&
-      !finished.value &&
-      currentCard.value
-    ) {
+    if (!modeSelected.value || finished.value || !currentCard.value) return;
+    const inInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+
+    // 闪卡模式
+    if (studyMode.value === 'flashcard' && !inInput) {
       if (e.code === 'Space') {
         e.preventDefault();
         if (!showAnswer.value) {
           flipCard();
-        } else if (currentCard.value) {
+        } else {
           speak(currentCard.value.word.name);
         }
       }
@@ -333,6 +330,46 @@ export function useStudySession() {
         else if (e.key === '2') submitRating(2);
         else if (e.key === '3') submitRating(3);
         else if (e.key === '4') submitRating(4);
+      }
+    }
+
+    // 选择题模式（无文本输入框，不受 inInput 影响）
+    if (studyMode.value === 'choice') {
+      if (!choice.choiceAnswered.value) {
+        const idx = { a: 0, '1': 0, b: 1, '2': 1, c: 2, '3': 2, d: 3, '4': 3 }[
+          e.key.toLowerCase()
+        ];
+        if (idx !== undefined && idx < choice.choiceOptions.value.length) {
+          e.preventDefault();
+          choice.handleChoice(idx);
+        }
+      } else if (e.code === 'Enter' || e.code === 'Space') {
+        e.preventDefault();
+        choice.choiceNext();
+      }
+    }
+
+    // 拼写 & 听力模式
+    if (studyMode.value === 'spelling' || studyMode.value === 'listening') {
+      if (spelling.spellingAnswered.value) {
+        // 答完后 Enter/Space 进入下一题
+        if (e.code === 'Enter' || e.code === 'Space') {
+          e.preventDefault();
+          spelling.spellingNext();
+        }
+        return;
+      }
+
+      if (e.code === 'Enter') {
+        e.preventDefault();
+        spelling.checkSpelling();
+        return;
+      }
+
+      // 听力模式：Space 始终重播发音，不向输入框写入空格
+      if (studyMode.value === 'listening' && e.code === 'Space') {
+        e.preventDefault();
+        speak(currentCard.value.word.name);
       }
     }
   };
@@ -371,6 +408,7 @@ export function useStudySession() {
     spellingCorrect: spelling.spellingCorrect,
     spellingHard: spelling.spellingHard,
     spellingHint: spelling.spellingHint,
+    spellingHintLevel: spelling.spellingHintLevel,
     // 错误单词
     hasAgainWords,
     againWordCount,

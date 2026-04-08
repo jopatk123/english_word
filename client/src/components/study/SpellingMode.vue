@@ -13,21 +13,28 @@
         </div>
       </template>
 
-      <!-- 听力模式：播放按钮 -->
+      <!-- 听力模式：播放按钮 + 文字提示 -->
       <template v-else>
         <div style="font-size: 18px; color: #909399; margin-bottom: 16px">听发音，拼写单词</div>
         <SpeakButton :text="card.word.name" size="large" />
+        <div v-if="spellingHintLevel > 0 && !answered" class="listening-hint">
+          提示：{{ spellingHint }}
+        </div>
       </template>
 
       <div class="spelling-input-area" :style="mode === 'listening' ? 'margin-top: 20px;' : ''">
-        <el-input
-          v-model="localInput"
-          :placeholder="mode === 'spelling' ? spellingHint : '输入你听到的单词...'"
-          size="large"
-          :disabled="answered"
-          @keyup.enter="$emit('check')"
-          ref="inputRef"
-        />
+        <div class="spelling-input-row">
+          <el-input
+            v-model="localInput"
+            :placeholder="mode === 'spelling' ? spellingHint : '输入你听到的单词...'"
+            size="large"
+            :disabled="answered"
+            ref="inputRef"
+          />
+          <el-button v-if="!answered" class="spelling-hint-button" @click="$emit('hint')">
+            提示
+          </el-button>
+        </div>
         <div v-if="answered" class="spelling-feedback">
           <div v-if="correct" class="spelling-correct">✅ 正确！</div>
           <div v-else-if="hard" class="spelling-hard">
@@ -55,12 +62,18 @@
         <el-button type="primary" @click="$emit('check')" :disabled="!localInput.trim()"
           >确认</el-button
         >
-        <el-button v-if="mode === 'spelling'" @click="$emit('hint')">提示</el-button>
       </div>
       <div v-else class="spelling-actions">
         <el-button type="primary" @click="$emit('next')" :loading="submitting">
           {{ isLast ? '完成' : '下一个' }}
         </el-button>
+      </div>
+
+      <div v-if="mode === 'spelling'" class="keyboard-hint">
+        快捷键：<kbd>Enter</kbd> 确认/下一个
+      </div>
+      <div v-else-if="mode === 'listening'" class="keyboard-hint">
+        快捷键：<kbd>空格</kbd> 重播发音；<kbd>Enter</kbd> 确认/下一个
       </div>
     </div>
   </div>
@@ -82,6 +95,7 @@
     hard: { type: Boolean, default: false },
     submitting: { type: Boolean, default: false },
     spellingHint: { type: String, default: '输入单词拼写...' },
+    spellingHintLevel: { type: Number, default: 0 },
     isLast: { type: Boolean, default: false },
   });
 
