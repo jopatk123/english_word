@@ -30,6 +30,12 @@
           {{ isLast ? '完成' : '下一个' }}
         </el-button>
       </div>
+
+      <div class="keyboard-hint">
+        快捷键：<kbd>A</kbd>/<kbd>B</kbd>/<kbd>C</kbd>/<kbd>D</kbd> 或
+        <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd>/<kbd>4</kbd> 选择；答题后
+        <kbd>Enter</kbd> 下一个
+      </div>
     </div>
   </div>
 </template>

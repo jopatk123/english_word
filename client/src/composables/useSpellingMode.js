@@ -93,6 +93,7 @@ export function useSpellingMode({ currentCard, sessionStats, handleAgain, advanc
 
   const showSpellingHint = () => {
     spellingHintLevel.value = Math.min(spellingHintLevel.value + 1, 3);
+    if (currentCard.value) speak(currentCard.value.word.name);
   };
 
   const spellingNext = () => {

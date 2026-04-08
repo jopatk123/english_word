@@ -99,8 +99,11 @@
       :correct="spellingCorrect"
       :hard="spellingHard"
       :submitting="submitting"
+      :spellingHint="spellingHint"
+      :spellingHintLevel="spellingHintLevel"
       :isLast="currentIndex + 1 >= queue.length"
       @check="checkSpelling"
+      @hint="showSpellingHint"
       @next="spellingNext"
       @seek="seekToIndex"
     />
@@ -143,6 +146,7 @@
     spellingCorrect,
     spellingHard,
     spellingHint,
+    spellingHintLevel,
     hasAgainWords,
     againWordCount,
     originalQueueLength,
