@@ -9,7 +9,23 @@
 import { ref } from 'vue';
 import { describe, it, expect, vi } from 'vitest';
 
-import { seekToStudyCard } from '../useStudySession.js';
+import { seekToStudyCard, useStudySession } from '../useStudySession.js';
+
+vi.mock('../../api/index.js', () => ({
+  getReviewDue: vi.fn().mockResolvedValue({ data: [] }),
+  submitReviewResult: vi.fn().mockResolvedValue({}),
+  getQuizChoices: vi.fn().mockResolvedValue({
+    data: { correct: { id: 1, meaning: 'meaning1' }, distractors: [] },
+  }),
+}));
+
+vi.mock('../../utils/speech.js', () => ({
+  useSpeech: () => ({ speak: vi.fn() }),
+}));
+
+vi.mock('vue-router', () => ({
+  useRoute: () => ({ query: {} }),
+}));
 
 function makeItem(wordId) {
   return { wordId, word: { id: wordId, name: `word${wordId}`, meaning: `meaning${wordId}` } };
@@ -151,5 +167,13 @@ describe('seekToStudyCard 跳转逻辑', () => {
     expect(sameResult).toBe(false);
     expect(outOfRangeResult).toBe(true);
     expect(deps.currentIndex.value).toBe(3);
+  });
+});
+
+describe('useStudySession 对外暴露 seekToIndex', () => {
+  it('返回 seekToIndex 函数', () => {
+    const session = useStudySession();
+
+    expect(typeof session.seekToIndex).toBe('function');
   });
 });

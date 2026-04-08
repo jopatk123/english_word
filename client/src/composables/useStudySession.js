@@ -377,6 +377,7 @@ export function useStudySession() {
     originalQueueLength,
     // 方法
     selectMode,
+    seekToIndex,
     applyResume,
     dismissResume,
     replayWithNewMode,
