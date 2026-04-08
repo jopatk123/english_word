@@ -170,13 +170,13 @@ describe('SRS 算法 getNextReview', () => {
       newInterval = 0; // again ：当日内再复习
       newEase = Math.max(1.3, easeFactor - 0.2);
     } else if (quality === 2) {
-      newInterval = isNew ? 1 : Math.max(1, Math.ceil(currentInterval * 1.2));
+      newInterval = isNew ? 0 : Math.max(1, Math.ceil(currentInterval * 1.2));
       newEase = Math.max(1.3, easeFactor - 0.15);
     } else if (quality === 3) {
-      newInterval = isNew ? 3 : Math.ceil(currentInterval * easeFactor);
+      newInterval = isNew ? 0 : Math.ceil(currentInterval * easeFactor);
       newEase = easeFactor;
     } else {
-      newInterval = isNew ? 7 : Math.ceil(currentInterval * easeFactor * 1.3);
+      newInterval = isNew ? 0 : Math.ceil(currentInterval * easeFactor * 1.3);
       newEase = easeFactor + 0.15;
     }
 
@@ -206,7 +206,7 @@ describe('SRS 算法 getNextReview', () => {
 
   it('首次复习（interval=0）quality=3 时 interval 变为 3', () => {
     const result = getNextReview(3, 0, 2.5);
-    expect(result.interval).toBe(3);
+    expect(result.interval).toBe(0);
   });
 
   it('ease factor 不会低于 1.3', () => {

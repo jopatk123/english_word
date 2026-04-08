@@ -11,12 +11,16 @@ router.get('/stats', async (req, res) => {
     const tz = req.query.tz;
     const today = todayStr(tz);
     const todayStartDate = todayStart(tz);
+    const now = new Date();
+    const dueNowForToday = {
+      [Op.or]: [{ dueAt: null }, { dueAt: { [Op.lte]: now } }],
+    };
 
     const [totalCount, todayDueCount, knownCount, todayReviewed, overdueCount] = await Promise.all([
       WordReview.count({ where: { userId: req.userId, paused: false } }),
       // 今日到期（仅 dueDate == today）
       WordReview.count({
-        where: { userId: req.userId, paused: false, dueDate: today },
+        where: { userId: req.userId, paused: false, dueDate: today, ...dueNowForToday },
       }),
       WordReview.count({ where: { userId: req.userId, paused: false, status: REVIEW_STATUS.KNOWN } }),
       WordReview.count({

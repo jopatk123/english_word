@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { Op, literal } from 'sequelize';
 import { Word, Root, WordReview, ReviewHistory } from '../../models/index.js';
 import { success, error } from '../../utils/response.js';
-import { getNextReview, todayStr, addDays } from '../../utils/srs.js';
+import { getNextReview, todayStr, buildDueSchedule } from '../../utils/srs.js';
 
 const router = Router();
 
@@ -19,6 +19,7 @@ router.post('/enqueue', async (req, res) => {
     if (words.length === 0) return error(res, '该词根下没有单词', 400);
 
     const today = todayStr(req.body.tz);
+    const now = new Date();
     let addedCount = 0;
 
     for (const word of words) {
@@ -31,6 +32,7 @@ router.post('/enqueue', async (req, res) => {
           interval: 0,
           easeFactor: 2.5,
           dueDate: today,
+          dueAt: now,
           reviewCount: 0,
         },
       });
@@ -64,14 +66,13 @@ router.post('/:wordId/result', async (req, res) => {
 
     const oldInterval = review.interval;
     const oldEase = review.easeFactor;
-    const { interval, easeFactor, status } = getNextReview(
+    const { interval, delayMinutes, easeFactor, status } = getNextReview(
       quality,
       review.interval,
       review.easeFactor,
       review.status
     );
-    const today = todayStr(req.body.tz);
-    const nextDue = addDays(today, interval);
+    const { dueAt, dueDate } = buildDueSchedule(delayMinutes, req.body.tz);
 
     await ReviewHistory.create({
       userId: req.userId,
@@ -88,7 +89,8 @@ router.post('/:wordId/result', async (req, res) => {
       status,
       interval,
       easeFactor,
-      dueDate: nextDue,
+      dueDate,
+      dueAt,
       reviewCount: review.reviewCount + 1,
       lastReviewedAt: new Date(),
     });

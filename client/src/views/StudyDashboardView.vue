@@ -296,6 +296,17 @@
     fetchStats();
   };
 
+  const refreshStatsOnInterval = () => {
+    if (document.visibilityState !== 'visible') return;
+
+    const currentDate = getLocalDateKey();
+    if (currentDate !== lastStatsDate) {
+      lastStatsDate = currentDate;
+    }
+
+    fetchStats();
+  };
+
   const handleVisibilityChange = () => {
     if (document.visibilityState !== 'visible') return;
     refreshStatsForCurrentDay();
@@ -415,7 +426,7 @@
     lastStatsDate = getLocalDateKey();
     fetchStats();
     fetchRootsProgress();
-    statsRefreshTimer = window.setInterval(refreshStatsIfDateChanged, 60 * 1000);
+    statsRefreshTimer = window.setInterval(refreshStatsOnInterval, 60 * 1000);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleWindowFocus);
   });

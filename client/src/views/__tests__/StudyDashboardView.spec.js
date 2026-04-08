@@ -110,13 +110,12 @@ describe('StudyDashboardView', () => {
     const wrapper = await createWrapper({ due: 0, total: 8 });
     expect(wrapper.text()).toContain('继续复习（8 个）');
     expect(wrapper.text()).toContain('总单词数');
-    expect(wrapper.text()).toContain('下一次复习建议');
+    expect(wrapper.text()).toContain('节奏稳定');
   });
 
   it('有超期词时，提醒卡突出优先处理超期词', async () => {
     const wrapper = await createWrapper({ due: 6, todayDue: 2, overdue: 4 });
-    expect(wrapper.text()).toContain('下次复习提醒');
-    expect(wrapper.text()).toContain('先处理超期词');
+    expect(wrapper.text()).toContain('优先处理');
     expect(wrapper.text()).toContain('超期 4 个 · 今日到期 2 个');
 
     const cards = wrapper.findAll('.stat-card');
@@ -208,6 +207,20 @@ describe('StudyDashboardView', () => {
     expect(getReviewStatsMock).toHaveBeenCalledTimes(1);
 
     vi.setSystemTime(new Date('2026-04-06T00:00:20'));
+    await vi.advanceTimersByTimeAsync(60 * 1000);
+    await flushPromises();
+
+    expect(getReviewStatsMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('页面可见时每分钟刷新统计，支持分钟级待复习变化', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-05T12:00:00'));
+
+    await createWrapper();
+    expect(getReviewStatsMock).toHaveBeenCalledTimes(1);
+
+    vi.setSystemTime(new Date('2026-04-05T12:01:01'));
     await vi.advanceTimersByTimeAsync(60 * 1000);
     await flushPromises();
 

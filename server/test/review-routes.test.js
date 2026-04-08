@@ -160,6 +160,32 @@ describe('GET /review/due', () => {
     expect(res.body.data.length).toBeLessThanOrEqual(1);
   });
 
+  it('新词 quality=3 后会等待 10 分钟才重新进入待复习', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-09T10:00:00Z'));
+
+    try {
+      const stepWord = await Word.create({ name: `step_${suf()}`, meaning: '短间隔', userId });
+      await WordRoot.create({ wordId: stepWord.id, rootId });
+
+      await request(app).post('/review/enqueue').send({ rootId });
+      const resultRes = await request(app).post(`/review/${stepWord.id}/result`).send({ quality: 3 });
+      expect(resultRes.status).toBe(200);
+      expect(resultRes.body.data.interval).toBe(0);
+
+      const immediateRes = await request(app).get('/review/due');
+      const immediateIds = immediateRes.body.data.map((item) => item.wordId);
+      expect(immediateIds).not.toContain(stepWord.id);
+
+      vi.setSystemTime(new Date('2026-04-09T10:10:01Z'));
+      const laterRes = await request(app).get('/review/due');
+      const laterIds = laterRes.body.data.map((item) => item.wordId);
+      expect(laterIds).toContain(stepWord.id);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('scope=learning 仅返回未掌握单词', async () => {
     const knownWord = await Word.create({ name: `known_${suf()}`, meaning: '已掌握词', userId });
     const learningWord = await Word.create({
@@ -374,6 +400,44 @@ describe('GET /review/stats', () => {
     expect(s.new).toBe(0);
     expect(s.learning).toBeGreaterThan(0);
   });
+
+  it('今日稍后到期的短间隔单词不会提前计入 due', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-09T11:00:00Z'));
+
+    try {
+      const isolatedUser = await User.create({ username: `stats_short_user_${suf()}`, password: 'x' });
+      const isolatedApp = buildApp(isolatedUser.id);
+      const futureDueWord = await Word.create({
+        name: `stats_short_${suf()}`,
+        meaning: '分钟级待复习',
+        userId: isolatedUser.id,
+      });
+      const isolatedRoot = await Root.create({
+        name: `stats_short_root_${suf()}`,
+        meaning: '短间隔词根',
+        userId: isolatedUser.id,
+      });
+      await WordRoot.create({ wordId: futureDueWord.id, rootId: isolatedRoot.id });
+      await WordReview.create({
+        userId: isolatedUser.id,
+        wordId: futureDueWord.id,
+        status: 'learning',
+        interval: 0,
+        easeFactor: 2.5,
+        dueDate: '2026-04-09',
+        dueAt: new Date('2026-04-09T11:10:00Z'),
+        reviewCount: 1,
+      });
+
+      const res = await request(isolatedApp).get('/review/stats');
+      expect(res.status).toBe(200);
+      expect(res.body.data.todayDue).toBe(0);
+      expect(res.body.data.due).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 // ─── GET /review/roots-progress ───────────────────────────────
@@ -390,13 +454,23 @@ describe('GET /review/roots-progress', () => {
 
 // ─── POST /review/:wordId/result ──────────────────────────────
 describe('POST /review/:wordId/result', () => {
-  it('quality=3 提交成功，interval 更新', async () => {
-    // 确保入队
-    await request(app).post('/review/enqueue').send({ rootId });
-    const res = await request(app).post(`/review/${wordId}/result`).send({ quality: 3 });
-    expect(res.status).toBe(200);
-    expect(res.body.data).toHaveProperty('interval');
-    expect(res.body.data.interval).toBeGreaterThan(0);
+  it('quality=3 提交成功，并写入短间隔 dueAt', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-09T09:00:00Z'));
+
+    try {
+      // 确保入队
+      await request(app).post('/review/enqueue').send({ rootId });
+      const res = await request(app).post(`/review/${wordId}/result`).send({ quality: 3 });
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveProperty('interval');
+      expect(res.body.data.interval).toBe(0);
+      expect(res.body.data.status).toBe('learning');
+      expect(res.body.data.dueAt).toBeTruthy();
+      expect(new Date(res.body.data.dueAt).toISOString()).toBe('2026-04-09T09:10:00.000Z');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('quality 超出范围返回 400', async () => {
@@ -443,6 +517,7 @@ describe('POST /review/:wordId/reset', () => {
     const rw = await WordReview.findOne({ where: { userId, wordId } });
     expect(rw.status).toBe('new');
     expect(rw.interval).toBe(0);
+    expect(rw.dueAt).toBeTruthy();
   });
 });
 

@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { initDB, sequelize, User, Root, Word, WordRoot, Example } from '../models/index.js';
+import { initDB, sequelize, User, Root, Word, WordRoot, Example, WordReview } from '../models/index.js';
 import reviewDataRouter from '../routes/review/data.js';
 
 // ============================================================
@@ -57,6 +57,15 @@ describe('GET /review/data/export', () => {
       sentence: 'Test sentence.',
       translation: '测试句子。',
     });
+    await WordReview.create({
+      userId,
+      wordId: word.id,
+      status: 'learning',
+      interval: 2,
+      easeFactor: 2.5,
+      dueDate: '2099-01-01',
+      reviewCount: 1,
+    });
   });
 
   it('返回正确的 JSON 结构', async () => {
@@ -79,6 +88,7 @@ describe('GET /review/data/export', () => {
     const res = await request(app).get('/review/data/export');
     const word = res.body.words.find((w) => w.name === 'exportword');
     expect(word).toBeDefined();
+    expect(word.interval).toBe(2);
     expect(word.rootNames).toContain('exportroot');
     expect(word.examples.length).toBeGreaterThan(0);
     expect(word.examples[0].sentence).toBe('Test sentence.');

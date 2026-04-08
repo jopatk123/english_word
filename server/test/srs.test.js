@@ -2,7 +2,14 @@
  * 测试：srs.js 工具模块的纯函数
  */
 import { describe, it, expect, vi } from 'vitest';
-import { getNextReview, addDays, todayStr, todayStart, MAX_INTERVAL } from '../utils/srs.js';
+import {
+  getNextReview,
+  addDays,
+  todayStr,
+  todayStart,
+  MAX_INTERVAL,
+  buildDueSchedule,
+} from '../utils/srs.js';
 
 describe('srs.js 工具模块', () => {
   describe('getNextReview', () => {
@@ -16,11 +23,13 @@ describe('srs.js 工具模块', () => {
     it('quality=1 easeFactor 不低于 1.3', () => {
       const r = getNextReview(1, 5, 1.3);
       expect(r.easeFactor).toBe(1.3);
+      expect(r.delayMinutes).toBe(0);
     });
 
-    it('quality=2 (hard): 新词 interval=1', () => {
+    it('quality=2 (hard): 新词 10 分钟后再复习', () => {
       const r = getNextReview(2, 0, 2.5);
-      expect(r.interval).toBe(1);
+      expect(r.interval).toBe(0);
+      expect(r.delayMinutes).toBe(10);
       expect(r.easeFactor).toBeCloseTo(2.35);
     });
 
@@ -29,9 +38,10 @@ describe('srs.js 工具模块', () => {
       expect(r.interval).toBe(12);
     });
 
-    it('quality=3 (good): 新词 interval=1（进入学习阶段验证）', () => {
+    it('quality=3 (good): 新词 10 分钟后进入学习阶段验证', () => {
       const r = getNextReview(3, 0, 2.5, 'new');
-      expect(r.interval).toBe(1);
+      expect(r.interval).toBe(0);
+      expect(r.delayMinutes).toBe(10);
       expect(r.easeFactor).toBe(2.5);
       expect(r.status).toBe('learning');
     });
@@ -41,11 +51,12 @@ describe('srs.js 工具模块', () => {
       expect(r.interval).toBe(25);
     });
 
-    it('quality=4 (easy): 新词 interval=4（跳过学习阶段）', () => {
+    it('quality=4 (easy): 新词 4 小时后再次验证', () => {
       const r = getNextReview(4, 0, 2.5, 'new');
-      expect(r.interval).toBe(4);
+      expect(r.interval).toBe(0);
+      expect(r.delayMinutes).toBe(4 * 60);
       expect(r.easeFactor).toBeCloseTo(2.65);
-      expect(r.status).toBe('review');
+      expect(r.status).toBe('learning');
     });
 
     it('quality=4 (easy): 老词大幅增加间隔', () => {
@@ -71,9 +82,10 @@ describe('srs.js 工具模块', () => {
     });
 
     // 学习阶段测试
-    it('learning + quality=3: 毕业到 review，interval=3', () => {
+    it('learning + quality=3: 毕业到 review，1 天后复习', () => {
       const r = getNextReview(3, 1, 2.5, 'learning');
-      expect(r.interval).toBe(3);
+      expect(r.interval).toBe(1);
+      expect(r.delayMinutes).toBe(24 * 60);
       expect(r.status).toBe('review');
     });
 
@@ -83,21 +95,24 @@ describe('srs.js 工具模块', () => {
       expect(r.status).toBe('learning');
     });
 
-    it('learning + quality=4: 毕业到 review，interval=7', () => {
+    it('learning + quality=4: 毕业到 review，2 天后复习', () => {
       const r = getNextReview(4, 1, 2.5, 'learning');
-      expect(r.interval).toBe(7);
+      expect(r.interval).toBe(2);
+      expect(r.delayMinutes).toBe(2 * 24 * 60);
       expect(r.status).toBe('review');
     });
 
     it('new + quality=1: 保持 learning', () => {
       const r = getNextReview(1, 0, 2.5, 'new');
       expect(r.interval).toBe(0);
+      expect(r.delayMinutes).toBe(0);
       expect(r.status).toBe('learning');
     });
 
-    it('new + quality=2: interval=1, learning', () => {
+    it('new + quality=2: interval=0, learning', () => {
       const r = getNextReview(2, 0, 2.5, 'new');
-      expect(r.interval).toBe(1);
+      expect(r.interval).toBe(0);
+      expect(r.delayMinutes).toBe(10);
       expect(r.status).toBe('learning');
     });
 
@@ -183,6 +198,16 @@ describe('srs.js 工具模块', () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+  });
+
+  describe('buildDueSchedule', () => {
+    it('按时区从分钟级延迟生成 dueAt 和 dueDate', () => {
+      const base = new Date('2026-04-09T15:55:00Z');
+      const result = buildDueSchedule(10, 'Asia/Shanghai', base);
+
+      expect(result.dueAt.toISOString()).toBe('2026-04-09T16:05:00.000Z');
+      expect(result.dueDate).toBe('2026-04-10');
     });
   });
 });

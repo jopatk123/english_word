@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { initDB, sequelize, Word, User, WordReview } from '../models/index.js';
 import { ensureDefaultRoot } from '../utils/defaultRoot.js';
-import { getNextReview, addDays, MAX_INTERVAL } from '../utils/srs.js';
+import { getNextReview, addDays, buildDueSchedule, MAX_INTERVAL } from '../utils/srs.js';
 
 // ============================================================
 beforeAll(async () => {
@@ -38,9 +38,10 @@ describe('SRS 算法 getNextReview（当前版本）', () => {
     expect(result.easeFactor).toBe(1.3);
   });
 
-  it('quality=2(hard): 新词 interval=1, status=learning', () => {
+  it('quality=2(hard): 新词 10 分钟后再复习, status=learning', () => {
     const result = getNextReview(2, 0, 2.5, 'new');
-    expect(result.interval).toBe(1);
+    expect(result.interval).toBe(0);
+    expect(result.delayMinutes).toBe(10);
     expect(result.status).toBe('learning');
   });
 
@@ -49,9 +50,10 @@ describe('SRS 算法 getNextReview（当前版本）', () => {
     expect(result.interval).toBe(Math.ceil(5 * 1.2)); // 6
   });
 
-  it('quality=3(good): 新词 interval=1, status=learning', () => {
+  it('quality=3(good): 新词 10 分钟后再复习, status=learning', () => {
     const result = getNextReview(3, 0, 2.5, 'new');
-    expect(result.interval).toBe(1);
+    expect(result.interval).toBe(0);
+    expect(result.delayMinutes).toBe(10);
     expect(result.status).toBe('learning');
   });
 
@@ -60,10 +62,11 @@ describe('SRS 算法 getNextReview（当前版本）', () => {
     expect(result.interval).toBe(Math.ceil(5 * 2.5)); // 13
   });
 
-  it('quality=4(easy): 新词 interval=4, 跳过学习阶段', () => {
+  it('quality=4(easy): 新词 4 小时后复习，仍处于 learning', () => {
     const result = getNextReview(4, 0, 2.5, 'new');
-    expect(result.interval).toBe(4);
-    expect(result.status).toBe('review');
+    expect(result.interval).toBe(0);
+    expect(result.delayMinutes).toBe(240);
+    expect(result.status).toBe('learning');
   });
 
   it('quality=4(easy): 老词大幅增加间隔 + easeFactor 增加', () => {
@@ -93,9 +96,10 @@ describe('SRS 算法 getNextReview（当前版本）', () => {
   });
 
   // 学习阶段测试
-  it('learning + quality=3: 毕业到 review, interval=3', () => {
+  it('learning + quality=3: 毕业到 review, interval=1', () => {
     const result = getNextReview(3, 1, 2.5, 'learning');
-    expect(result.interval).toBe(3);
+    expect(result.interval).toBe(1);
+    expect(result.delayMinutes).toBe(24 * 60);
     expect(result.status).toBe('review');
   });
 
@@ -152,57 +156,32 @@ describe('WordReview 学习队列数据库操作', () => {
       interval: 0,
       easeFactor: 2.5,
       dueDate: today,
+      dueAt: new Date(),
       reviewCount: 0,
     });
     expect(review.status).toBe('new');
     expect(review.dueDate).toBe(today);
     expect(review.interval).toBe(0);
+    expect(review.dueAt).toBeTruthy();
     expect(review.reviewCount).toBe(0);
   });
 
-  it('提交 quality=3(good) 后新词进入学习阶段 interval=1，status=learning', async () => {
+  it('提交 quality=3(good) 后新词 10 分钟后再次出现，status=learning', async () => {
     const review = await WordReview.findOne({ where: { userId: testUserId, wordId: testWordId } });
-    const { interval, easeFactor, status } = getNextReview(
+    const { interval, delayMinutes, easeFactor, status } = getNextReview(
       3,
       review.interval,
       review.easeFactor,
       review.status
     );
-    const today = new Date().toISOString().slice(0, 10);
-    const nextDue = addDays(today, interval);
+    const { dueAt, dueDate } = buildDueSchedule(delayMinutes);
 
     await review.update({
       status,
       interval,
       easeFactor,
-      dueDate: nextDue,
-      reviewCount: review.reviewCount + 1,
-      lastReviewedAt: new Date(),
-    });
-
-    const updated = await WordReview.findOne({ where: { userId: testUserId, wordId: testWordId } });
-    expect(updated.interval).toBe(1);
-    expect(updated.status).toBe('learning');
-    expect(updated.reviewCount).toBe(1);
-    expect(updated.dueDate).toBe(nextDue);
-  });
-
-  it('提交 quality=1(again) 后 interval=0，status=learning', async () => {
-    const review = await WordReview.findOne({ where: { userId: testUserId, wordId: testWordId } });
-    const { interval, easeFactor, status } = getNextReview(
-      1,
-      review.interval,
-      review.easeFactor,
-      review.status
-    );
-    const today = new Date().toISOString().slice(0, 10);
-    const nextDue = addDays(today, interval);
-
-    await review.update({
-      status,
-      interval,
-      easeFactor,
-      dueDate: nextDue,
+      dueDate,
+      dueAt,
       reviewCount: review.reviewCount + 1,
       lastReviewedAt: new Date(),
     });
@@ -210,6 +189,35 @@ describe('WordReview 学习队列数据库操作', () => {
     const updated = await WordReview.findOne({ where: { userId: testUserId, wordId: testWordId } });
     expect(updated.interval).toBe(0);
     expect(updated.status).toBe('learning');
+    expect(updated.reviewCount).toBe(1);
+    expect(updated.dueDate).toBe(dueDate);
+    expect(new Date(updated.dueAt).getTime()).toBe(new Date(dueAt).getTime());
+  });
+
+  it('提交 quality=1(again) 后 interval=0，status=learning', async () => {
+    const review = await WordReview.findOne({ where: { userId: testUserId, wordId: testWordId } });
+    const { interval, delayMinutes, easeFactor, status } = getNextReview(
+      1,
+      review.interval,
+      review.easeFactor,
+      review.status
+    );
+    const { dueAt, dueDate } = buildDueSchedule(delayMinutes);
+
+    await review.update({
+      status,
+      interval,
+      easeFactor,
+      dueDate,
+      dueAt,
+      reviewCount: review.reviewCount + 1,
+      lastReviewedAt: new Date(),
+    });
+
+    const updated = await WordReview.findOne({ where: { userId: testUserId, wordId: testWordId } });
+    expect(updated.interval).toBe(0);
+    expect(updated.status).toBe('learning');
+    expect(updated.dueAt).toBeTruthy();
   });
 
   it('单词可以被暂停后不出现在学习队列', async () => {

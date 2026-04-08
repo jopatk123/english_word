@@ -55,8 +55,20 @@ Word.hasMany(ReviewHistory, { foreignKey: 'word_id', as: 'reviewHistories', onDe
 ReviewHistory.belongsTo(Word, { foreignKey: 'word_id', as: 'word' });
 
 const initDB = async () => {
-  await sequelize.sync();
-  await runMigrations();
+  const qi = sequelize.getQueryInterface();
+  const existingTables = await qi.showAllTables().catch(() => []);
+  const hasAppTables = Array.isArray(existingTables)
+    ? existingTables.some((name) => ['users', 'words', 'roots', 'word_reviews'].includes(name))
+    : false;
+
+  if (hasAppTables) {
+    await runMigrations();
+    await sequelize.sync();
+  } else {
+    await sequelize.sync();
+    await runMigrations();
+  }
+
   console.log('数据库同步完成');
 };
 

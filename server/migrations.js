@@ -133,6 +133,17 @@ async function m007_users_add_is_disabled() {
   console.log('[migration] M007: users.is_disabled 已添加');
 }
 
+// M008：为 word_reviews 表添加 due_at 列，用于分钟/小时级复习调度
+async function m008_word_reviews_add_due_at() {
+  const info = await qi.describeTable('word_reviews').catch(() => ({}));
+  if (info.due_at !== undefined || Object.keys(info).length === 0) return;
+  await qi.addColumn('word_reviews', 'due_at', {
+    type: DataTypes.DATE,
+    allowNull: true,
+  });
+  console.log('[migration] M008: word_reviews.due_at 已添加');
+}
+
 /**
  * 按顺序执行所有迁移。每个迁移函数都是幂等的，可以安全重复运行。
  */
@@ -144,4 +155,5 @@ export async function runMigrations() {
   await m005_words_add_user_id();
   await m006_words_backfill_missing_user_id();
   await m007_users_add_is_disabled();
+  await m008_word_reviews_add_due_at();
 }

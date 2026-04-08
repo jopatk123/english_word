@@ -46,6 +46,12 @@ const WordReview = sequelize.define(
       field: 'due_date',
       comment: '下次应复习日期',
     },
+    dueAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'due_at',
+      comment: '下次应复习的精确时间',
+    },
     reviewCount: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -74,6 +80,7 @@ const WordReview = sequelize.define(
     indexes: [
       { unique: true, fields: ['user_id', 'word_id'] },
       { fields: ['user_id', 'due_date'] },
+      { fields: ['user_id', 'due_at'] },
       { fields: ['user_id', 'status'] },
     ],
   }

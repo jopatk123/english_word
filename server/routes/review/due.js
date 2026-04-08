@@ -7,7 +7,11 @@ import { REVIEW_STATUS, todayStr, todayStart } from '../../utils/srs.js';
 const router = Router();
 
 function compareByDueAndEase(a, b) {
-  const dueCompare = String(a.dueDate || '').localeCompare(String(b.dueDate || ''));
+  const aDueAt = a.dueAt ? new Date(a.dueAt).getTime() : null;
+  const bDueAt = b.dueAt ? new Date(b.dueAt).getTime() : null;
+  const aDueKey = aDueAt ?? Date.parse(`${String(a.dueDate || '')}T00:00:00Z`) ?? 0;
+  const bDueKey = bDueAt ?? Date.parse(`${String(b.dueDate || '')}T00:00:00Z`) ?? 0;
+  const dueCompare = aDueKey - bDueKey;
   if (dueCompare !== 0) return dueCompare;
   return (a.easeFactor || 0) - (b.easeFactor || 0);
 }
@@ -29,6 +33,7 @@ router.get('/due', async (req, res) => {
   try {
     const today = todayStr(req.query.tz);
     const todayStartDate = todayStart(req.query.tz);
+    const now = new Date();
     const limit = parseInt(req.query.limit) || 0;
     const offset = parseInt(req.query.offset) || 0;
     const requestedScope = String(req.query.scope || 'due');
@@ -48,9 +53,13 @@ router.get('/due', async (req, res) => {
       userId: req.userId,
       paused: false,
     };
+    const dueNowForToday = {
+      [Op.or]: [{ dueAt: null }, { dueAt: { [Op.lte]: now } }],
+    };
 
     if (scope === 'today-due') {
       where.dueDate = today;
+      where[Op.or] = dueNowForToday[Op.or];
     } else if (scope === 'overdue') {
       where.dueDate = { [Op.lt]: today };
     } else if (scope === 'today-reviewed') {
@@ -60,7 +69,10 @@ router.get('/due', async (req, res) => {
     } else if (scope === 'known') {
       where.status = REVIEW_STATUS.KNOWN;
     } else if (scope === 'due') {
-      where.dueDate = { [Op.lte]: today };
+      where[Op.or] = [
+        { dueDate: { [Op.lt]: today } },
+        { dueDate: today, ...dueNowForToday },
+      ];
     }
 
     const queryOpts = {

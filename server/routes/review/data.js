@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import sequelize from '../../config/database.js';
-import { Root, Word, WordRoot, Example } from '../../models/index.js';
+import { Root, Word, WordRoot, Example, WordReview } from '../../models/index.js';
 import { success, error } from '../../utils/response.js';
 
 const router = Router();
@@ -22,6 +22,13 @@ router.get('/data/export', async (req, res) => {
               model: Example,
               as: 'examples',
               attributes: ['sentence', 'translation', 'remark'],
+            },
+            {
+              model: WordReview,
+              as: 'reviews',
+              where: { userId: req.userId },
+              required: false,
+              attributes: ['interval'],
             },
           ],
         },
@@ -46,6 +53,7 @@ router.get('/data/export', async (req, res) => {
             meaning: word.meaning,
             phonetic: word.phonetic || null,
             remark: word.remark || null,
+            interval: word.reviews?.[0]?.interval ?? 0,
             rootNames: [],
             examples: (word.examples || []).map((e) => ({
               sentence: e.sentence,
