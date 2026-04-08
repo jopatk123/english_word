@@ -6,6 +6,44 @@ import { useSpeech } from '../utils/speech.js';
 import { useChoiceMode } from './useChoiceMode.js';
 import { useSpellingMode } from './useSpellingMode.js';
 
+export function seekToStudyCard({
+  targetIndex,
+  queue,
+  currentIndex,
+  finished,
+  showAnswer,
+  submitting,
+  studyMode,
+  choice,
+  spelling,
+  saveProgress,
+  incrementRevision,
+}) {
+  if (submitting?.value) return false;
+  if (!Number.isFinite(targetIndex) || queue.value.length === 0) return false;
+
+  const nextIndex = Math.min(Math.max(Math.trunc(targetIndex), 0), queue.value.length - 1);
+  if (nextIndex === currentIndex.value) return false;
+
+  currentIndex.value = nextIndex;
+  finished.value = false;
+  showAnswer.value = false;
+  choice.resetChoice();
+  spelling.resetSpelling();
+
+  if (typeof incrementRevision === 'function') {
+    incrementRevision();
+  }
+
+  if (studyMode.value === 'choice') {
+    choice.setQueueWords(queue.value.map((record) => record.word));
+    choice.loadChoices();
+  }
+
+  saveProgress();
+  return true;
+}
+
 export function useStudySession() {
   const route = useRoute();
 
@@ -21,6 +59,7 @@ export function useStudySession() {
   const againCountMap = ref({});
   const resumeInfo = ref(null);
   const isReplay = ref(false);
+  const sessionRevision = ref(0);
 
   // 学习模式
   const studyMode = ref('flashcard');
@@ -169,6 +208,10 @@ export function useStudySession() {
     clearProgress();
   };
 
+  const incrementRevision = () => {
+    sessionRevision.value++;
+  };
+
   const resetSession = (replay = false) => {
     currentIndex.value = 0;
     finished.value = false;
@@ -229,19 +272,38 @@ export function useStudySession() {
     }
   };
 
+  const seekToIndex = (targetIndex) =>
+    seekToStudyCard({
+      targetIndex,
+      queue,
+      currentIndex,
+      finished,
+      showAnswer,
+      submitting,
+      studyMode,
+      choice,
+      spelling,
+      saveProgress,
+      incrementRevision,
+    });
+
   const submitRating = async (quality) => {
     if (submitting.value) return;
     submitting.value = true;
+    const wordId = currentCard.value.wordId;
+    const revision = sessionRevision.value;
     const qualityMap = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy' };
     // 重播模式：只统计，不提交到服务器
     try {
       if (!isReplay.value) {
-        await submitReviewResult(currentCard.value.wordId, quality);
+        await submitReviewResult(wordId, quality);
       }
       sessionStats.value.total++;
       sessionStats.value[qualityMap[quality]]++;
-      if (quality === 1) handleAgain(currentCard.value.wordId);
-      advanceCard();
+      if (quality === 1) handleAgain(wordId);
+      if (revision === sessionRevision.value) {
+        advanceCard();
+      }
     } catch {
       ElMessage.error('提交复习结果失败');
     } finally {

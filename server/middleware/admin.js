@@ -1,13 +1,12 @@
 import jwt from 'jsonwebtoken';
 import { error } from '../utils/response.js';
 import { getJwtSecret } from '../utils/env.js';
-import { User } from '../models/index.js';
 
-export const generateToken = (userId) => {
-  return jwt.sign({ userId }, getJwtSecret(), { expiresIn: '7d' });
+export const generateAdminToken = () => {
+  return jwt.sign({ role: 'admin' }, getJwtSecret(), { expiresIn: '7d' });
 };
 
-export const authMiddleware = async (req, res, next) => {
+export const adminAuthMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return error(res, '未登录，请先登录', 401);
@@ -16,15 +15,10 @@ export const authMiddleware = async (req, res, next) => {
   const token = authHeader.slice(7);
   try {
     const decoded = jwt.verify(token, getJwtSecret());
-    const user = await User.findByPk(decoded.userId);
-    if (!user) {
-      return error(res, '登录已过期，请重新登录', 401);
+    if (decoded.role !== 'admin') {
+      return error(res, '无权访问', 401);
     }
-    if (user.isDisabled) {
-      return error(res, '账号已被禁用，请联系管理员', 401);
-    }
-    req.userId = user.id;
-    req.user = user;
+    req.adminRole = decoded.role;
     next();
   } catch (e) {
     if (e.message?.includes('JWT_SECRET')) {

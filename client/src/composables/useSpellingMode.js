@@ -56,9 +56,11 @@ export function useSpellingMode({ currentCard, sessionStats, handleAgain, advanc
 
   const checkSpelling = async () => {
     if (!spellingInput.value.trim() || spellingAnswered.value) return;
+    const wordId = currentCard.value.wordId;
+    const wordName = currentCard.value.word.name;
     spellingAnswered.value = true;
     const input = spellingInput.value.trim().toLowerCase();
-    const answer = currentCard.value.word.name.toLowerCase();
+    const answer = wordName.toLowerCase();
     spellingCorrect.value = input === answer;
 
     // 模糊评分：完全正确=3，接近正确(编辑距离≤2且不超过单词长度20%)=2，完全错误=1
@@ -74,16 +76,16 @@ export function useSpellingMode({ currentCard, sessionStats, handleAgain, advanc
     }
 
     // 答题后自动朗读单词
-    speak(currentCard.value.word.name);
+    speak(wordName);
 
     const qualityMap = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy' };
     try {
       if (!isReplay?.value) {
-        await submitReviewResult(currentCard.value.wordId, quality);
+        await submitReviewResult(wordId, quality);
       }
       sessionStats.value.total++;
       sessionStats.value[qualityMap[quality]]++;
-      if (quality === 1) handleAgain(currentCard.value.wordId);
+      if (quality === 1) handleAgain(wordId);
     } catch {
       ElMessage.error('提交结果失败');
     }

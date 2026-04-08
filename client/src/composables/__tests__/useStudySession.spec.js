@@ -1,12 +1,15 @@
 /**
- * 测试：continueReview 排队策略（纯逻辑）
+ * 测试：continueReview 排队策略与 seek 跳转逻辑（纯逻辑）
  *
  * continueReview() 的核心行为等价于：
  *   againFirst(originalQueue, againIds) => [...againItems, ...otherItems]
  *
  * 此处直接测该纯逻辑，不依赖 composable 完整生命周期。
  */
-import { describe, it, expect } from 'vitest';
+import { ref } from 'vue';
+import { describe, it, expect, vi } from 'vitest';
+
+import { seekToStudyCard } from '../useStudySession.js';
 
 function makeItem(wordId) {
   return { wordId, word: { id: wordId, name: `word${wordId}`, meaning: `meaning${wordId}` } };
@@ -59,5 +62,94 @@ describe('continueReview 排队策略', () => {
     // items 顺序：1,2,3,4,5；again=[5,2] → filter 保持 [2,5]
     const result = againFirst(items, [5, 2]);
     expect(result.slice(0, 2).map((i) => i.wordId)).toEqual([2, 5]);
+  });
+});
+
+describe('seekToStudyCard 跳转逻辑', () => {
+  const makeQueue = () => ref([makeItem(1), makeItem(2), makeItem(3), makeItem(4)]);
+
+  const makeDeps = (overrides = {}) => {
+    const queue = makeQueue();
+    const currentIndex = ref(0);
+    const finished = ref(true);
+    const showAnswer = ref(true);
+    const submitting = ref(false);
+    const studyMode = ref('choice');
+    const choice = {
+      resetChoice: vi.fn(),
+      setQueueWords: vi.fn(),
+      loadChoices: vi.fn(),
+    };
+    const spelling = {
+      resetSpelling: vi.fn(),
+    };
+    const saveProgress = vi.fn();
+    const incrementRevision = vi.fn();
+
+    return {
+      queue,
+      currentIndex,
+      finished,
+      showAnswer,
+      submitting,
+      studyMode,
+      choice,
+      spelling,
+      saveProgress,
+      incrementRevision,
+      ...overrides,
+    };
+  };
+
+  it('跳转时会重置当前卡片状态并加载目标题', () => {
+    const deps = makeDeps();
+
+    const result = seekToStudyCard({
+      targetIndex: 2,
+      ...deps,
+    });
+
+    expect(result).toBe(true);
+    expect(deps.currentIndex.value).toBe(2);
+    expect(deps.finished.value).toBe(false);
+    expect(deps.showAnswer.value).toBe(false);
+    expect(deps.choice.resetChoice).toHaveBeenCalledTimes(1);
+    expect(deps.spelling.resetSpelling).toHaveBeenCalledTimes(1);
+    expect(deps.choice.setQueueWords).toHaveBeenCalledWith(deps.queue.value.map((item) => item.word));
+    expect(deps.choice.loadChoices).toHaveBeenCalledTimes(1);
+    expect(deps.incrementRevision).toHaveBeenCalledTimes(1);
+    expect(deps.saveProgress).toHaveBeenCalledTimes(1);
+  });
+
+  it('当前正在提交时忽略跳转', () => {
+    const deps = makeDeps({ submitting: ref(true) });
+
+    const result = seekToStudyCard({
+      targetIndex: 3,
+      ...deps,
+    });
+
+    expect(result).toBe(false);
+    expect(deps.currentIndex.value).toBe(0);
+    expect(deps.saveProgress).not.toHaveBeenCalled();
+    expect(deps.incrementRevision).not.toHaveBeenCalled();
+  });
+
+  it('目标越界或与当前题相同时不跳转', () => {
+    const deps = makeDeps();
+
+    const sameResult = seekToStudyCard({
+      targetIndex: 0,
+      ...deps,
+    });
+
+    const outOfRangeResult = seekToStudyCard({
+      targetIndex: 999,
+      ...deps,
+    });
+
+    expect(sameResult).toBe(false);
+    expect(outOfRangeResult).toBe(true);
+    expect(deps.currentIndex.value).toBe(3);
   });
 });

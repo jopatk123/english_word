@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { initDB } from './models/index.js';
 import { authMiddleware } from './middleware/auth.js';
 import authRouter from './routes/auth.js';
+import adminRouter from './routes/admin.js';
 import rootsRouter from './routes/roots.js';
 import wordsRouter from './routes/words.js';
 import examplesRouter from './routes/examples.js';
@@ -22,6 +23,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // 认证路由（无需登录）
 app.use('/api/auth', authRouter);
+app.use('/api/admin', adminRouter);
 
 // 需要登录的 API 路由
 app.use('/api/roots', authMiddleware, rootsRouter);

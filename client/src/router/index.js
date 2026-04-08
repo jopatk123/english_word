@@ -11,6 +11,7 @@ import SearchView from '../views/SearchView.vue';
 import StudyDashboardView from '../views/StudyDashboardView.vue';
 import StudySessionView from '../views/StudySessionView.vue';
 import StudyReportView from '../views/StudyReportView.vue';
+import AdminView from '../views/AdminView.vue';
 
 const routes = [
   { path: '/login', name: 'Login', component: LoginView, meta: { guest: true } },
@@ -33,6 +34,7 @@ const routes = [
   { path: '/study', name: 'StudyDashboard', component: StudyDashboardView },
   { path: '/study/session', name: 'StudySession', component: StudySessionView },
   { path: '/study/report', name: 'StudyReport', component: StudyReportView },
+  { path: '/super-admin', name: 'SuperAdmin', component: AdminView },
   { path: '/root/:id', name: 'RootDetail', component: RootDetailView, props: true },
   { path: '/word/:id', name: 'WordDetail', component: WordDetailView, props: true },
 ];
@@ -44,7 +46,8 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token');
-  if (!token && !to.meta.guest) {
+  const isAdminPage = to.path.startsWith('/super-admin');
+  if (!token && !to.meta.guest && !isAdminPage) {
     next('/login');
   } else if (token && to.meta.guest) {
     next('/');

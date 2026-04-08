@@ -48,6 +48,7 @@
       :againCountMap="againCountMap"
       @flip="flipCard"
       @rate="submitRating"
+      @seek="seekToIndex"
     />
 
     <!-- 选择题模式 -->
@@ -63,6 +64,7 @@
       :isLast="currentIndex + 1 >= queue.length"
       @choose="handleChoice"
       @next="choiceNext"
+      @seek="seekToIndex"
     />
 
     <!-- 拼写模式 -->
@@ -82,6 +84,7 @@
       @check="checkSpelling"
       @hint="showSpellingHint"
       @next="spellingNext"
+      @seek="seekToIndex"
     />
 
     <!-- 听力模式 -->
@@ -99,6 +102,7 @@
       :isLast="currentIndex + 1 >= queue.length"
       @check="checkSpelling"
       @next="spellingNext"
+      @seek="seekToIndex"
     />
 
     <!-- 无待复习 -->
@@ -143,6 +147,7 @@
     againWordCount,
     originalQueueLength,
     selectMode,
+    seekToIndex,
     applyResume,
     dismissResume,
     replayWithNewMode,

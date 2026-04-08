@@ -21,3 +21,9 @@ export const getJwtSecret = () => {
 
   throw new Error('缺少环境变量 JWT_SECRET，请参考项目根目录 .env.example 完成配置');
 };
+
+export const getAdminPassword = () => {
+  const password = readEnv('ADMIN_PASSWORD');
+  if (password) return password;
+  return 'asd123123123';
+};

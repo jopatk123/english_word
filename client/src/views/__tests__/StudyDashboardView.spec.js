@@ -110,6 +110,27 @@ describe('StudyDashboardView', () => {
     const wrapper = await createWrapper({ due: 0, total: 8 });
     expect(wrapper.text()).toContain('继续复习（8 个）');
     expect(wrapper.text()).toContain('总单词数');
+    expect(wrapper.text()).toContain('下一次复习建议');
+  });
+
+  it('有超期词时，提醒卡突出优先处理超期词', async () => {
+    const wrapper = await createWrapper({ due: 6, todayDue: 2, overdue: 4 });
+    expect(wrapper.text()).toContain('下次复习提醒');
+    expect(wrapper.text()).toContain('先处理超期词');
+    expect(wrapper.text()).toContain('超期 4 个 · 今日到期 2 个');
+
+    const cards = wrapper.findAll('.stat-card');
+    await cards[5].trigger('click');
+    expect(pushMock).toHaveBeenCalledWith({ path: '/study/session', query: { scope: 'due' } });
+  });
+
+  it('无待复习时，提醒卡引导继续复习全部单词', async () => {
+    const wrapper = await createWrapper({ due: 0, total: 8 });
+    expect(wrapper.text()).toContain('今天没有待完成任务');
+
+    const cards = wrapper.findAll('.stat-card');
+    await cards[5].trigger('click');
+    expect(pushMock).toHaveBeenCalledWith({ path: '/study/session', query: { scope: 'continue' } });
   });
 
   it('点击主按钮继续复习时跳转到 continue scope', async () => {

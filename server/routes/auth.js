@@ -41,6 +41,7 @@ router.post('/login', async (req, res) => {
 
     const user = await User.findOne({ where: { username: username.trim() } });
     if (!user) return error(res, '用户名或密码错误', 401);
+    if (user.isDisabled) return error(res, '账号已被禁用，请联系管理员', 401);
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return error(res, '用户名或密码错误', 401);

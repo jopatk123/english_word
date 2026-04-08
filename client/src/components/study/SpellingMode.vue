@@ -1,6 +1,6 @@
 <template>
   <div class="flashcard-container">
-    <SessionProgress :currentIndex="currentIndex" :total="total" />
+    <SessionProgress :currentIndex="currentIndex" :total="total" @seek="$emit('seek', $event)" />
 
     <div class="flashcard spelling-card">
       <!-- 拼写模式：显示释义 -->
@@ -85,7 +85,7 @@
     isLast: { type: Boolean, default: false },
   });
 
-  const emit = defineEmits(['check', 'hint', 'next', 'update:inputValue']);
+  const emit = defineEmits(['check', 'hint', 'next', 'seek', 'update:inputValue']);
 
   const localInput = computed({
     get: () => props.inputValue,

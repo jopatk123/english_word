@@ -1,6 +1,6 @@
 <template>
   <div class="flashcard-container">
-    <SessionProgress :currentIndex="currentIndex" :total="total" />
+    <SessionProgress :currentIndex="currentIndex" :total="total" @seek="$emit('seek', $event)" />
 
     <div class="flashcard choice-card">
       <div class="card-front">
@@ -49,5 +49,5 @@
     isLast: { type: Boolean, default: false },
   });
 
-  defineEmits(['choose', 'next']);
+  defineEmits(['choose', 'next', 'seek']);
 </script>

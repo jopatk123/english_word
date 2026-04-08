@@ -194,10 +194,22 @@
     margin-bottom: 24px;
     font-size: 24px;
   }
+
+  .login-subtitle {
+    text-align: center;
+    margin: -12px 0 20px;
+    color: #6b7280;
+    font-size: 13px;
+  }
   .login-tabs :deep(.el-tabs__header) {
     margin-bottom: 20px;
   }
   .login-btn {
     width: 100%;
+  }
+
+  .admin-link-btn {
+    width: 100%;
+    margin-top: 12px;
   }
 </style>

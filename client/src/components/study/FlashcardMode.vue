@@ -1,6 +1,6 @@
 <template>
   <div class="flashcard-container">
-    <SessionProgress :currentIndex="currentIndex" :total="total" />
+    <SessionProgress :currentIndex="currentIndex" :total="total" @seek="$emit('seek', $event)" />
 
     <div class="flashcard" :class="{ flipped: showAnswer }" @click="!showAnswer && $emit('flip')">
       <div class="card-front">
@@ -68,5 +68,5 @@
     againCountMap: { type: Object, default: () => ({}) },
   });
 
-  defineEmits(['flip', 'rate']);
+  defineEmits(['flip', 'rate', 'seek']);
 </script>

@@ -121,6 +121,18 @@ async function m006_words_backfill_missing_user_id() {
   console.log('[migration] M006: 已回填可安全推断的 words.user_id');
 }
 
+// M007：为 users 表添加 is_disabled 列
+async function m007_users_add_is_disabled() {
+  const info = await qi.describeTable('users').catch(() => ({}));
+  if (info.is_disabled !== undefined || Object.keys(info).length === 0) return;
+  await qi.addColumn('users', 'is_disabled', {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  });
+  console.log('[migration] M007: users.is_disabled 已添加');
+}
+
 /**
  * 按顺序执行所有迁移。每个迁移函数都是幂等的，可以安全重复运行。
  */
@@ -131,4 +143,5 @@ export async function runMigrations() {
   await m004_words_migrate_root_id_to_word_roots();
   await m005_words_add_user_id();
   await m006_words_backfill_missing_user_id();
+  await m007_users_add_is_disabled();
 }

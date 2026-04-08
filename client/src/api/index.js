@@ -1,19 +1,20 @@
 import axios from 'axios';
 
-const createApiClient = (timeout) => {
+const createApiClient = (timeout, options = {}) => {
+  const { tokenKey = 'token' } = options;
   const client = axios.create({
     baseURL: '/api',
     timeout,
   });
 
-  client.interceptors.request.use(addAuthHeader);
+  client.interceptors.request.use((config) => addAuthHeader(config, tokenKey));
   client.interceptors.response.use(handleResponse, handleError);
   return client;
 };
 
 // 请求拦截器 - 添加 token
-const addAuthHeader = (config) => {
-  const token = localStorage.getItem('token');
+const addAuthHeader = (config, tokenKey = 'token') => {
+  const token = localStorage.getItem(tokenKey);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -28,16 +29,24 @@ const handleError = (err) => {
   // otherwise the page reloads before our handler can show message
   const status = err.response?.status;
   const url = err.config?.url || '';
-  const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register');
+  const isAdminEndpoint = url.includes('/admin/');
+  const isAuthEndpoint =
+    url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/admin/login');
   if (status === 401 && !isAuthEndpoint) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
+    if (isAdminEndpoint) {
+      localStorage.removeItem('adminToken');
+      window.location.href = '/super-admin';
+    } else {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
   }
   return Promise.reject(err);
 };
 
-const api = createApiClient(10000);
+const api = createApiClient(10000, { tokenKey: 'token' });
+const adminApi = createApiClient(10000, { tokenKey: 'adminToken' });
 // AI 请求通常耗时更长，单独放宽超时时间。
 const aiApi = createApiClient(90000);
 
@@ -45,6 +54,13 @@ const aiApi = createApiClient(90000);
 export const login = (data) => api.post('/auth/login', data);
 export const register = (data) => api.post('/auth/register', data);
 export const getMe = () => api.get('/auth/me');
+
+// ========== 超级管理员 API ==========
+export const adminLogin = (data) => adminApi.post('/admin/login', data);
+export const getAdminUsers = (params) => adminApi.get('/admin/users', { params });
+export const updateAdminUserPassword = (id, data) => adminApi.put(`/admin/users/${id}/password`, data);
+export const setAdminUserDisabled = (id, disabled) =>
+  adminApi.put(`/admin/users/${id}/status`, { disabled });
 
 // ========== 词根 API ==========
 export const getRoots = (keyword) => api.get('/roots', { params: { keyword } });

@@ -12,7 +12,6 @@
         :class="{ clickable: stats.due > 0 }"
         @click="openSessionFor('due', stats.due)"
       >
-        <div class="stat-kicker">现在需要复习</div>
         <div class="stat-number stat-number-primary">{{ stats.due }}</div>
         <div class="stat-label">待复习</div>
         <div class="stat-meta">今日到期 {{ stats.todayDue }} · 超期 {{ stats.overdue }}</div>
@@ -48,6 +47,17 @@
       >
         <div class="stat-number">{{ stats.known }}</div>
         <div class="stat-label">已掌握</div>
+      </div>
+      <div
+        class="stat-card stat-reminder"
+        :class="{ clickable: studyReminder.clickable }"
+        @click="openSessionFor(studyReminder.scope, studyReminder.count)"
+      >
+        <div class="stat-reminder-detail">{{ studyReminder.detail }}</div>
+        <div class="stat-reminder-footer">
+          <span class="stat-reminder-badge">{{ studyReminder.badge }}</span>
+          <span class="stat-reminder-action">{{ studyReminder.actionText }}</span>
+        </div>
       </div>
     </div>
 
@@ -89,10 +99,6 @@
         @change="handleImportFile"
       />
     </div>
-    <p v-if="stats.due === 0 && stats.total > 0" class="advance-hint">
-      ✅ 今日没有待完成任务了，你仍然可以点击“继续复习”巩固全部单词。
-    </p>
-
     <!-- 词根列表（管理学习队列） -->
     <div class="root-section">
       <div class="section-header">
@@ -202,6 +208,50 @@
   const hasUnenrolledRoots = computed(() =>
     rootsProgress.value.some((r) => r.wordCount > 0 && r.enrolled < r.wordCount)
   );
+
+  const studyReminder = computed(() => {
+    const total = stats.value.total || 0;
+    const due = stats.value.due || 0;
+    const todayDue = stats.value.todayDue || 0;
+    const overdue = stats.value.overdue || 0;
+
+    if (total === 0) {
+      return {
+        clickable: false,
+        scope: null,
+        count: 0,
+        badge: '先建词库',
+        title: '还没有复习提醒',
+        detail: '添加词根和单词后，系统会自动安排下一次复习',
+        actionText: '去添加词根',
+      };
+    }
+
+    if (due > 0) {
+      return {
+        clickable: true,
+        scope: 'due',
+        count: due,
+        badge: overdue > 0 ? '优先处理' : '今天就复习',
+        title: overdue > 0 ? '先处理超期词' : '今天安排复习',
+        detail:
+          overdue > 0
+            ? `超期 ${overdue} 个 · 今日到期 ${todayDue} 个`
+            : `今日到期 ${todayDue} 个 · 现在复习最合适`,
+        actionText: `去复习（${due} 个）`,
+      };
+    }
+
+    return {
+      clickable: true,
+      scope: 'continue',
+      count: total,
+      badge: '节奏稳定',
+      title: '下一次复习建议',
+      detail: '今天没有待完成任务，可以继续复习全部单词巩固记忆',
+      actionText: `继续复习（${total} 个）`,
+    };
+  });
 
   const getLocalDateKey = () => new Date().toLocaleDateString('en-CA');
 

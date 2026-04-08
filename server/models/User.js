@@ -20,6 +20,13 @@ const User = sequelize.define(
       allowNull: false,
       comment: '密码哈希',
     },
+    isDisabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'is_disabled',
+      comment: '是否禁用登录',
+    },
   },
   {
     tableName: 'users',

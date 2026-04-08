@@ -49,6 +49,31 @@
   border-left: 4px solid #67c23a;
 }
 
+.stat-reminder {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: left;
+  border-left: 4px solid #5b8cff;
+  background:
+    linear-gradient(145deg, rgba(91, 140, 255, 0.11), rgba(255, 255, 255, 0.98)),
+    #fff;
+}
+
+.stat-reminder::after {
+  content: '';
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(91, 140, 255, 0.18), rgba(91, 140, 255, 0));
+  pointer-events: none;
+}
+
 .stat-overdue {
   border-left: 4px solid #f56c6c;
 }
@@ -91,6 +116,65 @@
   color: #909399;
 }
 
+.stat-reminder-kicker {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(91, 140, 255, 0.12);
+  color: #2d6cdf;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stat-reminder-title {
+  position: relative;
+  z-index: 1;
+  margin-top: 12px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #303133;
+  line-height: 1.35;
+}
+
+.stat-reminder-detail {
+  position: relative;
+  z-index: 1;
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #606266;
+}
+
+.stat-reminder-footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  font-size: 12px;
+}
+
+.stat-reminder-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(91, 140, 255, 0.14);
+  color: #2d6cdf;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stat-reminder-action {
+  color: #909399;
+  white-space: nowrap;
+}
+
 .start-section {
   text-align: center;
   margin-bottom: 8px;
@@ -101,14 +185,6 @@
   justify-content: center;
   flex-wrap: wrap;
   gap: 12px;
-}
-
-.advance-hint {
-  text-align: center;
-  color: #606266;
-  font-size: 14px;
-  margin-bottom: 24px;
-  margin-top: 8px;
 }
 
 .incentive-section {
@@ -173,6 +249,10 @@
 
   .stat-number {
     font-size: 24px;
+  }
+
+  .stat-reminder-title {
+    font-size: 18px;
   }
 }
 

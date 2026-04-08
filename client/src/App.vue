@@ -1,5 +1,6 @@
 <template>
-  <div class="app-container">
+  <router-view v-if="isAdminRoute" />
+  <div v-else class="app-container">
     <el-header class="app-header">
       <div class="header-content" @click="$router.push('/')">
         <h1 class="app-title">📖 词根背单词</h1>
@@ -28,6 +29,7 @@
 
   const router = useRouter();
   const route = useRoute();
+  const isAdminRoute = computed(() => route.path.startsWith('/super-admin'));
   const user = ref(null);
 
   const now = ref(new Date());

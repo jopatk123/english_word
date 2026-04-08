@@ -21,8 +21,62 @@
   white-space: nowrap;
 }
 
-.session-progress .el-progress {
+.progress-track {
+  position: relative;
   flex: 1;
+  min-width: 0;
+}
+
+.progress-track .el-progress {
+  pointer-events: none;
+}
+
+.progress-seek {
+  position: absolute;
+  inset: -10px 0;
+  width: 100%;
+  margin: 0;
+  height: 26px;
+  cursor: pointer;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.progress-seek:focus {
+  outline: none;
+}
+
+.progress-seek::-webkit-slider-runnable-track {
+  height: 6px;
+  background: transparent;
+}
+
+.progress-seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  border: 2px solid #409eff;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.25);
+}
+
+.progress-seek::-moz-range-track {
+  height: 6px;
+  background: transparent;
+  border: none;
+}
+
+.progress-seek::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #409eff;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.25);
 }
 
 /* 闪卡 */

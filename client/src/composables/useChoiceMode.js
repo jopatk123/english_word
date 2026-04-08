@@ -52,35 +52,40 @@ export function useChoiceMode({ currentCard, sessionStats, handleAgain, advanceC
           meaning: w.meaning,
         }));
       const correct = { id: wordId, name: currentCard.value.word.name, meaning };
+      if (currentCard.value?.word.id !== wordId) return;
       choiceOptions.value = shuffle([correct, ...distractors]);
     } else {
       // 队列太小，回退到 API
       try {
         const res = await getQuizChoices(wordId, 3);
         const all = [res.data.correct, ...res.data.distractors];
+        if (currentCard.value?.word.id !== wordId) return;
         choiceOptions.value = shuffle(all);
       } catch {
+        if (currentCard.value?.word.id !== wordId) return;
         choiceOptions.value = [{ id: wordId, meaning }];
       }
     }
   };
 
   const handleChoice = async (idx) => {
+    const wordId = currentCard.value.wordId;
+    const wordName = currentCard.value.word.name;
     choiceSelected.value = idx;
     choiceAnswered.value = true;
-    const correct = choiceOptions.value[idx].id === currentCard.value.word.id;
+    const correct = choiceOptions.value[idx].id === wordId;
     const quality = correct ? 3 : 1;
     const qualityMap = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy' };
     // 答题后自动朗读当前单词
-    speak(currentCard.value.word.name);
+    speak(wordName);
     try {
       if (!isReplay?.value) {
         const { submitReviewResult } = await import('../api/index.js');
-        await submitReviewResult(currentCard.value.wordId, quality);
+        await submitReviewResult(wordId, quality);
       }
       sessionStats.value.total++;
       sessionStats.value[qualityMap[quality]]++;
-      if (quality === 1) handleAgain(currentCard.value.wordId);
+      if (quality === 1) handleAgain(wordId);
     } catch {
       ElMessage.error('提交结果失败');
     }
