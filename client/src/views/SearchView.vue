@@ -83,6 +83,7 @@
   import { analyzeWord, analyzeSentence } from '../api/index.js';
   import { getProviderById } from '../constants/aiProviders.js';
   import { isAiSettingsReady, loadAiSettings } from '../utils/aiSettings.js';
+  import { useSpeech } from '../utils/speech.js';
   import WordAnalysisResult from '../components/search/WordAnalysisResult.vue';
   import SentenceAnalysisResult from '../components/search/SentenceAnalysisResult.vue';
 
@@ -90,6 +91,7 @@
   const settings = ref(loadAiSettings());
   const ready = computed(() => isAiSettingsReady(settings.value));
   const providerName = computed(() => getProviderById(settings.value.providerId).name);
+  const { speak } = useSpeech();
 
   const searchInput = ref('');
   const loading = ref(false);
@@ -165,6 +167,10 @@
         searchMode.value = 'word';
         const res = await analyzeWord(input, settings.value);
         wordResult.value = res.data;
+        const spokenWord = res.data?.analysis?.word?.trim() || input;
+        if (spokenWord) {
+          speak(spokenWord);
+        }
       } else {
         searchMode.value = 'sentence';
         const res = await analyzeSentence(input, settings.value);
