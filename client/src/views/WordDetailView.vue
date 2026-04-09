@@ -69,6 +69,13 @@
         </div>
         <div class="example-actions">
           <SpeakButton :text="example.sentence" />
+          <el-button
+            link
+            type="success"
+            :loading="regeneratingExampleId === example.id"
+            @click="handleRegenerateExample(example)"
+            >重新生成</el-button
+          >
           <el-button link type="primary" @click="openExampleDialog(example)">编辑</el-button>
           <el-button link type="danger" @click="handleDeleteExample(example)">删除</el-button>
         </div>
@@ -121,8 +128,10 @@
     createExample,
     updateExample,
     deleteExample,
+    getAiExampleSuggestions,
   } from '../api/index.js';
   import SpeakButton from '../components/SpeakButton.vue';
+  import { isAiSettingsReady, loadAiSettings } from '../utils/aiSettings.js';
 
   const props = defineProps({ id: String });
   const route = useRoute();
@@ -136,6 +145,8 @@
   const editingExample = ref(null);
   const exampleForm = ref({ sentence: '', translation: '', remark: '' });
   const saving = ref(false);
+  const regeneratingExampleId = ref(null);
+  const aiSettings = ref(loadAiSettings());
 
   const wordId = props.id || route.params.id;
 
@@ -161,6 +172,44 @@
     } finally {
       examplesLoading.value = false;
     }
+  };
+
+  const normalizeSentence = (sentence) => `${sentence || ''}`.trim().toLowerCase();
+
+  const getExcludedSentences = (extraSentences = []) => {
+    const sentences = [
+      ...examples.value.map((item) => item?.sentence).filter(Boolean),
+      ...extraSentences.filter(Boolean),
+    ];
+
+    return [...new Set(sentences)];
+  };
+
+  const requestReplacementExample = async () => {
+    const existingSentenceSet = new Set(
+      getExcludedSentences().map((sentence) => normalizeSentence(sentence))
+    );
+    let excludedSentences = getExcludedSentences();
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const res = await getAiExampleSuggestions(wordId, aiSettings.value, {
+        excludedSentences,
+      });
+      const items = Array.isArray(res.data?.items) ? res.data.items : [];
+      const candidate = items.find((item) => {
+        if (!item?.sentence || !item?.translation) return false;
+        return !existingSentenceSet.has(normalizeSentence(item.sentence));
+      });
+
+      if (candidate) {
+        return candidate;
+      }
+
+      const returnedSentences = items.map((item) => item?.sentence).filter(Boolean);
+      excludedSentences = getExcludedSentences(returnedSentences);
+    }
+
+    return null;
   };
 
   const openExampleDialog = (example = null) => {
@@ -209,6 +258,35 @@
       fetchExamples();
     } catch {
       // 取消
+    }
+  };
+
+  const handleRegenerateExample = async (example) => {
+    if (!isAiSettingsReady(aiSettings.value)) {
+      return ElMessage.warning('请先完成 AI 配置');
+    }
+
+    regeneratingExampleId.value = example.id;
+    try {
+      const nextExample = await requestReplacementExample();
+      if (!nextExample) {
+        return ElMessage.warning('没有生成新的不重复例句，请稍后再试');
+      }
+
+      await updateExample(example.id, {
+        sentence: nextExample.sentence,
+        translation: nextExample.translation,
+        remark: example.remark || '',
+      });
+      await fetchExamples();
+      ElMessage.success('已重新生成该例句');
+    } catch (e) {
+      ElMessage.error(
+        e?.response?.data?.msg ||
+          (e?.code === 'ECONNABORTED' ? 'AI 请求超时，请稍后重试' : '重新生成例句失败')
+      );
+    } finally {
+      regeneratingExampleId.value = null;
     }
   };
 
