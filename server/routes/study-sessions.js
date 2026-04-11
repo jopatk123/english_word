@@ -2,8 +2,24 @@ import { Router } from 'express';
 import { Op } from 'sequelize';
 import { StudySession } from '../models/index.js';
 import { success, error } from '../utils/response.js';
+import { todayStart, tomorrowStart } from '../utils/srs.js';
 
 const router = Router();
+
+function getOverlapSeconds(start, end, windowStart, windowEnd) {
+  const startMs = new Date(start).getTime();
+  const endMs = new Date(end).getTime();
+  const windowStartMs = windowStart.getTime();
+  const windowEndMs = windowEnd.getTime();
+
+  const overlapStart = Math.max(startMs, windowStartMs);
+  const overlapEnd = Math.min(endMs, windowEndMs);
+  if (!Number.isFinite(overlapStart) || !Number.isFinite(overlapEnd) || overlapEnd <= overlapStart) {
+    return 0;
+  }
+
+  return Math.floor((overlapEnd - overlapStart) / 1000);
+}
 
 /**
  * POST /study-sessions/start
@@ -67,22 +83,25 @@ router.post('/:id/end', async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const userId = req.userId;
+    const tz = req.query.tz;
 
     // 总时长（所有已完成的会话）
     const allSessions = await StudySession.findAll({
       where: { userId, endedAt: { [Op.ne]: null } },
-      attributes: ['durationSeconds', 'startedAt'],
+      attributes: ['durationSeconds', 'startedAt', 'endedAt'],
       order: [['startedAt', 'DESC']],
     });
 
     const totalSeconds = allSessions.reduce((sum, s) => sum + (s.durationSeconds || 0), 0);
 
-    // 今日时长
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todaySeconds = allSessions
-      .filter((s) => new Date(s.startedAt) >= todayStart)
-      .reduce((sum, s) => sum + (s.durationSeconds || 0), 0);
+    // 今日时长（按用户时区统计会话与今日时间窗的重叠部分）
+    const todayWindowStart = todayStart(tz);
+    const tomorrowWindowStart = tomorrowStart(tz);
+    const todaySeconds = allSessions.reduce(
+      (sum, s) =>
+        sum + getOverlapSeconds(s.startedAt, s.endedAt, todayWindowStart, tomorrowWindowStart),
+      0
+    );
 
     // 最近 30 条
     const recentSessions = allSessions.slice(0, 30).map((s) => ({

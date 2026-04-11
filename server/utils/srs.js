@@ -170,25 +170,33 @@ function getTimeZoneOffsetMs(date, timezone) {
   return zonedUtc - date.getTime();
 }
 
-export function todayStart(timezone) {
-  const today = todayStr(timezone);
+export function startOfDay(dateStr, timezone) {
   if (!timezone) {
-    return new Date(today + 'T00:00:00');
+    return new Date(`${dateStr}T00:00:00`);
   }
 
   try {
-    const [year, month, day] = today.split('-').map(Number);
+    const [year, month, day] = dateStr.split('-').map(Number);
     const utcMidnight = Date.UTC(year, month - 1, day, 0, 0, 0);
     const offset = getTimeZoneOffsetMs(new Date(utcMidnight), timezone);
     return new Date(utcMidnight - offset);
   } catch {
-    return new Date(today + 'T00:00:00');
+    return new Date(`${dateStr}T00:00:00`);
   }
 }
 
+export function todayStart(timezone, now = new Date()) {
+  return startOfDay(dateStrAt(now, timezone), timezone);
+}
+
+export function tomorrowStart(timezone, now = new Date()) {
+  return startOfDay(addDays(dateStrAt(now, timezone), 1), timezone);
+}
+
 export function addDays(dateStr, days) {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
+  const [year, month, day] = String(dateStr).split('-').map(Number);
+  const d = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+  d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
 

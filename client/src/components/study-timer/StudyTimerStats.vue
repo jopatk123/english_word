@@ -11,7 +11,7 @@
         <span class="stat-label">累计总时长</span>
       </div>
     </div>
-    <button class="export-btn" :disabled="!totalSeconds" @click="handleExport" title="下载学习记录">
+    <button class="export-btn" :disabled="!savedTotalSeconds" @click="handleExport" title="下载学习记录">
       ⬇ 下载记录
     </button>
   </div>
@@ -24,6 +24,7 @@ import { ElMessage } from 'element-plus';
 const props = defineProps({
   todaySeconds: { type: Number, default: 0 },
   totalSeconds: { type: Number, default: 0 },
+  savedTotalSeconds: { type: Number, default: 0 },
 });
 
 function formatSecondsToText(s) {

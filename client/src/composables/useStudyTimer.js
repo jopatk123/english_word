@@ -14,6 +14,7 @@ export function useStudyTimer() {
   const sessionId = ref(null); // 当前 DB 会话 ID
   let _startedAtMs = 0;
   let _tickTimer = null;
+  let _statsRefreshTimer = null;
 
   /* ── 休息提醒状态 ── */
   const alarmEnabled = ref(false);
@@ -22,13 +23,31 @@ export function useStudyTimer() {
   const alarmTriggered = ref(false); // 已触发（防重复）
 
   /* ── 统计数据 ── */
-  const totalSeconds = ref(0);
-  const todaySeconds = ref(0);
+  const savedTotalSeconds = ref(0);
+  const todaySecondsBase = ref(0);
   const recentSessions = ref([]);
   const statsLoading = ref(false);
 
   /* ── 计算属性 ── */
   const elapsedDisplay = computed(() => formatSeconds(elapsedSeconds.value));
+
+  const totalSeconds = computed(() => {
+    void elapsedSeconds.value;
+    return savedTotalSeconds.value + (isRunning.value ? elapsedSeconds.value : 0);
+  });
+
+  const todaySeconds = computed(() => {
+    void elapsedSeconds.value;
+    if (!isRunning.value) return todaySecondsBase.value;
+
+    const todayStartMs = getLocalTodayStartMs();
+    const runningTodaySeconds = Math.max(
+      0,
+      Math.floor((Date.now() - Math.max(_startedAtMs, todayStartMs)) / 1000)
+    );
+
+    return todaySecondsBase.value + runningTodaySeconds;
+  });
 
   const alarmRemainingSeconds = computed(() => {
     if (!alarmEnabled.value || !isRunning.value || alarmTriggered.value) return null;
@@ -65,6 +84,12 @@ export function useStudyTimer() {
     if (h > 0 && m > 0) return `${h}小时${m}分`;
     if (h > 0) return `${h}小时`;
     return `${m || 1}分钟`;
+  }
+
+  function getLocalTodayStartMs() {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
   }
 
   /* ── 开始学习 ── */
@@ -126,8 +151,8 @@ export function useStudyTimer() {
     statsLoading.value = true;
     try {
       const data = unwrapResponse(await getStudySessionStats());
-      totalSeconds.value = data?.totalSeconds || 0;
-      todaySeconds.value = data?.todaySeconds || 0;
+      savedTotalSeconds.value = data?.totalSeconds || 0;
+      todaySecondsBase.value = data?.todaySeconds || 0;
       recentSessions.value = data?.recentSessions || [];
     } catch {
       // 静默忽略
@@ -167,6 +192,11 @@ export function useStudyTimer() {
     _playAlarmSound();
     _sendBrowserNotification();
     restNotifyVisible.value = true;
+  }
+
+  function _refreshStatsIfVisible() {
+    if (document.visibilityState !== 'visible') return;
+    void loadStats();
   }
 
   /* ── 声音 ── */
@@ -272,10 +302,19 @@ export function useStudyTimer() {
   onMounted(async () => {
     _restoreLocal();
     await loadStats();
+    _statsRefreshTimer = window.setInterval(_refreshStatsIfVisible, 60 * 1000);
+    document.addEventListener('visibilitychange', _refreshStatsIfVisible);
+    window.addEventListener('focus', _refreshStatsIfVisible);
   });
 
   onUnmounted(() => {
     _stopTicker();
+    if (_statsRefreshTimer) {
+      clearInterval(_statsRefreshTimer);
+      _statsRefreshTimer = null;
+    }
+    document.removeEventListener('visibilitychange', _refreshStatsIfVisible);
+    window.removeEventListener('focus', _refreshStatsIfVisible);
   });
 
   return {
@@ -293,6 +332,7 @@ export function useStudyTimer() {
     restNotifyVisible,
     // 统计
     totalSeconds,
+    savedTotalSeconds,
     todaySeconds,
     recentSessions,
     statsLoading,

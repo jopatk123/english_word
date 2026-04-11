@@ -24,6 +24,7 @@
           :alarm-progress-pct="alarmProgressPct"
           :today-seconds="todaySeconds"
           :total-seconds="totalSeconds"
+          :saved-total-seconds="savedTotalSeconds"
           @start="handleStart"
           @stop="handleStop"
           @close="panelVisible = false"
@@ -62,6 +63,7 @@
     alarmProgressPct,
     todaySeconds,
     totalSeconds,
+    savedTotalSeconds,
     restNotifyVisible,
     startTimer,
     stopTimer,

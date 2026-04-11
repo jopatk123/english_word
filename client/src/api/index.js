@@ -139,7 +139,7 @@ export const analyzeSentence = (sentence, config) =>
 // ========== 学习计时 API ==========
 export const startStudySession = (note = '') => api.post('/study-sessions/start', { note });
 export const endStudySession = (id) => api.post(`/study-sessions/${id}/end`);
-export const getStudySessionStats = () => api.get('/study-sessions/stats');
+export const getStudySessionStats = () => api.get('/study-sessions/stats', { params: { tz: getUserTz() } });
 export const exportStudySessions = () => api.get('/study-sessions/export', { responseType: 'blob' });
 
 export default api;

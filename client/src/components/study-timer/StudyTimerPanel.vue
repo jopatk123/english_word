@@ -55,7 +55,11 @@
     </div>
 
     <!-- 统计区 -->
-    <StudyTimerStats :today-seconds="todaySeconds" :total-seconds="totalSeconds" />
+    <StudyTimerStats
+      :today-seconds="todaySeconds"
+      :total-seconds="totalSeconds"
+      :saved-total-seconds="savedTotalSeconds"
+    />
   </div>
 </template>
 
@@ -73,6 +77,7 @@ const props = defineProps({
   alarmProgressPct: { type: Number, default: 0 },
   todaySeconds: { type: Number, default: 0 },
   totalSeconds: { type: Number, default: 0 },
+  savedTotalSeconds: { type: Number, default: 0 },
 });
 
 const emit = defineEmits(['start', 'stop', 'close', 'update:alarmEnabled', 'update:alarmMinutes']);
