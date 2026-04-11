@@ -136,4 +136,10 @@ export const analyzeWord = (word, config, options = {}) =>
 export const analyzeSentence = (sentence, config) =>
   aiApi.post('/ai/analyze-sentence', { sentence, config });
 
+// ========== 学习计时 API ==========
+export const startStudySession = (note = '') => api.post('/study-sessions/start', { note });
+export const endStudySession = (id) => api.post(`/study-sessions/${id}/end`);
+export const getStudySessionStats = () => api.get('/study-sessions/stats');
+export const exportStudySessions = () => api.get('/study-sessions/export', { responseType: 'blob' });
+
 export default api;

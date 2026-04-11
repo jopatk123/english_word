@@ -144,6 +144,23 @@ async function m008_word_reviews_add_due_at() {
   console.log('[migration] M008: word_reviews.due_at 已添加');
 }
 
+// M009：创建 study_sessions 表，记录每次学习时段
+async function m009_create_study_sessions() {
+  const tables = await qi.showAllTables().catch(() => []);
+  if (tables.includes('study_sessions')) return;
+  await qi.createTable('study_sessions', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    user_id: { type: DataTypes.INTEGER, allowNull: false },
+    started_at: { type: DataTypes.DATE, allowNull: false },
+    ended_at: { type: DataTypes.DATE, allowNull: true },
+    duration_seconds: { type: DataTypes.INTEGER, allowNull: true },
+    note: { type: DataTypes.STRING(100), allowNull: true },
+    created_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+    updated_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+  });
+  console.log('[migration] M009: study_sessions 表已创建');
+}
+
 /**
  * 按顺序执行所有迁移。每个迁移函数都是幂等的，可以安全重复运行。
  */
@@ -156,4 +173,5 @@ export async function runMigrations() {
   await m006_words_backfill_missing_user_id();
   await m007_users_add_is_disabled();
   await m008_word_reviews_add_due_at();
+  await m009_create_study_sessions();
 }

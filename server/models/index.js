@@ -7,6 +7,7 @@ import WordRoot from './WordRoot.js';
 import Example from './Example.js';
 import WordReview from './WordReview.js';
 import ReviewHistory from './ReviewHistory.js';
+import StudySession from './StudySession.js';
 
 // 用户 -> 词根 (一对多)
 User.hasMany(Root, { foreignKey: 'user_id', as: 'roots', onDelete: 'CASCADE' });
@@ -54,6 +55,10 @@ ReviewHistory.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 Word.hasMany(ReviewHistory, { foreignKey: 'word_id', as: 'reviewHistories', onDelete: 'CASCADE' });
 ReviewHistory.belongsTo(Word, { foreignKey: 'word_id', as: 'word' });
 
+// 用户 -> 学习计时记录 (一对多)
+User.hasMany(StudySession, { foreignKey: 'user_id', as: 'studySessions', onDelete: 'CASCADE' });
+StudySession.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
 const initDB = async () => {
   const qi = sequelize.getQueryInterface();
   const existingTables = await qi.showAllTables().catch(() => []);
@@ -72,4 +77,4 @@ const initDB = async () => {
   console.log('数据库同步完成');
 };
 
-export { sequelize, User, Root, Word, WordRoot, Example, WordReview, ReviewHistory, initDB };
+export { sequelize, User, Root, Word, WordRoot, Example, WordReview, ReviewHistory, StudySession, initDB };
