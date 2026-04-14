@@ -1,7 +1,9 @@
+import { isProxy, ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTabSyncChannel } from '../tabSync.js';
 
 const openChannels = [];
+const originalBroadcastChannel = globalThis.BroadcastChannel;
 
 describe('createTabSyncChannel', () => {
   beforeEach(() => {
@@ -11,6 +13,12 @@ describe('createTabSyncChannel', () => {
   afterEach(() => {
     while (openChannels.length > 0) {
       openChannels.pop()?.close();
+    }
+
+    if (originalBroadcastChannel === undefined) {
+      delete globalThis.BroadcastChannel;
+    } else {
+      globalThis.BroadcastChannel = originalBroadcastChannel;
     }
   });
 
@@ -69,5 +77,44 @@ describe('createTabSyncChannel', () => {
     );
 
     expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it('发布 Vue 响应式对象时会先序列化，避免 BroadcastChannel 抛错', () => {
+    const postMessage = vi.fn((envelope) => {
+      expect(isProxy(envelope.payload.data.stats)).toBe(false);
+    });
+
+    globalThis.BroadcastChannel = class MockBroadcastChannel {
+      addEventListener() {}
+      removeEventListener() {}
+      close() {}
+      postMessage(envelope) {
+        if (isProxy(envelope.payload.data.stats)) {
+          throw new DOMException('Proxy cannot be cloned', 'DataCloneError');
+        }
+
+        postMessage(envelope);
+      }
+    };
+
+    const channel = createTabSyncChannel('proxy-safe');
+    openChannels.push(channel);
+
+    expect(() =>
+      channel.publish({
+        type: 'progress',
+        data: {
+          stats: ref({ total: 1, again: 0 }).value,
+        },
+      })
+    ).not.toThrow();
+
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage.mock.calls[0][0].payload).toEqual({
+      type: 'progress',
+      data: {
+        stats: { total: 1, again: 0 },
+      },
+    });
   });
 });

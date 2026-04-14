@@ -19,6 +19,19 @@ const trimSeenIds = (seenIds) => {
   }
 };
 
+const toSerializableValue = (value) => {
+  try {
+    const serialized = JSON.stringify(value);
+    if (serialized === undefined) {
+      return undefined;
+    }
+
+    return JSON.parse(serialized);
+  } catch {
+    return undefined;
+  }
+};
+
 export const createTabSyncChannel = (channelName) => {
   const fullChannelName = `${CHANNEL_PREFIX}:${channelName}`;
   const storageKey = `${fullChannelName}:event`;
@@ -67,15 +80,24 @@ export const createTabSyncChannel = (channelName) => {
   }
 
   const publish = (payload) => {
+    const serializablePayload = toSerializableValue(payload);
+    if (serializablePayload === undefined) {
+      return;
+    }
+
     const envelope = {
       id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       senderId: TAB_ID,
       sentAt: Date.now(),
-      payload,
+      payload: serializablePayload,
     };
 
     if (channel) {
-      channel.postMessage(envelope);
+      try {
+        channel.postMessage(envelope);
+      } catch {
+        // ignore BroadcastChannel serialization failures and keep storage fallback
+      }
     }
 
     if (typeof localStorage !== 'undefined') {
