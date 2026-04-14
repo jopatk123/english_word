@@ -9,7 +9,8 @@ const {
   analyzeSentenceMock,
   loadAiSettingsMock,
   isAiSettingsReadyMock,
-  getProviderByIdMock,
+  findAiProviderByIdMock,
+  subscribeAiSettingsChangesMock,
   speakMock,
   elMessage,
 } = vi.hoisted(() => ({
@@ -17,7 +18,8 @@ const {
   analyzeSentenceMock: vi.fn(),
   loadAiSettingsMock: vi.fn(),
   isAiSettingsReadyMock: vi.fn(),
-  getProviderByIdMock: vi.fn(),
+  findAiProviderByIdMock: vi.fn(),
+  subscribeAiSettingsChangesMock: vi.fn(() => () => {}),
   speakMock: vi.fn(),
   elMessage: {
     success: vi.fn(),
@@ -36,12 +38,10 @@ vi.mock('../../api/index.js', () => ({
 }));
 
 vi.mock('../../utils/aiSettings.js', () => ({
+  findAiProviderById: (...args) => findAiProviderByIdMock(...args),
   loadAiSettings: (...args) => loadAiSettingsMock(...args),
   isAiSettingsReady: (...args) => isAiSettingsReadyMock(...args),
-}));
-
-vi.mock('../../constants/aiProviders.js', () => ({
-  getProviderById: (...args) => getProviderByIdMock(...args),
+  subscribeAiSettingsChanges: (...args) => subscribeAiSettingsChangesMock(...args),
 }));
 
 vi.mock('../../utils/speech.js', () => ({
@@ -77,7 +77,8 @@ const globalStubs = {
   'el-button': {
     props: ['loading'],
     emits: ['click'],
-    template: '<button class="el-btn" :data-loading="loading" @click="$emit(\'click\')"><slot /></button>',
+    template:
+      '<button class="el-btn" :data-loading="loading" @click="$emit(\'click\')"><slot /></button>',
   },
 };
 
@@ -86,7 +87,7 @@ const mountedWrappers = [];
 async function createWrapper() {
   loadAiSettingsMock.mockReturnValue({ providerId: 'openai', model: 'gpt-test' });
   isAiSettingsReadyMock.mockReturnValue(true);
-  getProviderByIdMock.mockReturnValue({ name: 'OpenAI' });
+  findAiProviderByIdMock.mockReturnValue({ name: 'OpenAI' });
 
   const wrapper = mount(SearchView, {
     global: {

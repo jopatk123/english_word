@@ -6,6 +6,7 @@
  *
  * 此处直接测该纯逻辑，不依赖 composable 完整生命周期。
  */
+import { mount } from '@vue/test-utils';
 import { ref } from 'vue';
 import { describe, it, expect, vi } from 'vitest';
 
@@ -131,7 +132,9 @@ describe('seekToStudyCard 跳转逻辑', () => {
     expect(deps.showAnswer.value).toBe(false);
     expect(deps.choice.resetChoice).toHaveBeenCalledTimes(1);
     expect(deps.spelling.resetSpelling).toHaveBeenCalledTimes(1);
-    expect(deps.choice.setQueueWords).toHaveBeenCalledWith(deps.queue.value.map((item) => item.word));
+    expect(deps.choice.setQueueWords).toHaveBeenCalledWith(
+      deps.queue.value.map((item) => item.word)
+    );
     expect(deps.choice.loadChoices).toHaveBeenCalledTimes(1);
     expect(deps.incrementRevision).toHaveBeenCalledTimes(1);
     expect(deps.saveProgress).toHaveBeenCalledTimes(1);
@@ -172,8 +175,14 @@ describe('seekToStudyCard 跳转逻辑', () => {
 
 describe('useStudySession 对外暴露 seekToIndex', () => {
   it('返回 seekToIndex 函数', () => {
-    const session = useStudySession();
+    const wrapper = mount({
+      template: '<div />',
+      setup() {
+        return useStudySession();
+      },
+    });
 
-    expect(typeof session.seekToIndex).toBe('function');
+    expect(typeof wrapper.vm.seekToIndex).toBe('function');
+    wrapper.unmount();
   });
 });

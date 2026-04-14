@@ -208,7 +208,7 @@
 </template>
 
 <script setup>
-  import { computed, ref } from 'vue';
+  import { computed, onMounted, onUnmounted, ref } from 'vue';
   import { ElMessage, ElMessageBox } from 'element-plus';
   import { testAiConnection } from '../api/index.js';
   import { AI_PROVIDERS } from '../constants/aiProviders.js';
@@ -226,12 +226,19 @@
     deleteCustomProvider,
     addCustomModel,
     deleteCustomModel,
+    subscribeAiSettingsChanges,
   } from '../utils/aiSettings.js';
 
   // --- 响应式版本号，自定义数据变更时递增，用于强制 computed 重算 ---
   const settingsVersion = ref(0);
   const refreshSettings = () => {
     settingsVersion.value++;
+  };
+  let stopAiSettingsSync = () => {};
+
+  const syncAiSettings = () => {
+    refreshSettings();
+    form.value = loadAiSettings();
   };
 
   // --- 厂商列表 ---
@@ -378,6 +385,14 @@
     }
     ElMessage.success(`模型「${modelName}」已删除`);
   };
+
+  onMounted(() => {
+    stopAiSettingsSync = subscribeAiSettingsChanges(syncAiSettings);
+  });
+
+  onUnmounted(() => {
+    stopAiSettingsSync();
+  });
 </script>
 
 <style scoped>

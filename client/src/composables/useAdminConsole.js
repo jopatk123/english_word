@@ -6,6 +6,7 @@ import {
   setAdminUserDisabled,
   updateAdminUserPassword,
 } from '../api/index.js';
+import { notifyAdminSessionChanged, subscribeAdminSessionChanges } from '../utils/authSync.js';
 
 export const formatAdminDate = (value) => {
   if (!value) return '—';
@@ -41,6 +42,13 @@ export const useAdminConsole = () => {
   const passwordForm = ref({ password: '', confirmPassword: '' });
   const savingPassword = ref(false);
 
+  const resetConsoleState = () => {
+    users.value = [];
+    total.value = 0;
+    page.value = 1;
+    keyword.value = '';
+  };
+
   const loadSession = () => {
     adminToken.value = localStorage.getItem('adminToken') || '';
   };
@@ -71,6 +79,7 @@ export const useAdminConsole = () => {
     try {
       const res = await adminLogin({ password: loginForm.value.password });
       localStorage.setItem('adminToken', res.data.token);
+      notifyAdminSessionChanged({ type: 'login' });
       loadSession();
       loginForm.value.password = '';
       ElMessage.success('管理员登录成功');
@@ -84,12 +93,21 @@ export const useAdminConsole = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
+    notifyAdminSessionChanged({ type: 'logout' });
     loadSession();
-    users.value = [];
-    total.value = 0;
-    page.value = 1;
-    keyword.value = '';
+    resetConsoleState();
   };
+
+  const bindSessionSync = () =>
+    subscribeAdminSessionChanges(async () => {
+      loadSession();
+      if (isAuthed.value) {
+        await fetchUsers();
+        return;
+      }
+
+      resetConsoleState();
+    });
 
   const handleSearch = async () => {
     page.value = 1;
@@ -117,7 +135,9 @@ export const useAdminConsole = () => {
     }
     savingPassword.value = true;
     try {
-      await updateAdminUserPassword(selectedUser.value.id, { password: passwordForm.value.password });
+      await updateAdminUserPassword(selectedUser.value.id, {
+        password: passwordForm.value.password,
+      });
       ElMessage.success('密码已更新');
       passwordDialogVisible.value = false;
     } catch (e) {
@@ -169,6 +189,7 @@ export const useAdminConsole = () => {
     fetchUsers,
     handleAdminLogin,
     handleLogout,
+    bindSessionSync,
     handleSearch,
     handlePageSizeChange,
     openPasswordDialog,

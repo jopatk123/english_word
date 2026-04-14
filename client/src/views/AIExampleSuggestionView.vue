@@ -88,20 +88,31 @@
 </template>
 
 <script setup>
-  import { computed, onMounted, ref } from 'vue';
+  import { computed, onMounted, onUnmounted, ref } from 'vue';
   import { useRoute } from 'vue-router';
   import { ElMessage } from 'element-plus';
   import { createExample, getAiExampleSuggestions, getExamples, getWord } from '../api/index.js';
   import SpeakButton from '../components/SpeakButton.vue';
-  import { getProviderById } from '../constants/aiProviders.js';
-  import { isAiSettingsReady, loadAiSettings } from '../utils/aiSettings.js';
+  import {
+    findAiProviderById,
+    isAiSettingsReady,
+    loadAiSettings,
+    subscribeAiSettingsChanges,
+  } from '../utils/aiSettings.js';
 
   const route = useRoute();
   const wordId = route.params.id;
 
   const settings = ref(loadAiSettings());
   const ready = computed(() => isAiSettingsReady(settings.value));
-  const providerName = computed(() => getProviderById(settings.value.providerId).name);
+  const providerName = computed(
+    () => findAiProviderById(settings.value.providerId)?.name || settings.value.providerId
+  );
+  let stopAiSettingsSync = () => {};
+
+  const syncAiSettings = () => {
+    settings.value = loadAiSettings();
+  };
 
   const word = ref(null);
   const exampleCount = ref(0);
@@ -227,9 +238,14 @@
   };
 
   onMounted(async () => {
+    stopAiSettingsSync = subscribeAiSettingsChanges(syncAiSettings);
     await fetchBaseData();
     if (ready.value) {
       generateSuggestions();
     }
+  });
+
+  onUnmounted(() => {
+    stopAiSettingsSync();
   });
 </script>

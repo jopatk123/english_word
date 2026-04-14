@@ -7,7 +7,12 @@
     @submit="handleAdminLogin"
   />
 
-  <SuperAdminConsoleLayout v-else :total="total" :disabled-count="disabledCount" @logout="handleLogout">
+  <SuperAdminConsoleLayout
+    v-else
+    :total="total"
+    :disabled-count="disabledCount"
+    @logout="handleLogout"
+  >
     <SuperAdminUsersTable
       :users="users"
       :loading="loading"
@@ -41,7 +46,7 @@
 </template>
 
 <script setup>
-  import { onMounted } from 'vue';
+  import { onMounted, onUnmounted } from 'vue';
   import SuperAdminConsoleLayout from '../components/admin/SuperAdminConsoleLayout.vue';
   import SuperAdminLoginPanel from '../components/admin/SuperAdminLoginPanel.vue';
   import SuperAdminPasswordDialog from '../components/admin/SuperAdminPasswordDialog.vue';
@@ -67,6 +72,7 @@
     fetchUsers,
     handleAdminLogin,
     handleLogout,
+    bindSessionSync,
     handleSearch,
     handlePageSizeChange,
     openPasswordDialog,
@@ -74,10 +80,17 @@
     toggleDisabled,
   } = useAdminConsole();
 
+  let stopAdminSessionSync = () => {};
+
   onMounted(async () => {
+    stopAdminSessionSync = bindSessionSync();
     loadSession();
     if (isAuthed.value) {
       await fetchUsers();
     }
+  });
+
+  onUnmounted(() => {
+    stopAdminSessionSync();
   });
 </script>

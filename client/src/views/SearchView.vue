@@ -76,13 +76,17 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted } from 'vue';
+  import { ref, computed, onMounted, onUnmounted } from 'vue';
   import { useRoute } from 'vue-router';
   import { Search } from '@element-plus/icons-vue';
   import { ElMessage } from 'element-plus';
   import { analyzeWord, analyzeSentence } from '../api/index.js';
-  import { getProviderById } from '../constants/aiProviders.js';
-  import { isAiSettingsReady, loadAiSettings } from '../utils/aiSettings.js';
+  import {
+    findAiProviderById,
+    isAiSettingsReady,
+    loadAiSettings,
+    subscribeAiSettingsChanges,
+  } from '../utils/aiSettings.js';
   import { useSpeech } from '../utils/speech.js';
   import WordAnalysisResult from '../components/search/WordAnalysisResult.vue';
   import SentenceAnalysisResult from '../components/search/SentenceAnalysisResult.vue';
@@ -90,8 +94,15 @@
   const route = useRoute();
   const settings = ref(loadAiSettings());
   const ready = computed(() => isAiSettingsReady(settings.value));
-  const providerName = computed(() => getProviderById(settings.value.providerId).name);
+  const providerName = computed(
+    () => findAiProviderById(settings.value.providerId)?.name || settings.value.providerId
+  );
   const { speak } = useSpeech();
+  let stopAiSettingsSync = () => {};
+
+  const syncAiSettings = () => {
+    settings.value = loadAiSettings();
+  };
 
   const searchInput = ref('');
   const loading = ref(false);
@@ -186,11 +197,16 @@
   };
 
   onMounted(() => {
+    stopAiSettingsSync = subscribeAiSettingsChanges(syncAiSettings);
     const q = route.query.q;
     if (q && typeof q === 'string' && q.trim()) {
       searchInput.value = q.trim();
       handleSearch();
     }
+  });
+
+  onUnmounted(() => {
+    stopAiSettingsSync();
   });
 </script>
 

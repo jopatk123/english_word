@@ -75,7 +75,7 @@ beforeEach(() => {
 
 // ── addAuthHeader 请求拦截器 ──────────────────────────────────────────
 describe('addAuthHeader 请求拦截器', () => {
-  // api 和 aiApi 各注册一次，使用任意一个即可
+  // 顺序：api、adminApi、aiApi
   const getHandler = () => shared.requestHandlers[0];
 
   it('没有 token 时不添加 Authorization 头', () => {
@@ -91,9 +91,17 @@ describe('addAuthHeader 请求拦截器', () => {
     expect(result.headers.Authorization).toBe('Bearer test-jwt');
   });
 
+  it('adminApi 实例使用 adminToken', () => {
+    localStorageMock.setItem('adminToken', 'admin-jwt');
+    const adminHandler = shared.requestHandlers[1];
+    const config = { headers: {} };
+    const result = adminHandler(config);
+    expect(result.headers.Authorization).toBe('Bearer admin-jwt');
+  });
+
   it('aiApi 实例同样注入 token', () => {
     localStorageMock.setItem('token', 'ai-token');
-    const aiHandler = shared.requestHandlers[1];
+    const aiHandler = shared.requestHandlers[2];
     const config = { headers: {} };
     const result = aiHandler(config);
     expect(result.headers.Authorization).toBe('Bearer ai-token');

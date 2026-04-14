@@ -1,7 +1,18 @@
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { startStudySession, endStudySession, getStudySessionStats } from '../api/index.js';
+import { createTabSyncChannel } from '../utils/tabSync.js';
 
 const STORAGE_KEY = 'english-word-study-timer';
+
+let studyTimerSyncChannel;
+
+const getStudyTimerSyncChannel = () => {
+  if (!studyTimerSyncChannel) {
+    studyTimerSyncChannel = createTabSyncChannel('study-timer');
+  }
+
+  return studyTimerSyncChannel;
+};
 
 function unwrapResponse(response) {
   return response?.data ?? response;
@@ -15,10 +26,12 @@ export function useStudyTimer() {
   let _startedAtMs = 0;
   let _tickTimer = null;
   let _statsRefreshTimer = null;
+  let _applyingRemoteState = false;
+  let _stopTimerSync = () => {};
 
   /* ── 休息提醒状态 ── */
   const alarmEnabled = ref(false);
-  const alarmMinutes = ref(25); // 设定提醒时长（分钟）
+  const alarmMinutes = ref(30); // 设定提醒时长（分钟）
   const restNotifyVisible = ref(false); // 到时间弹窗
   const alarmTriggered = ref(false); // 已触发（防重复）
 
@@ -92,6 +105,94 @@ export function useStudyTimer() {
     return d.getTime();
   }
 
+  function buildLocalState() {
+    return {
+      isRunning: isRunning.value,
+      sessionId: isRunning.value ? sessionId.value : null,
+      startedAtMs: isRunning.value ? _startedAtMs : null,
+      alarmEnabled: alarmEnabled.value,
+      alarmMinutes: alarmMinutes.value,
+    };
+  }
+
+  function persistLocalState() {
+    const state = buildLocalState();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
+    if (!_applyingRemoteState) {
+      getStudyTimerSyncChannel().publish(state);
+    }
+  }
+
+  function clearInvalidLocalState() {
+    localStorage.removeItem(STORAGE_KEY);
+
+    if (!_applyingRemoteState) {
+      getStudyTimerSyncChannel().publish({
+        isRunning: false,
+        sessionId: null,
+        startedAtMs: null,
+        alarmEnabled: alarmEnabled.value,
+        alarmMinutes: alarmMinutes.value,
+      });
+    }
+  }
+
+  function applyLocalState(state) {
+    const wasRunning = isRunning.value;
+
+    _applyingRemoteState = true;
+    try {
+      alarmEnabled.value = Boolean(state?.alarmEnabled);
+      alarmMinutes.value = Number(state?.alarmMinutes) || 30;
+
+      if (!state?.isRunning || !state?.startedAtMs) {
+        isRunning.value = false;
+        sessionId.value = null;
+        elapsedSeconds.value = 0;
+        _startedAtMs = 0;
+        alarmTriggered.value = false;
+        restNotifyVisible.value = false;
+        _stopTicker();
+
+        if (wasRunning) {
+          void loadStats();
+        }
+        return;
+      }
+
+      const startedAtMs = Number(state.startedAtMs);
+      const elapsed = Math.floor((Date.now() - startedAtMs) / 1000);
+      if (!Number.isFinite(startedAtMs) || elapsed < 0 || elapsed > 86400) {
+        clearInvalidLocalState();
+        isRunning.value = false;
+        sessionId.value = null;
+        elapsedSeconds.value = 0;
+        _startedAtMs = 0;
+        alarmTriggered.value = false;
+        restNotifyVisible.value = false;
+        _stopTicker();
+        return;
+      }
+
+      sessionId.value = state.sessionId || null;
+      _startedAtMs = startedAtMs;
+      elapsedSeconds.value = elapsed;
+      isRunning.value = true;
+      restNotifyVisible.value = false;
+      alarmTriggered.value = false;
+
+      if (alarmEnabled.value && alarmMinutes.value > 0 && elapsed >= alarmMinutes.value * 60) {
+        alarmTriggered.value = true;
+        _triggerRestAlarm();
+      }
+
+      _startTicker();
+    } finally {
+      _applyingRemoteState = false;
+    }
+  }
+
   /* ── 开始学习 ── */
   async function startTimer(note = '') {
     if (isRunning.value) return;
@@ -110,7 +211,7 @@ export function useStudyTimer() {
     elapsedSeconds.value = 0;
     alarmTriggered.value = false;
     _startTicker();
-    _saveLocal();
+    persistLocalState();
   }
 
   /* ── 停止学习 ── */
@@ -134,7 +235,8 @@ export function useStudyTimer() {
 
     sessionId.value = null;
     elapsedSeconds.value = 0;
-    _clearLocal();
+    _startedAtMs = 0;
+    persistLocalState();
 
     // 刷新统计
     await loadStats();
@@ -231,76 +333,40 @@ export function useStudyTimer() {
   async function _sendBrowserNotification() {
     if (!('Notification' in window)) return;
     if (Notification.permission === 'granted') {
-      new Notification('⏰ 该休息一下了！', { body: `已持续学习 ${alarmMinutes.value} 分钟，为眼睛和大脑休息片刻吧` });
+      new Notification('⏰ 该休息一下了！', {
+        body: `已持续学习 ${alarmMinutes.value} 分钟，为眼睛和大脑休息片刻吧`,
+      });
     } else if (Notification.permission !== 'denied') {
       const perm = await Notification.requestPermission();
       if (perm === 'granted') {
-        new Notification('⏰ 该休息一下了！', { body: `已持续学习 ${alarmMinutes.value} 分钟，为眼睛和大脑休息片刻吧` });
+        new Notification('⏰ 该休息一下了！', {
+          body: `已持续学习 ${alarmMinutes.value} 分钟，为眼睛和大脑休息片刻吧`,
+        });
       }
     }
-  }
-
-  /* ── localStorage 持久化 ── */
-  function _saveLocal() {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        isRunning: true,
-        sessionId: sessionId.value,
-        startedAtMs: _startedAtMs,
-        alarmEnabled: alarmEnabled.value,
-        alarmMinutes: alarmMinutes.value,
-      })
-    );
-  }
-
-  function _clearLocal() {
-    localStorage.removeItem(STORAGE_KEY);
   }
 
   function _restoreLocal() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
-      const s = JSON.parse(raw);
-      if (!s.isRunning || !s.startedAtMs) return;
-
-      const startedAtMs = Number(s.startedAtMs);
-      if (!Number.isFinite(startedAtMs)) {
-        _clearLocal();
-        return;
-      }
-
-      const elapsed = Math.floor((Date.now() - startedAtMs) / 1000);
-      if (elapsed < 0 || elapsed > 86400) {
-        // 超过 24h 的异常数据直接丢弃
-        _clearLocal();
-        return;
-      }
-
-      // 恢复运行状态
-      sessionId.value = s.sessionId || null;
-      _startedAtMs = startedAtMs;
-      elapsedSeconds.value = elapsed;
-      alarmEnabled.value = s.alarmEnabled ?? false;
-      alarmMinutes.value = Number(s.alarmMinutes) || 25;
-      isRunning.value = true;
-
-      // 若关闭期间恰好超时，立即触发
-      if (alarmEnabled.value && s.alarmMinutes && elapsed >= s.alarmMinutes * 60) {
-        alarmTriggered.value = true;
-        _triggerRestAlarm();
-      }
-
-      _startTicker();
+      applyLocalState(JSON.parse(raw));
     } catch {
       // 数据损坏静默忽略
     }
   }
 
+  watch([alarmEnabled, alarmMinutes], () => {
+    if (_applyingRemoteState) return;
+    persistLocalState();
+  });
+
   /* ── 生命周期 ── */
   onMounted(async () => {
     _restoreLocal();
+    _stopTimerSync = getStudyTimerSyncChannel().subscribe((state) => {
+      applyLocalState(state);
+    });
     await loadStats();
     _statsRefreshTimer = window.setInterval(_refreshStatsIfVisible, 60 * 1000);
     document.addEventListener('visibilitychange', _refreshStatsIfVisible);
@@ -315,6 +381,7 @@ export function useStudyTimer() {
     }
     document.removeEventListener('visibilitychange', _refreshStatsIfVisible);
     window.removeEventListener('focus', _refreshStatsIfVisible);
+    _stopTimerSync();
   });
 
   return {

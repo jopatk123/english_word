@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { notifyAdminSessionChanged, notifyUserSessionChanged } from '../utils/authSync.js';
 
 const createApiClient = (timeout, options = {}) => {
   const { tokenKey = 'token' } = options;
@@ -35,10 +36,12 @@ const handleError = (err) => {
   if (status === 401 && !isAuthEndpoint) {
     if (isAdminEndpoint) {
       localStorage.removeItem('adminToken');
+      notifyAdminSessionChanged({ type: 'expired' });
       window.location.href = '/super-admin';
     } else {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      notifyUserSessionChanged({ type: 'expired' });
       window.location.href = '/login';
     }
   }
@@ -58,7 +61,8 @@ export const getMe = () => api.get('/auth/me');
 // ========== 超级管理员 API ==========
 export const adminLogin = (data) => adminApi.post('/admin/login', data);
 export const getAdminUsers = (params) => adminApi.get('/admin/users', { params });
-export const updateAdminUserPassword = (id, data) => adminApi.put(`/admin/users/${id}/password`, data);
+export const updateAdminUserPassword = (id, data) =>
+  adminApi.put(`/admin/users/${id}/password`, data);
 export const setAdminUserDisabled = (id, disabled) =>
   adminApi.put(`/admin/users/${id}/status`, { disabled });
 
@@ -139,7 +143,9 @@ export const analyzeSentence = (sentence, config) =>
 // ========== 学习计时 API ==========
 export const startStudySession = (note = '') => api.post('/study-sessions/start', { note });
 export const endStudySession = (id) => api.post(`/study-sessions/${id}/end`);
-export const getStudySessionStats = () => api.get('/study-sessions/stats', { params: { tz: getUserTz() } });
-export const exportStudySessions = () => api.get('/study-sessions/export', { responseType: 'blob' });
+export const getStudySessionStats = () =>
+  api.get('/study-sessions/stats', { params: { tz: getUserTz() } });
+export const exportStudySessions = () =>
+  api.get('/study-sessions/export', { responseType: 'blob' });
 
 export default api;

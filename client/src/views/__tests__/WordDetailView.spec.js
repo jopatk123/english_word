@@ -15,6 +15,7 @@ const {
   elMessageBox,
   loadAiSettingsMock,
   isAiSettingsReadyMock,
+  subscribeAiSettingsChangesMock,
 } = vi.hoisted(() => ({
   getWordMock: vi.fn(),
   getExamplesMock: vi.fn(),
@@ -32,6 +33,7 @@ const {
   },
   loadAiSettingsMock: vi.fn(),
   isAiSettingsReadyMock: vi.fn(),
+  subscribeAiSettingsChangesMock: vi.fn(() => () => {}),
 }));
 
 vi.mock('vue-router', () => ({
@@ -55,6 +57,7 @@ vi.mock('element-plus', () => ({
 vi.mock('../../utils/aiSettings.js', () => ({
   loadAiSettings: (...args) => loadAiSettingsMock(...args),
   isAiSettingsReady: (...args) => isAiSettingsReadyMock(...args),
+  subscribeAiSettingsChanges: (...args) => subscribeAiSettingsChangesMock(...args),
 }));
 
 const flushPromises = async () => {
@@ -138,7 +141,9 @@ describe('WordDetailView', () => {
   it('重新生成时会排除当前已有例句并覆盖当前例句', async () => {
     getAiExampleSuggestionsMock.mockResolvedValue({
       data: {
-        items: [{ sentence: 'The market looks stable now.', translation: '现在市场看起来稳定了。' }],
+        items: [
+          { sentence: 'The market looks stable now.', translation: '现在市场看起来稳定了。' },
+        ],
       },
     });
 

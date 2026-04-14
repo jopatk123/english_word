@@ -119,7 +119,7 @@
 </template>
 
 <script setup>
-  import { ref, onMounted } from 'vue';
+  import { ref, onMounted, onUnmounted } from 'vue';
   import { useRoute } from 'vue-router';
   import { ElMessage, ElMessageBox } from 'element-plus';
   import {
@@ -131,7 +131,11 @@
     getAiExampleSuggestions,
   } from '../api/index.js';
   import SpeakButton from '../components/SpeakButton.vue';
-  import { isAiSettingsReady, loadAiSettings } from '../utils/aiSettings.js';
+  import {
+    isAiSettingsReady,
+    loadAiSettings,
+    subscribeAiSettingsChanges,
+  } from '../utils/aiSettings.js';
 
   const props = defineProps({ id: String });
   const route = useRoute();
@@ -147,8 +151,13 @@
   const saving = ref(false);
   const regeneratingExampleId = ref(null);
   const aiSettings = ref(loadAiSettings());
+  let stopAiSettingsSync = () => {};
 
   const wordId = props.id || route.params.id;
+
+  const syncAiSettings = () => {
+    aiSettings.value = loadAiSettings();
+  };
 
   const fetchWord = async () => {
     loading.value = true;
@@ -291,7 +300,12 @@
   };
 
   onMounted(() => {
+    stopAiSettingsSync = subscribeAiSettingsChanges(syncAiSettings);
     fetchWord();
     fetchExamples();
+  });
+
+  onUnmounted(() => {
+    stopAiSettingsSync();
   });
 </script>

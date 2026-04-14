@@ -3,6 +3,7 @@ import {
   addCustomModel,
   deleteCustomModel,
   deleteCustomProvider,
+  findAiProviderById,
   getAllModels,
   getAllProviders,
   getCustomModels,
@@ -12,6 +13,7 @@ import {
   maskApiKey,
   saveAiSettings,
   saveCustomProvider,
+  subscribeAiSettingsChanges,
 } from '../aiSettings.js';
 
 // ── localStorage mock ─────────────────────────────────────────
@@ -71,6 +73,13 @@ describe('getAllProviders (无自定义)', () => {
   it('包含 deepseek', () => {
     const providers = getAllProviders();
     expect(providers.some((p) => p.id === 'deepseek')).toBe(true);
+  });
+});
+
+describe('findAiProviderById', () => {
+  it('能找到自定义厂商', () => {
+    const provider = saveCustomProvider('My Provider', 'https://example.com/v1');
+    expect(findAiProviderById(provider.id)?.name).toBe('My Provider');
   });
 });
 
@@ -235,5 +244,43 @@ describe('loadProviderSettings', () => {
     const s = loadProviderSettings(p.id);
     expect(s.model).toBe('my-model');
     expect(s.apiKey).toBe('key-123456789');
+  });
+});
+
+describe('subscribeAiSettingsChanges', () => {
+  it('收到其他标签页的同步事件时会回调最新配置', () => {
+    const handler = vi.fn();
+    const unsubscribe = subscribeAiSettingsChanges(handler);
+
+    saveAiSettings({
+      providerId: 'openai',
+      providerType: 'openai-compatible',
+      baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-4o',
+      apiKey: 'sk-test-key-12345',
+    });
+
+    window.dispatchEvent(
+      new StorageEvent('storage', {
+        key: 'english-word:ai-settings:event',
+        newValue: JSON.stringify({
+          id: 'remote-event-1',
+          senderId: 'remote-tab',
+          sentAt: Date.now(),
+          payload: { updatedAt: Date.now() },
+        }),
+      })
+    );
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerId: 'openai',
+        model: 'gpt-4o',
+        apiKey: 'sk-test-key-12345',
+      })
+    );
+
+    unsubscribe();
   });
 });

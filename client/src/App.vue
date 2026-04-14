@@ -25,14 +25,16 @@
 </template>
 
 <script setup>
-  import { ref, watchEffect, computed, onUnmounted } from 'vue';
+  import { ref, watchEffect, computed, onMounted, onUnmounted } from 'vue';
   import { useRouter, useRoute } from 'vue-router';
   import AlarmClock from './components/AlarmClock.vue';
+  import { notifyUserSessionChanged, subscribeUserSessionChanges } from './utils/authSync.js';
 
   const router = useRouter();
   const route = useRoute();
   const isAdminRoute = computed(() => route.path.startsWith('/super-admin'));
   const user = ref(null);
+  let stopUserSessionSync = () => {};
 
   const now = ref(new Date());
   const timer = setInterval(() => {
@@ -51,21 +53,49 @@
     })
   );
 
-  watchEffect(() => {
-    // Re-evaluate on route change to pick up login/logout
-    void route.path;
+  const syncUserSession = () => {
     try {
       const raw = localStorage.getItem('user');
       user.value = raw ? JSON.parse(raw) : null;
     } catch {
       user.value = null;
     }
+  };
+
+  watchEffect(() => {
+    // Re-evaluate on route change to pick up login/logout
+    void route.path;
+    syncUserSession();
   });
+
+  const syncUserRoute = () => {
+    const hasToken = Boolean(localStorage.getItem('token'));
+    if (!hasToken && !route.meta.guest && !isAdminRoute.value) {
+      router.push('/login');
+      return;
+    }
+
+    if (hasToken && route.meta.guest) {
+      router.push('/');
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    notifyUserSessionChanged({ type: 'logout' });
     user.value = null;
     router.push('/login');
   };
+
+  onMounted(() => {
+    stopUserSessionSync = subscribeUserSessionChanges(() => {
+      syncUserSession();
+      syncUserRoute();
+    });
+  });
+
+  onUnmounted(() => {
+    stopUserSessionSync();
+  });
 </script>

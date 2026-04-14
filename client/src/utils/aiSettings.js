@@ -1,6 +1,17 @@
 import { AI_PROVIDERS, DEFAULT_PROVIDER_ID, getProviderById } from '../constants/aiProviders.js';
+import { createTabSyncChannel } from './tabSync.js';
 
 export const AI_SETTINGS_STORAGE_KEY = 'english-word-ai-settings';
+
+let aiSettingsSyncChannel;
+
+const getAiSettingsSyncChannel = () => {
+  if (!aiSettingsSyncChannel) {
+    aiSettingsSyncChannel = createTabSyncChannel('ai-settings');
+  }
+
+  return aiSettingsSyncChannel;
+};
 
 /**
  * 创建默认的单个提供者配置
@@ -58,6 +69,7 @@ const getAllAiSettings = () => {
  */
 const saveAllAiSettings = (allSettings) => {
   localStorage.setItem(AI_SETTINGS_STORAGE_KEY, JSON.stringify(allSettings));
+  getAiSettingsSyncChannel().publish({ updatedAt: Date.now() });
 };
 
 // ── 自定义厂商 / 模型 公开读取函数（写操作在文件末尾）────────────────────────
@@ -74,6 +86,9 @@ export const getCustomProviders = () => {
  * 返回内置厂商 + 自定义厂商的合并列表
  */
 export const getAllProviders = () => [...AI_PROVIDERS, ...getCustomProviders()];
+
+export const findAiProviderById = (providerId) =>
+  getAllProviders().find((provider) => provider.id === providerId) || getProviderById(providerId);
 
 /**
  * 返回某厂商的自定义模型列表
@@ -236,6 +251,11 @@ export const isAiSettingsReady = (settings) =>
     settings?.model &&
     settings?.apiKey
   );
+
+export const subscribeAiSettingsChanges = (handler) =>
+  getAiSettingsSyncChannel().subscribe(() => {
+    handler(loadAiSettings());
+  });
 
 // ── 自定义厂商 写操作 ──────────────────────────────────────────────────────────
 

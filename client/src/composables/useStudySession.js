@@ -3,8 +3,19 @@ import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { getReviewDue, submitReviewResult } from '../api/index.js';
 import { useSpeech } from '../utils/speech.js';
+import { createTabSyncChannel } from '../utils/tabSync.js';
 import { useChoiceMode } from './useChoiceMode.js';
 import { useSpellingMode } from './useSpellingMode.js';
+
+let studySessionSyncChannel;
+
+const getStudySessionSyncChannel = () => {
+  if (!studySessionSyncChannel) {
+    studySessionSyncChannel = createTabSyncChannel('study-session');
+  }
+
+  return studySessionSyncChannel;
+};
 
 export function seekToStudyCard({
   targetIndex,
@@ -46,6 +57,7 @@ export function seekToStudyCard({
 
 export function useStudySession() {
   const route = useRoute();
+  let stopSessionSync = () => {};
 
   const loading = ref(true);
   const queue = ref([]);
@@ -67,6 +79,10 @@ export function useStudySession() {
   const modeNames = { flashcard: '闪卡', choice: '选择题', spelling: '拼写', listening: '听力' };
 
   const { speak } = useSpeech();
+
+  const getScope = () => (typeof route.query.scope === 'string' ? route.query.scope : '');
+
+  const getQueueIds = () => queue.value.map((record) => record.wordId).join(',');
 
   const currentCard = computed(() => {
     if (currentIndex.value < queue.value.length) {
@@ -139,6 +155,12 @@ export function useStudySession() {
     studyMode.value = mode;
     modeSelected.value = true;
     localStorage.setItem('study-mode', mode);
+    getStudySessionSyncChannel().publish({
+      type: 'mode',
+      mode,
+      scope: getScope(),
+      queueIds: getQueueIds(),
+    });
     if (mode === 'choice') {
       // 将队列中所有单词传给选择题模式，用于本地生成干扰项
       choice.setQueueWords(queue.value.map((r) => r.word));
@@ -200,6 +222,7 @@ export function useStudySession() {
       choice.setQueueWords(queue.value.map((r) => r.word));
       choice.loadChoices();
     }
+    saveProgress();
   };
 
   const dismissResume = () => {
@@ -248,20 +271,79 @@ export function useStudySession() {
 
   // 保存进度
   const saveProgress = () => {
-    const scope = typeof route.query.scope === 'string' ? route.query.scope : '';
     const data = {
       index: currentIndex.value,
       stats: sessionStats.value,
       againMap: againCountMap.value,
       mode: studyMode.value,
-      scope,
-      queueIds: queue.value.map((r) => r.wordId).join(','),
+      scope: getScope(),
+      queueIds: getQueueIds(),
     };
     localStorage.setItem('study-session-progress', JSON.stringify(data));
+    getStudySessionSyncChannel().publish({ type: 'progress', data });
   };
 
   const clearProgress = () => {
     localStorage.removeItem('study-session-progress');
+    getStudySessionSyncChannel().publish({
+      type: 'cleared',
+      scope: getScope(),
+      queueIds: getQueueIds(),
+    });
+  };
+
+  const applyRemoteProgress = (progress) => {
+    if (!progress || progress.queueIds !== getQueueIds() || progress.scope !== getScope()) {
+      return;
+    }
+
+    studyMode.value = progress.mode || studyMode.value;
+    modeSelected.value = Boolean(progress.mode || modeSelected.value);
+    sessionStats.value = progress.stats || { total: 0, again: 0, hard: 0, good: 0, easy: 0 };
+    againCountMap.value = progress.againMap || {};
+    currentIndex.value = Math.min(
+      Math.max(Number.isFinite(progress.index) ? progress.index : 0, 0),
+      Math.max(queue.value.length - 1, 0)
+    );
+    finished.value = queue.value.length > 0 && progress.index >= queue.value.length;
+    showAnswer.value = false;
+    choice.resetChoice();
+    spelling.resetSpelling();
+
+    if (studyMode.value === 'choice') {
+      choice.setQueueWords(queue.value.map((record) => record.word));
+      choice.loadChoices();
+    }
+  };
+
+  const handleStudySessionSync = (event) => {
+    if (!event) return;
+
+    if (event.type === 'mode') {
+      if (event.queueIds !== getQueueIds() || event.scope !== getScope()) return;
+
+      studyMode.value = event.mode || studyMode.value;
+      modeSelected.value = Boolean(event.mode || modeSelected.value);
+
+      if (studyMode.value === 'choice') {
+        choice.setQueueWords(queue.value.map((record) => record.word));
+        choice.loadChoices();
+      }
+      return;
+    }
+
+    if (event.type === 'progress') {
+      applyRemoteProgress(event.data);
+      return;
+    }
+
+    if (
+      event.type === 'cleared' &&
+      event.queueIds === getQueueIds() &&
+      event.scope === getScope()
+    ) {
+      resumeInfo.value = null;
+    }
   };
 
   const flipCard = () => {
@@ -336,9 +418,7 @@ export function useStudySession() {
     // 选择题模式（无文本输入框，不受 inInput 影响）
     if (studyMode.value === 'choice') {
       if (!choice.choiceAnswered.value) {
-        const idx = { a: 0, '1': 0, b: 1, '2': 1, c: 2, '3': 2, d: 3, '4': 3 }[
-          e.key.toLowerCase()
-        ];
+        const idx = { a: 0, 1: 0, b: 1, 2: 1, c: 2, 3: 2, d: 3, 4: 3 }[e.key.toLowerCase()];
         if (idx !== undefined && idx < choice.choiceOptions.value.length) {
           e.preventDefault();
           choice.handleChoice(idx);
@@ -376,10 +456,12 @@ export function useStudySession() {
 
   onMounted(() => {
     fetchDue();
+    stopSessionSync = getStudySessionSyncChannel().subscribe(handleStudySessionSync);
     window.addEventListener('keydown', handleKeyDown);
   });
 
   onUnmounted(() => {
+    stopSessionSync();
     window.removeEventListener('keydown', handleKeyDown);
   });
 

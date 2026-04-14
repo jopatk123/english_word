@@ -91,6 +91,7 @@
 </template>
 
 <script setup>
+  import { notifyUserSessionChanged } from '../utils/authSync.js';
   import { ref } from 'vue';
   import { useRouter } from 'vue-router';
   import { login, register } from '../api/index.js';
@@ -145,6 +146,7 @@
         const res = await login({ username, password });
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('user', JSON.stringify(res.data.user));
+        notifyUserSessionChanged({ type: 'login' });
         showMsg('登录成功', 'success');
         router.push('/');
       } catch (e) {
@@ -164,6 +166,7 @@
         const res = await register({ username, password });
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('user', JSON.stringify(res.data.user));
+        notifyUserSessionChanged({ type: 'register' });
         showMsg('注册成功', 'success');
         router.push('/');
       } catch (e) {
