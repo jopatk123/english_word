@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { Op } from 'sequelize';
 import { StudySession } from '../models/index.js';
 import { success, error } from '../utils/response.js';
-import { todayStart, tomorrowStart } from '../utils/srs.js';
+import { todayStart, tomorrowStart, dateStrAt, addDays, startOfDay } from '../utils/srs.js';
 import {
   closeOtherActiveStudySessions,
   findActiveStudySession,
@@ -152,6 +152,112 @@ export function createStudySessionsRouter(options = {}) {
       }));
 
       success(res, { totalSeconds, todaySeconds, recentSessions });
+    } catch (e) {
+      error(res, e.message);
+    }
+  });
+
+  /**
+   * GET /study-sessions/report
+   * 学习时间报表：总时长 + 近 7/30 天 + 连续打卡天数 + 日粒度桶 + 最近 10 条记录
+   *
+   * @query {number} days  日粒度桶范围，接受 7/30/90，默认 30，超出范围自动截断
+   * @query {string} tz    IANA 时区名，如 'Asia/Shanghai'
+   */
+  router.get('/report', async (req, res) => {
+    try {
+      const userId = req.userId;
+      const tz = req.query.tz;
+      // 将 days 限制在 [7, 90] 区间，防止超大查询
+      const days = Math.min(Math.max(parseInt(req.query.days) || 30, 7), 90);
+
+      // 拉取所有已完成会话（按时间正序，便于逐条遍历）
+      const allSessions = await StudySession.findAll({
+        where: { userId, endedAt: { [Op.ne]: null } },
+        attributes: ['id', 'startedAt', 'endedAt', 'durationSeconds', 'note'],
+        order: [['startedAt', 'ASC']],
+      });
+
+      // ── 全量汇总 ──────────────────────────────────────────────────────────
+      const totalSeconds = allSessions.reduce((sum, s) => sum + (s.durationSeconds || 0), 0);
+      const totalSessions = allSessions.length;
+      const avgSessionSeconds =
+        totalSessions > 0 ? Math.round(totalSeconds / totalSessions) : 0;
+
+      // ── 固定窗口（7 天 / 30 天），与 days 参数无关 ──────────────────────
+      const todayWindowStart = todayStart(tz);
+      const tomorrowWindowStart = tomorrowStart(tz);
+      const todayDateStr = dateStrAt(todayWindowStart, tz);
+
+      const sevenDayWindowStart = startOfDay(addDays(todayDateStr, -6), tz);
+      const thirtyDayWindowStart = startOfDay(addDays(todayDateStr, -29), tz);
+
+      const sevenDaySeconds = allSessions.reduce(
+        (sum, s) =>
+          sum + getOverlapSeconds(s.startedAt, s.endedAt, sevenDayWindowStart, tomorrowWindowStart),
+        0
+      );
+      const thirtyDaySeconds = allSessions.reduce(
+        (sum, s) =>
+          sum +
+          getOverlapSeconds(s.startedAt, s.endedAt, thirtyDayWindowStart, tomorrowWindowStart),
+        0
+      );
+
+      // ── 日粒度桶（按 days 参数决定覆盖范围） ────────────────────────────
+      const startDateStr = addDays(todayDateStr, -(days - 1));
+      const dailyBuckets = Array.from({ length: days }, (_, i) => {
+        const bucketDateStr = addDays(startDateStr, i);
+        const bucketDayStart = startOfDay(bucketDateStr, tz);
+        const bucketDayEnd = startOfDay(addDays(bucketDateStr, 1), tz);
+        const seconds = allSessions.reduce(
+          (sum, s) => sum + getOverlapSeconds(s.startedAt, s.endedAt, bucketDayStart, bucketDayEnd),
+          0
+        );
+        return { date: bucketDateStr, seconds };
+      });
+
+      // ── 日均（仅统计活跃天，排除未学习的天） ────────────────────────────
+      const activeDaysInRange = dailyBuckets.filter((b) => b.seconds > 0).length;
+      const rangeSeconds = dailyBuckets.reduce((sum, b) => sum + b.seconds, 0);
+      const avgDailySeconds =
+        activeDaysInRange > 0 ? Math.round(rangeSeconds / activeDaysInRange) : 0;
+
+      // ── 连续学习天数（从今日起逆序检查，最多回溯 365 天） ────────────────
+      const studiedDateSet = new Set(
+        allSessions.map((s) => dateStrAt(new Date(s.startedAt), tz))
+      );
+      let streakDays = 0;
+      let checkStr = todayDateStr;
+      while (streakDays < 365 && studiedDateSet.has(checkStr)) {
+        streakDays++;
+        checkStr = addDays(checkStr, -1);
+      }
+
+      // ── 最近 10 条记录（时间倒序，方便前端直接渲染） ─────────────────────
+      const recentSessions = [...allSessions]
+        .reverse()
+        .slice(0, 10)
+        .map((s) => ({
+          id: s.id,
+          startedAt: s.startedAt,
+          endedAt: s.endedAt,
+          durationSeconds: s.durationSeconds,
+          note: s.note || null,
+        }));
+
+      success(res, {
+        totalSeconds,
+        sevenDaySeconds,
+        thirtyDaySeconds,
+        streakDays,
+        totalSessions,
+        avgSessionSeconds,
+        avgDailySeconds,
+        activeDaysInRange,
+        dailyBuckets,
+        recentSessions,
+      });
     } catch (e) {
       error(res, e.message);
     }

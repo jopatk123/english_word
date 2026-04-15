@@ -63,10 +63,35 @@
   color: #e6a23c;
   text-shadow: 0 2px 4px rgba(230, 162, 60, 0.2);
 }
-.total-icon {
+/* 累计时长 */
+.time-total-icon {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  color: #7c3aed;
+  text-shadow: 0 2px 4px rgba(124, 58, 237, 0.2);
+}
+/* 近 7 天 */
+.time-7d-icon {
   background: linear-gradient(135deg, #ecf5ff 0%, #d9ecff 100%);
   color: #409eff;
   text-shadow: 0 2px 4px rgba(64, 158, 255, 0.2);
+}
+/* 近 30 天 */
+.time-30d-icon {
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  color: #4f6ef7;
+  text-shadow: 0 2px 4px rgba(79, 110, 247, 0.2);
+}
+/* 学习次数 */
+.sessions-icon {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  color: #16a34a;
+  text-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);
+}
+/* 单次平均 */
+.avg-session-icon {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  color: #d97706;
+  text-shadow: 0 2px 4px rgba(217, 119, 6, 0.2);
 }
 .avg-icon {
   background: linear-gradient(135deg, #f0f9eb 0%, #e1f3d8 100%);
@@ -156,6 +181,42 @@
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 }
 
+/* ========== 次要统计卡片 ========== */
+.report-secondary {
+  margin-bottom: 24px;
+}
+
+.secondary-card {
+  background: #fafafa !important;
+}
+
+.secondary-card .el-card__body {
+  padding: 16px 20px !important;
+  gap: 14px !important;
+}
+
+.secondary-value {
+  font-size: 22px !important;
+}
+
+.card-title-hint {
+  font-size: 12px;
+  color: #c0c4cc;
+  font-weight: normal;
+  margin-left: 2px;
+}
+
+/* ========== 最近学习记录 ========== */
+.recent-card {
+  margin-bottom: 24px;
+  border-radius: 12px;
+  border: 1px solid #ebeef5;
+}
+
+.session-note-empty {
+  color: #c0c4cc;
+}
+
 /* ========== 响应式 - 报表 ========== */
 @media (max-width: 992px) {
   .charts-row .el-col {
@@ -164,7 +225,8 @@
 }
 
 @media (max-width: 768px) {
-  .report-summary .el-col {
+  .report-summary .el-col,
+  .report-secondary .el-col {
     margin-bottom: 16px;
   }
 

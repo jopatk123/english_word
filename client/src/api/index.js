@@ -146,6 +146,8 @@ export const endStudySession = (id) => api.post(`/study-sessions/${id}/end`);
 export const getStudyTimerState = () => api.get('/study-sessions/current');
 export const getStudySessionStats = () =>
   api.get('/study-sessions/stats', { params: { tz: getUserTz() } });
+export const getStudyTimeReport = (days = 30) =>
+  api.get('/study-sessions/report', { params: { days, tz: getUserTz() } });
 export const exportStudySessions = () =>
   api.get('/study-sessions/export', { responseType: 'blob' });
 
