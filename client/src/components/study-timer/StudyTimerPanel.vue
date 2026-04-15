@@ -17,8 +17,12 @@
 
     <!-- 开始 / 停止 按钮 -->
     <div class="stp-actions">
-      <button v-if="!isRunning" class="stp-btn-start" @click="emit('start')">▶ 开始学习</button>
-      <button v-else class="stp-btn-stop" @click="emit('stop')">■ 停止计时</button>
+      <button v-if="!isRunning" class="stp-btn-start" :disabled="actionPending" @click="emit('start')">
+        {{ actionPending ? '处理中...' : '▶ 开始学习' }}
+      </button>
+      <button v-else class="stp-btn-stop" :disabled="actionPending" @click="emit('stop')">
+        {{ actionPending ? '处理中...' : '■ 停止计时' }}
+      </button>
     </div>
 
     <!-- 休息提醒设置（仅未开始时可调整） -->
@@ -28,7 +32,7 @@
           <input
             type="checkbox"
             v-model="alarmEnabledModel"
-            :disabled="isRunning"
+            :disabled="isRunning || actionPending"
             class="stp-checkbox"
           />
           <span>学习 {{ alarmMinutesModel }} 分钟后提醒休息</span>
@@ -42,6 +46,7 @@
             :key="p"
             class="stp-preset"
             :class="{ active: alarmMinutesModel === p }"
+            :disabled="actionPending"
             @click="alarmMinutesModel = p"
           >
             {{ p }}分钟
@@ -81,6 +86,7 @@
     todaySeconds: { type: Number, default: 0 },
     totalSeconds: { type: Number, default: 0 },
     savedTotalSeconds: { type: Number, default: 0 },
+    actionPending: Boolean,
   });
 
   const emit = defineEmits([
@@ -190,6 +196,13 @@
   }
   .stp-btn-start:hover {
     opacity: 0.9;
+  }
+
+  .stp-btn-start:disabled,
+  .stp-btn-stop:disabled,
+  .stp-preset:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
   }
 
   .stp-btn-stop {

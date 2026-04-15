@@ -3,8 +3,11 @@ import { Op } from 'sequelize';
 import { StudySession } from '../models/index.js';
 import { success, error } from '../utils/response.js';
 import { todayStart, tomorrowStart } from '../utils/srs.js';
-
-const router = Router();
+import {
+  closeOtherActiveStudySessions,
+  findActiveStudySession,
+  getStudyTimerState,
+} from '../services/study-timer-state.js';
 
 function getOverlapSeconds(start, end, windowStart, windowEnd) {
   const startMs = new Date(start).getTime();
@@ -21,133 +24,172 @@ function getOverlapSeconds(start, end, windowStart, windowEnd) {
   return Math.floor((overlapEnd - overlapStart) / 1000);
 }
 
-/**
- * POST /study-sessions/start
- * 开始一次学习计时，创建进行中的会话记录
- */
-router.post('/start', async (req, res) => {
-  try {
-    // 先结束同一用户未关闭的会话（异常情况兜底）
-    await StudySession.update(
-      {
-        endedAt: new Date(),
-        durationSeconds: 0,
-      },
-      {
-        where: {
-          userId: req.userId,
-          endedAt: null,
-        },
+export function createStudySessionsRouter(options = {}) {
+  const router = Router();
+  const publishTimerState = options.publishTimerState || (async () => {});
+
+  /**
+   * GET /study-sessions/current
+   * 返回当前服务端权威计时状态
+   */
+  router.get('/current', async (req, res) => {
+    try {
+      success(res, await getStudyTimerState(req.userId));
+    } catch (e) {
+      error(res, e.message);
+    }
+  });
+
+  /**
+   * POST /study-sessions/start
+   * 开始一次学习计时；若已存在进行中的会话，则直接返回当前权威状态
+   */
+  router.post('/start', async (req, res) => {
+    try {
+      const activeSession = await findActiveStudySession(req.userId);
+      if (activeSession) {
+        await closeOtherActiveStudySessions(req.userId, activeSession.id);
+        return success(
+          res,
+          await getStudyTimerState(req.userId, {
+            activeSession,
+            lastSession: activeSession,
+          })
+        );
       }
-    );
 
-    const { note } = req.body;
-    const session = await StudySession.create({
-      userId: req.userId,
-      startedAt: new Date(),
-      note: note || null,
-    });
+      const { note } = req.body;
+      const session = await StudySession.create({
+        userId: req.userId,
+        startedAt: new Date(),
+        note: note || null,
+      });
 
-    success(res, { id: session.id, startedAt: session.startedAt });
-  } catch (e) {
-    error(res, e.message);
-  }
-});
+      const state = await getStudyTimerState(req.userId, {
+        activeSession: session,
+        lastSession: session,
+      });
+      await publishTimerState(req.userId);
+      return success(res, state);
+    } catch (e) {
+      return error(res, e.message);
+    }
+  });
 
-/**
- * POST /study-sessions/:id/end
- * 结束一次学习计时，写入时长
- */
-router.post('/:id/end', async (req, res) => {
-  try {
-    const session = await StudySession.findOne({
-      where: { id: req.params.id, userId: req.userId },
-    });
-    if (!session) return error(res, '记录不存在', 404);
-    if (session.endedAt) return error(res, '该记录已结束', 400);
+  /**
+   * POST /study-sessions/:id/end
+   * 结束一次学习计时；若当前活跃会话已变化，则返回当前权威状态并保持幂等
+   */
+  router.post('/:id/end', async (req, res) => {
+    try {
+      const activeSession = await findActiveStudySession(req.userId);
+      if (!activeSession) {
+        return success(res, await getStudyTimerState(req.userId));
+      }
 
-    const endedAt = new Date();
-    const durationSeconds = Math.floor((endedAt - session.startedAt) / 1000);
+      await closeOtherActiveStudySessions(req.userId, activeSession.id);
 
-    await session.update({ endedAt, durationSeconds });
-    success(res, { id: session.id, durationSeconds });
-  } catch (e) {
-    error(res, e.message);
-  }
-});
+      if (String(activeSession.id) !== String(req.params.id)) {
+        return success(
+          res,
+          await getStudyTimerState(req.userId, {
+            activeSession,
+            lastSession: activeSession,
+          })
+        );
+      }
 
-/**
- * GET /study-sessions/stats
- * 返回总学习时长 + 今日时长 + 最近 N 条记录
- */
-router.get('/stats', async (req, res) => {
-  try {
-    const userId = req.userId;
-    const tz = req.query.tz;
+      const endedAt = new Date();
+      const durationSeconds = Math.max(
+        0,
+        Math.floor((endedAt.getTime() - new Date(activeSession.startedAt).getTime()) / 1000)
+      );
 
-    // 总时长（所有已完成的会话）
-    const allSessions = await StudySession.findAll({
-      where: { userId, endedAt: { [Op.ne]: null } },
-      attributes: ['durationSeconds', 'startedAt', 'endedAt'],
-      order: [['startedAt', 'DESC']],
-    });
+      await activeSession.update({ endedAt, durationSeconds });
 
-    const totalSeconds = allSessions.reduce((sum, s) => sum + (s.durationSeconds || 0), 0);
+      const state = await getStudyTimerState(req.userId);
+      await publishTimerState(req.userId);
+      return success(res, state);
+    } catch (e) {
+      return error(res, e.message);
+    }
+  });
 
-    // 今日时长（按用户时区统计会话与今日时间窗的重叠部分）
-    const todayWindowStart = todayStart(tz);
-    const tomorrowWindowStart = tomorrowStart(tz);
-    const todaySeconds = allSessions.reduce(
-      (sum, s) =>
-        sum + getOverlapSeconds(s.startedAt, s.endedAt, todayWindowStart, tomorrowWindowStart),
-      0
-    );
+  /**
+   * GET /study-sessions/stats
+   * 返回总学习时长 + 今日时长 + 最近 N 条记录
+   */
+  router.get('/stats', async (req, res) => {
+    try {
+      const userId = req.userId;
+      const tz = req.query.tz;
 
-    // 最近 30 条
-    const recentSessions = allSessions.slice(0, 30).map((s) => ({
-      id: s.id,
-      startedAt: s.startedAt,
-      endedAt: s.endedAt,
-      durationSeconds: s.durationSeconds,
-      note: s.note,
-    }));
+      // 总时长（所有已完成的会话）
+      const allSessions = await StudySession.findAll({
+        where: { userId, endedAt: { [Op.ne]: null } },
+        attributes: ['id', 'durationSeconds', 'startedAt', 'endedAt', 'note'],
+        order: [['startedAt', 'DESC']],
+      });
 
-    success(res, { totalSeconds, todaySeconds, recentSessions });
-  } catch (e) {
-    error(res, e.message);
-  }
-});
+      const totalSeconds = allSessions.reduce((sum, s) => sum + (s.durationSeconds || 0), 0);
 
-/**
- * GET /study-sessions/export
- * 导出全部学习记录（JSON 附件）
- */
-router.get('/export', async (req, res) => {
-  try {
-    const sessions = await StudySession.findAll({
-      where: { userId: req.userId, endedAt: { [Op.ne]: null } },
-      attributes: ['id', 'startedAt', 'endedAt', 'durationSeconds', 'note', 'created_at'],
-      order: [['startedAt', 'DESC']],
-    });
+      // 今日时长（按用户时区统计会话与今日时间窗的重叠部分）
+      const todayWindowStart = todayStart(tz);
+      const tomorrowWindowStart = tomorrowStart(tz);
+      const todaySeconds = allSessions.reduce(
+        (sum, s) =>
+          sum + getOverlapSeconds(s.startedAt, s.endedAt, todayWindowStart, tomorrowWindowStart),
+        0
+      );
 
-    const data = {
-      exportedAt: new Date().toISOString(),
-      sessions: sessions.map((s) => ({
+      // 最近 30 条
+      const recentSessions = allSessions.slice(0, 30).map((s) => ({
         id: s.id,
         startedAt: s.startedAt,
         endedAt: s.endedAt,
         durationSeconds: s.durationSeconds,
-        durationMinutes: Math.round(s.durationSeconds / 60),
-        note: s.note || '',
-      })),
-    };
+        note: s.note,
+      }));
 
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename=study-sessions.json');
-    res.json(data);
-  } catch (e) {
-    error(res, e.message);
-  }
-});
+      success(res, { totalSeconds, todaySeconds, recentSessions });
+    } catch (e) {
+      error(res, e.message);
+    }
+  });
 
-export default router;
+  /**
+   * GET /study-sessions/export
+   * 导出全部学习记录（JSON 附件）
+   */
+  router.get('/export', async (req, res) => {
+    try {
+      const sessions = await StudySession.findAll({
+        where: { userId: req.userId, endedAt: { [Op.ne]: null } },
+        attributes: ['id', 'startedAt', 'endedAt', 'durationSeconds', 'note', 'created_at'],
+        order: [['startedAt', 'DESC']],
+      });
+
+      const data = {
+        exportedAt: new Date().toISOString(),
+        sessions: sessions.map((s) => ({
+          id: s.id,
+          startedAt: s.startedAt,
+          endedAt: s.endedAt,
+          durationSeconds: s.durationSeconds,
+          durationMinutes: Math.round(s.durationSeconds / 60),
+          note: s.note || '',
+        })),
+      };
+
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename=study-sessions.json');
+      res.json(data);
+    } catch (e) {
+      error(res, e.message);
+    }
+  });
+
+  return router;
+}
+
+export default createStudySessionsRouter();

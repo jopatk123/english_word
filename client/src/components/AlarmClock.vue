@@ -25,6 +25,7 @@
           :today-seconds="todaySeconds"
           :total-seconds="totalSeconds"
           :saved-total-seconds="savedTotalSeconds"
+          :action-pending="actionPending"
           @start="handleStart"
           @stop="handleStop"
           @close="panelVisible = false"
@@ -65,6 +66,7 @@
     totalSeconds,
     savedTotalSeconds,
     restNotifyVisible,
+    actionPending,
     startTimer,
     stopTimer,
     dismissRestAlarm,

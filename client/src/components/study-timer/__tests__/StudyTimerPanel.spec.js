@@ -12,6 +12,7 @@ describe('StudyTimerPanel', () => {
       props: {
         isRunning: false,
         alarmEnabled: true,
+        actionPending: false,
         todaySeconds: 0,
         totalSeconds: 0,
         savedTotalSeconds: 0,
@@ -43,5 +44,13 @@ describe('StudyTimerPanel', () => {
     await wrapper.findAll('.stp-preset')[2].trigger('click');
 
     expect(wrapper.emitted('update:alarmMinutes')?.[0]).toEqual([45]);
+  });
+
+  it('处理中时禁用开始按钮，避免重复提交', () => {
+    const wrapper = createWrapper({ actionPending: true });
+    const startButton = wrapper.find('.stp-btn-start');
+
+    expect(startButton.attributes('disabled')).toBeDefined();
+    expect(startButton.text()).toContain('处理中');
   });
 });

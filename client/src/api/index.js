@@ -143,9 +143,20 @@ export const analyzeSentence = (sentence, config) =>
 // ========== 学习计时 API ==========
 export const startStudySession = (note = '') => api.post('/study-sessions/start', { note });
 export const endStudySession = (id) => api.post(`/study-sessions/${id}/end`);
+export const getStudyTimerState = () => api.get('/study-sessions/current');
 export const getStudySessionStats = () =>
   api.get('/study-sessions/stats', { params: { tz: getUserTz() } });
 export const exportStudySessions = () =>
   api.get('/study-sessions/export', { responseType: 'blob' });
+
+export const createStudyTimerSocket = () => {
+  const token = localStorage.getItem('token');
+  if (!token) return null;
+
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = new URL('/ws/study-timer', `${protocol}//${window.location.host}`);
+  url.searchParams.set('token', token);
+  return new WebSocket(url.toString());
+};
 
 export default api;
