@@ -3,7 +3,6 @@
   <div v-else class="app-container">
     <el-header class="app-header">
       <div class="header-content" @click="$router.push('/')">
-        <h1 class="app-title">📖 词根背单词</h1>
       </div>
       <div class="header-clock">{{ formattedTime }}</div>
       <div v-if="user" class="header-nav">

@@ -7,6 +7,10 @@ const routeMock = { params: { id: '1' } };
 const {
   getWordMock,
   getExamplesMock,
+  getRootsMock,
+  createWordMock,
+  updateWordMock,
+  deleteWordMock,
   createExampleMock,
   updateExampleMock,
   deleteExampleMock,
@@ -19,6 +23,10 @@ const {
 } = vi.hoisted(() => ({
   getWordMock: vi.fn(),
   getExamplesMock: vi.fn(),
+  getRootsMock: vi.fn(),
+  createWordMock: vi.fn(),
+  updateWordMock: vi.fn(),
+  deleteWordMock: vi.fn(),
   createExampleMock: vi.fn(),
   updateExampleMock: vi.fn(),
   deleteExampleMock: vi.fn(),
@@ -36,13 +44,20 @@ const {
   subscribeAiSettingsChangesMock: vi.fn(() => () => {}),
 }));
 
+const routerMock = { push: vi.fn() };
+
 vi.mock('vue-router', () => ({
   useRoute: () => routeMock,
+  useRouter: () => routerMock,
 }));
 
 vi.mock('../../api/index.js', () => ({
   getWord: (...args) => getWordMock(...args),
   getExamples: (...args) => getExamplesMock(...args),
+  getRoots: (...args) => getRootsMock(...args),
+  createWord: (...args) => createWordMock(...args),
+  updateWord: (...args) => updateWordMock(...args),
+  deleteWord: (...args) => deleteWordMock(...args),
   createExample: (...args) => createExampleMock(...args),
   updateExample: (...args) => updateExampleMock(...args),
   deleteExample: (...args) => deleteExampleMock(...args),
@@ -76,6 +91,23 @@ const globalStubs = {
   'el-form': { template: '<form><slot /></form>' },
   'el-form-item': { template: '<div><slot /></div>' },
   'el-input': { template: '<input />' },
+  'el-select': {
+    props: ['modelValue', 'loading', 'placeholder', 'filterable', 'clearable', 'noDataText'],
+    emits: ['update:modelValue'],
+    template: `
+      <select
+        class="el-select"
+        :value="modelValue"
+        @change="$emit('update:modelValue', $event.target.value ? Number($event.target.value) : null)"
+      >
+        <slot />
+      </select>
+    `,
+  },
+  'el-option': {
+    props: ['label', 'value'],
+    template: '<option class="el-option" :value="value">{{ label }}</option>',
+  },
   'el-button': {
     props: ['disabled', 'loading', 'type', 'link'],
     emits: ['click'],
@@ -90,6 +122,8 @@ const baseWord = {
   id: 1,
   name: 'stable',
   meaning: '稳定的',
+  phonetic: '/ˈsteɪbəl/',
+  remark: '词根测试',
   roots: [{ id: 7, name: 'sta', meaning: '站立' }],
 };
 
@@ -101,9 +135,18 @@ const baseExamples = [
 async function createWrapper() {
   getWordMock.mockResolvedValue({ data: baseWord });
   getExamplesMock.mockResolvedValue({ data: baseExamples });
+  getRootsMock.mockResolvedValue({
+    data: [
+      { id: 7, name: 'sta', meaning: '站立' },
+      { id: 8, name: 'termin', meaning: '结束' },
+    ],
+  });
   loadAiSettingsMock.mockReturnValue({ providerId: 'openai', model: 'gpt-test' });
   isAiSettingsReadyMock.mockReturnValue(true);
   updateExampleMock.mockResolvedValue({});
+  updateWordMock.mockResolvedValue({});
+  deleteWordMock.mockResolvedValue({});
+  createWordMock.mockResolvedValue({ msg: '添加成功' });
 
   const wrapper = mount(WordDetailView, {
     props: { id: '1' },
@@ -206,5 +249,64 @@ describe('WordDetailView', () => {
       translation: '她的情况很稳定。',
       remark: '保留备注',
     });
+  });
+
+  it('可以把当前单词添加到已有词根中', async () => {
+    const wrapper = await createWrapper();
+    wrapper.vm.setWordForTest(baseWord);
+    wrapper.vm.setSelectedRootIdForTest(8);
+    await wrapper.vm.handleAddRoot();
+    await flushPromises();
+
+    expect(createWordMock).toHaveBeenCalledWith({
+      name: 'stable',
+      meaning: '稳定的',
+      phonetic: '/ˈsteɪbəl/',
+      remark: '词根测试',
+      rootId: 8,
+    });
+    expect(getWordMock).toHaveBeenCalledTimes(2);
+    expect(elMessage.success).toHaveBeenCalledWith('添加成功');
+  });
+
+  it('删除多个词根中的一个时只更新剩余关联', async () => {
+    const wrapper = await createWrapper();
+    wrapper.vm.setWordForTest({
+      ...baseWord,
+      roots: [
+        { id: 7, name: 'sta', meaning: '站立' },
+        { id: 8, name: 'termin', meaning: '结束' },
+      ],
+    });
+    wrapper.vm.setSelectedDeleteRootIdForTest(8);
+    await wrapper.vm.handleDeleteRoot();
+
+    expect(elMessageBox.confirm).toHaveBeenCalled();
+    expect(updateWordMock).toHaveBeenCalledWith('1', {
+      name: 'stable',
+      meaning: '稳定的',
+      phonetic: '/ˈsteɪbəl/',
+      remark: '词根测试',
+      rootIds: [7],
+    });
+    expect(deleteWordMock).not.toHaveBeenCalled();
+    expect(getWordMock).toHaveBeenCalledTimes(2);
+    expect(elMessage.success).toHaveBeenCalledWith('删除成功');
+  });
+
+  it('删除最后一个词根时会同步删除单词和例句', async () => {
+    const wrapper = await createWrapper();
+    wrapper.vm.setWordForTest({
+      ...baseWord,
+      roots: [{ id: 7, name: 'sta', meaning: '站立' }],
+    });
+    wrapper.vm.setSelectedDeleteRootIdForTest(7);
+    await wrapper.vm.handleDeleteRoot();
+
+    expect(elMessageBox.confirm).toHaveBeenCalled();
+    expect(deleteWordMock).toHaveBeenCalledWith('1');
+    expect(updateWordMock).not.toHaveBeenCalled();
+    expect(routerMock.push).toHaveBeenCalledWith('/');
+    expect(elMessage.success).toHaveBeenCalledWith('删除成功，单词和例句已同步删除');
   });
 });

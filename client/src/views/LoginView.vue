@@ -1,7 +1,7 @@
 <template>
   <div class="login-view">
     <div class="login-card">
-      <h2 class="login-title">📖 词根背单词</h2>
+      <h2 class="login-title">📖 背单词</h2>
       <el-tabs v-model="activeTab" class="login-tabs">
         <el-tab-pane label="登录" name="login">
           <el-form
