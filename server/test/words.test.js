@@ -124,6 +124,16 @@ describe('GET /words/', () => {
     expect(res.body.data.some((w) => w.name.includes('kwsearch'))).toBe(true);
   });
 
+  it('keyword 也能按单词含义搜索', async () => {
+    const wordName = `meaningword_${suf()}`;
+    await request(app)
+      .post('/words/')
+      .send({ name: wordName, meaning: '中文单词含义命中测试', rootIds: [rootId] });
+    const res = await request(app).get('/words/?keyword=中文单词含义');
+    expect(res.status).toBe(200);
+    expect(res.body.data.some((w) => w.name === wordName)).toBe(true);
+  });
+
   it('rootId 过滤只返回该词根下的单词', async () => {
     const res = await request(app).get(`/words/?rootId=${rootId}`);
     expect(res.status).toBe(200);

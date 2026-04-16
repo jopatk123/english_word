@@ -4,18 +4,18 @@
     <div class="search-section">
       <el-input
         v-model="searchKeyword"
-        placeholder="搜索词根或单词..."
+        placeholder="搜索词根、单词或含义..."
         clearable
         size="large"
         @input="onSearch"
-        @keyup.enter="goToSearch"
+        @keyup.enter="triggerSearch"
         class="search-input"
       >
         <template #prefix>
           <el-icon><Search /></el-icon>
         </template>
         <template #append>
-          <el-button @click="goToSearch">搜索</el-button>
+          <el-button @click="triggerSearch">搜索</el-button>
         </template>
       </el-input>
     </div>
@@ -127,7 +127,7 @@
 </template>
 
 <script setup>
-  import { ref, onMounted } from 'vue';
+  import { ref, onMounted, onUnmounted } from 'vue';
   import { useRouter } from 'vue-router';
   import { Search } from '@element-plus/icons-vue';
   import { ElMessage, ElMessageBox } from 'element-plus';
@@ -171,18 +171,28 @@
     }
   };
 
+  const performSearch = async (keyword) => {
+    if (!keyword) {
+      roots.value = [];
+      wordResults.value = [];
+      return;
+    }
+
+    await Promise.all([fetchRoots(keyword), searchWords(keyword)]);
+  };
+
   const onSearch = () => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
-      fetchRoots(searchKeyword.value);
-      searchWords(searchKeyword.value);
+      void performSearch(searchKeyword.value);
     }, 300);
   };
 
-  const goToSearch = () => {
+  const triggerSearch = () => {
     const kw = searchKeyword.value.trim();
     if (!kw) return;
-    router.push({ path: '/search', query: { q: kw } });
+    clearTimeout(searchTimer);
+    void performSearch(kw);
   };
 
   const router = useRouter();
@@ -260,4 +270,8 @@
   };
 
   onMounted(() => fetchRoots());
+
+  onUnmounted(() => {
+    clearTimeout(searchTimer);
+  });
 </script>

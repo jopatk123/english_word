@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { Op } from 'sequelize';
 import { Root, Word, WordRoot, Example, WordReview, ReviewHistory } from '../models/index.js';
 import { success, error } from '../utils/response.js';
 import { ensureDefaultRoot } from '../utils/defaultRoot.js';
+import { buildKeywordSearch } from '../utils/search.js';
 
 const router = Router();
 
@@ -26,8 +26,10 @@ router.get('/default', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { keyword } = req.query;
-    const where = { userId: req.userId };
-    if (keyword) where.name = { [Op.like]: `%${keyword}%` };
+    const where = {
+      userId: req.userId,
+      ...buildKeywordSearch(keyword, ['name', 'meaning']),
+    };
     const roots = await Root.findAll({
       where,
       include: [

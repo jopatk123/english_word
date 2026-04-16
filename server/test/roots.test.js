@@ -60,6 +60,17 @@ describe('GET /roots/', () => {
     expect(res.body.data.length).toBeGreaterThan(0);
     expect(res.body.data[0].name).toContain('grep_unique');
   });
+
+  it('keyword 也能按核心含义搜索', async () => {
+    const root = await Root.create({
+      name: `meaning_root_${suffix()}`,
+      meaning: '中文含义命中测试',
+      userId,
+    });
+    const res = await request(app).get('/roots/?keyword=中文含义命中');
+    expect(res.status).toBe(200);
+    expect(res.body.data.some((item) => item.id === root.id)).toBe(true);
+  });
 });
 
 // ─── GET /roots/default ───────────────────────────────────────

@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { Op } from 'sequelize';
 import { Word, Root, WordRoot, Example } from '../models/index.js';
 import { success, successList, error } from '../utils/response.js';
 import { ensureDefaultRoot } from '../utils/defaultRoot.js';
+import { buildKeywordSearch } from '../utils/search.js';
 
 const router = Router();
 
@@ -13,8 +13,10 @@ router.get('/', async (req, res) => {
     const limit = parseInt(req.query.limit) || 0;
     const offset = parseInt(req.query.offset) || 0;
 
-    const where = { userId: req.userId };
-    if (keyword) where.name = { [Op.like]: `%${keyword}%` };
+    const where = {
+      userId: req.userId,
+      ...buildKeywordSearch(keyword, ['name', 'meaning']),
+    };
 
     const rootInclude = {
       model: Root,
