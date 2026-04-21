@@ -24,14 +24,15 @@
 </template>
 
 <script setup>
-  import { ref, watchEffect, computed, onMounted, onUnmounted } from 'vue';
+  import { ref, computed, onMounted, onUnmounted } from 'vue';
   import { useRouter, useRoute } from 'vue-router';
   import AlarmClock from './components/AlarmClock.vue';
   import { notifyUserSessionChanged, subscribeUserSessionChanges } from './utils/authSync.js';
+  import { getAuthRedirectPath, isAdminRoutePath } from './utils/authRouteAccess.js';
 
   const router = useRouter();
   const route = useRoute();
-  const isAdminRoute = computed(() => route.path.startsWith('/super-admin'));
+  const isAdminRoute = computed(() => isAdminRoutePath(route.path));
   const user = ref(null);
   let stopUserSessionSync = () => {};
 
@@ -64,21 +65,10 @@
     }
   };
 
-  watchEffect(() => {
-    // Re-evaluate on route change to pick up login/logout
-    void route.path;
-    syncUserSession();
-  });
-
   const syncUserRoute = () => {
-    const hasToken = Boolean(localStorage.getItem('token'));
-    if (!hasToken && !route.meta.guest && !isAdminRoute.value) {
-      router.push('/login');
-      return;
-    }
-
-    if (hasToken && route.meta.guest) {
-      router.push('/');
+    const redirectPath = getAuthRedirectPath(route, localStorage.getItem('token'));
+    if (redirectPath) {
+      router.push(redirectPath);
     }
   };
 
@@ -91,6 +81,7 @@
   };
 
   onMounted(() => {
+    syncUserSession();
     stopUserSessionSync = subscribeUserSessionChanges(() => {
       syncUserSession();
       syncUserRoute();

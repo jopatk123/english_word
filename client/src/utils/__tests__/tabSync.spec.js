@@ -5,9 +5,30 @@ import { createTabSyncChannel } from '../tabSync.js';
 const openChannels = [];
 const originalBroadcastChannel = globalThis.BroadcastChannel;
 
+const createLocalStorageMock = () => {
+  const store = new Map();
+
+  return {
+    get length() {
+      return store.size;
+    },
+    clear: vi.fn(() => {
+      store.clear();
+    }),
+    getItem: vi.fn((key) => (store.has(key) ? store.get(key) : null)),
+    setItem: vi.fn((key, value) => {
+      store.set(String(key), String(value));
+    }),
+    removeItem: vi.fn((key) => {
+      store.delete(String(key));
+    }),
+    key: vi.fn((index) => Array.from(store.keys())[index] ?? null),
+  };
+};
+
 describe('createTabSyncChannel', () => {
   beforeEach(() => {
-    localStorage.clear();
+    vi.stubGlobal('localStorage', createLocalStorageMock());
   });
 
   afterEach(() => {
@@ -20,6 +41,8 @@ describe('createTabSyncChannel', () => {
     } else {
       globalThis.BroadcastChannel = originalBroadcastChannel;
     }
+
+    vi.unstubAllGlobals();
   });
 
   it('能接收来自其他标签页的 storage 同步事件', () => {

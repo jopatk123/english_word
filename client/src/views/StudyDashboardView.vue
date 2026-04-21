@@ -221,7 +221,6 @@
         scope: null,
         count: 0,
         badge: '先建词库',
-        title: '还没有复习提醒',
         detail: '添加词根和单词后，系统会自动安排下一次复习',
         actionText: '去添加词根',
       };
@@ -233,7 +232,6 @@
         scope: 'due',
         count: due,
         badge: overdue > 0 ? '优先处理' : '今天就复习',
-        title: overdue > 0 ? '先处理超期词' : '今天安排复习',
         detail:
           overdue > 0
             ? `超期 ${overdue} 个 · 今日到期 ${todayDue} 个`
@@ -247,7 +245,6 @@
       scope: 'continue',
       count: total,
       badge: '节奏稳定',
-      title: '下一次复习建议',
       detail: '今天没有待完成任务，可以继续复习全部单词巩固记忆',
       actionText: `继续复习（${total} 个）`,
     };
@@ -286,13 +283,6 @@
 
   const refreshStatsForCurrentDay = () => {
     lastStatsDate = getLocalDateKey();
-    fetchStats();
-  };
-
-  const refreshStatsIfDateChanged = () => {
-    const currentDate = getLocalDateKey();
-    if (currentDate === lastStatsDate) return;
-    lastStatsDate = currentDate;
     fetchStats();
   };
 

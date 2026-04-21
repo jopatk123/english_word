@@ -21,7 +21,7 @@
 import { exportStudySessions } from '../../api/index.js';
 import { ElMessage } from 'element-plus';
 
-const props = defineProps({
+defineProps({
   todaySeconds: { type: Number, default: 0 },
   totalSeconds: { type: Number, default: 0 },
   savedTotalSeconds: { type: Number, default: 0 },

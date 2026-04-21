@@ -12,6 +12,7 @@ import StudyDashboardView from '../views/StudyDashboardView.vue';
 import StudySessionView from '../views/StudySessionView.vue';
 import StudyReportView from '../views/StudyReportView.vue';
 import AdminView from '../views/AdminView.vue';
+import { getAuthRedirectPath } from '../utils/authRouteAccess.js';
 
 const routes = [
   { path: '/login', name: 'Login', component: LoginView, meta: { guest: true } },
@@ -46,14 +47,14 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token');
-  const isAdminPage = to.path.startsWith('/super-admin');
-  if (!token && !to.meta.guest && !isAdminPage) {
-    next('/login');
-  } else if (token && to.meta.guest) {
-    next('/');
-  } else {
-    next();
+  const redirectPath = getAuthRedirectPath(to, token);
+
+  if (redirectPath) {
+    next(redirectPath);
+    return;
   }
+
+  next();
 });
 
 export default router;
