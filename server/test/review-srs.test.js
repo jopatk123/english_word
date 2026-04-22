@@ -75,10 +75,16 @@ describe('SRS 算法 getNextReview（当前版本）', () => {
     expect(result.easeFactor).toBeCloseTo(2.65, 5);
   });
 
-  it('interval >= 21 天时 status 为 known', () => {
-    const result = getNextReview(4, 15, 2.5, 'review');
+  it('复习次数足够且间隔 >= 21 天时 status 为 known', () => {
+    const result = getNextReview(4, 15, 2.5, 'review', 2);
     expect(result.status).toBe('known');
     expect(result.interval).toBeGreaterThanOrEqual(21);
+  });
+
+  it('quality=2(hard) 即使间隔很长也保持 review', () => {
+    const result = getNextReview(2, 30, 2.5, 'review', 10);
+    expect(result.interval).toBe(Math.ceil(30 * 1.2));
+    expect(result.status).toBe('review');
   });
 
   it('interval 不超过 MAX_INTERVAL=365', () => {

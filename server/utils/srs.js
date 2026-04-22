@@ -9,6 +9,7 @@ export const REVIEW_STATUS = Object.freeze({
 });
 
 export const KNOWN_STATUS_THRESHOLD = 21;
+export const KNOWN_REVIEW_COUNT_THRESHOLD = 3;
 
 const SHORT_LEARNING_STEPS = Object.freeze({
   NEW_HARD: 10,
@@ -19,7 +20,7 @@ const SHORT_LEARNING_STEPS = Object.freeze({
   LEARNING_EASY: 2 * MINUTES_PER_DAY,
 });
 
-export function getNextReview(quality, currentInterval, easeFactor, currentStatus) {
+export function getNextReview(quality, currentInterval, easeFactor, currentStatus, reviewCount = 0) {
   const isNew =
     currentStatus === REVIEW_STATUS.NEW ||
     (currentStatus === undefined && currentInterval < 1);
@@ -96,6 +97,7 @@ export function getNextReview(quality, currentInterval, easeFactor, currentStatu
   // review / known 阶段 —— 正式间隔复习
   let newInterval;
   let newEase;
+  const completedReviews = Math.max(0, Math.trunc(Number(reviewCount) || 0)) + 1;
 
   if (quality === 1) {
     // 忘了，打回学习阶段
@@ -117,7 +119,13 @@ export function getNextReview(quality, currentInterval, easeFactor, currentStatu
   }
 
   newInterval = Math.min(newInterval, MAX_INTERVAL);
-  const status = newInterval >= KNOWN_STATUS_THRESHOLD ? REVIEW_STATUS.KNOWN : REVIEW_STATUS.REVIEW;
+  // 已掌握需要“足够多次成功复习 + 足够长的间隔”，避免单次长间隔误判。
+  const status =
+    quality >= 3 &&
+    completedReviews >= KNOWN_REVIEW_COUNT_THRESHOLD &&
+    newInterval >= KNOWN_STATUS_THRESHOLD
+      ? REVIEW_STATUS.KNOWN
+      : REVIEW_STATUS.REVIEW;
   return {
     interval: newInterval,
     delayMinutes: newInterval * MINUTES_PER_DAY,

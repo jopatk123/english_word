@@ -70,7 +70,8 @@ router.post('/:wordId/result', async (req, res) => {
       quality,
       review.interval,
       review.easeFactor,
-      review.status
+      review.status,
+      review.reviewCount
     );
     const { dueAt, dueDate } = buildDueSchedule(delayMinutes, req.body.tz);
 

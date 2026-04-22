@@ -70,10 +70,16 @@ describe('srs.js 工具模块', () => {
       expect(r.interval).toBe(MAX_INTERVAL);
     });
 
-    it('interval >= 21 时 status=known', () => {
-      const r = getNextReview(3, 10, 2.5, 'review');
-      expect(r.interval).toBe(25);
+    it('复习次数足够且间隔 >= 21 天时 status=known', () => {
+      const r = getNextReview(4, 15, 2.5, 'review', 2);
+      expect(r.interval).toBeGreaterThanOrEqual(21);
       expect(r.status).toBe('known');
+    });
+
+    it('quality=2(hard) 即使间隔很长也不会直接升 known', () => {
+      const r = getNextReview(2, 30, 2.5, 'review', 10);
+      expect(r.interval).toBe(Math.ceil(30 * 1.2));
+      expect(r.status).toBe('review');
     });
 
     it('interval < 21 且 quality > 1 时 status=review', () => {

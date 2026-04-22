@@ -473,6 +473,30 @@ describe('POST /review/:wordId/result', () => {
     }
   });
 
+  it('quality=4 但复习次数不足时不会直接升为 known', async () => {
+    const promotedWord = await Word.create({
+      name: `promoted_${suf()}`,
+      meaning: '长间隔但次数不足',
+      userId,
+    });
+    await WordRoot.create({ wordId: promotedWord.id, rootId });
+    await WordReview.create({
+      userId,
+      wordId: promotedWord.id,
+      status: 'review',
+      interval: 30,
+      easeFactor: 2.5,
+      dueDate: '2099-01-11',
+      reviewCount: 0,
+    });
+
+    const res = await request(app).post(`/review/${promotedWord.id}/result`).send({ quality: 4 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('review');
+    expect(res.body.data.reviewCount).toBe(1);
+  });
+
   it('quality 超出范围返回 400', async () => {
     const res = await request(app).post(`/review/${wordId}/result`).send({ quality: 5 });
     expect(res.status).toBe(400);
