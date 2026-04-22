@@ -18,6 +18,11 @@ const getStudySessionSyncChannel = () => {
   return studySessionSyncChannel;
 };
 
+const refreshChoiceState = (choice, queue) => {
+  choice.setQueueWords(queue.value.map((record) => record.word));
+  choice.loadChoices();
+};
+
 export function seekToStudyCard({
   targetIndex,
   queue,
@@ -239,9 +244,7 @@ export function useStudySession() {
       queueIds: getQueueIds(),
     });
     if (mode === 'choice') {
-      // 将队列中所有单词传给选择题模式，用于本地生成干扰项
-      choice.setQueueWords(queue.value.map((r) => r.word));
-      choice.loadChoices();
+      refreshChoiceState(choice, queue);
     }
   };
 
@@ -297,8 +300,7 @@ export function useStudySession() {
     studyMode.value = progress.mode || 'flashcard';
     modeSelected.value = true;
     if (studyMode.value === 'choice') {
-      choice.setQueueWords(queue.value.map((r) => r.word));
-      choice.loadChoices();
+      refreshChoiceState(choice, queue);
     }
     saveProgress();
   };
@@ -391,8 +393,7 @@ export function useStudySession() {
     spelling.resetSpelling();
 
     if (studyMode.value === 'choice') {
-      choice.setQueueWords(queue.value.map((record) => record.word));
-      choice.loadChoices();
+      refreshChoiceState(choice, queue);
     }
   };
 
@@ -406,8 +407,7 @@ export function useStudySession() {
       modeSelected.value = Boolean(event.mode || modeSelected.value);
 
       if (studyMode.value === 'choice') {
-        choice.setQueueWords(queue.value.map((record) => record.word));
-        choice.loadChoices();
+        refreshChoiceState(choice, queue);
       }
       return;
     }

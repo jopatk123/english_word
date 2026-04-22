@@ -17,30 +17,15 @@
     </div>
     <h2>选择学习模式</h2>
     <div class="mode-options">
-      <div class="mode-card" @click="$emit('select', 'flashcard')">
-        <div class="mode-icon">📇</div>
-        <div class="mode-name">闪卡模式</div>
-        <div class="mode-desc">翻牌查看释义，自评掌握程度</div>
-      </div>
-      <div class="mode-card" @click="$emit('select', 'choice')">
-        <div class="mode-icon">📝</div>
-        <div class="mode-name">选择题</div>
-        <div class="mode-desc">看单词选释义，四选一</div>
-      </div>
-      <div class="mode-card" @click="$emit('select', 'spelling')">
-        <div class="mode-icon">✏️</div>
-        <div class="mode-name">拼写模式</div>
-        <div class="mode-desc">看释义拼单词，练习拼写</div>
-      </div>
-      <div class="mode-card" @click="$emit('select', 'listening')">
-        <div class="mode-icon">🎧</div>
-        <div class="mode-name">听力模式</div>
-        <div class="mode-desc">听发音拼单词，锻炼听力</div>
-      </div>
-      <div class="mode-card" @click="$emit('select', 'autoRead')">
-        <div class="mode-icon">🔊</div>
-        <div class="mode-name">自动朗读</div>
-        <div class="mode-desc">单词读 2 次，例句读 1 次，不记录熟练度</div>
+      <div
+        v-for="mode in modeCards"
+        :key="mode.key"
+        class="mode-card"
+        @click="$emit('select', mode.key)"
+      >
+        <div class="mode-icon">{{ mode.icon }}</div>
+        <div class="mode-name">{{ mode.name }}</div>
+        <div class="mode-desc">{{ mode.desc }}</div>
       </div>
     </div>
     <div class="mode-count">共 {{ queueLength }} 个单词待复习</div>
@@ -48,6 +33,14 @@
 </template>
 
 <script setup>
+  const modeCards = [
+    { key: 'flashcard', icon: '📇', name: '闪卡模式', desc: '翻牌查看释义，自评掌握程度' },
+    { key: 'choice', icon: '📝', name: '选择题', desc: '看单词选释义，四选一' },
+    { key: 'spelling', icon: '✏️', name: '拼写模式', desc: '看释义拼单词，练习拼写' },
+    { key: 'listening', icon: '🎧', name: '听力模式', desc: '听发音拼单词，锻炼听力' },
+    { key: 'autoRead', icon: '🔊', name: '自动朗读', desc: '单词读 2 次，例句读 1 次，不记录熟练度' },
+  ];
+
   defineProps({
     queueLength: { type: Number, required: true },
     resumeInfo: { type: Object, default: null },

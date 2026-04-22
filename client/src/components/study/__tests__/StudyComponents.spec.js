@@ -91,10 +91,16 @@ describe('ModeSelect', () => {
     expect(wrapper.emitted('select')[0]).toEqual(['listening']);
   });
 
-  it('显示所有四种学习模式', () => {
+  it('显示所有五种学习模式', () => {
     const wrapper = createWrapper();
     const cards = wrapper.findAll('.mode-card');
-    expect(cards).toHaveLength(4);
+    expect(cards).toHaveLength(5);
+  });
+
+  it('点击自动朗读触发 select autoRead', async () => {
+    const wrapper = createWrapper();
+    await wrapper.findAll('.mode-card')[4].trigger('click');
+    expect(wrapper.emitted('select')[0]).toEqual(['autoRead']);
   });
 
   it('断点续学显示 resume 和 dismiss 按钮', async () => {
