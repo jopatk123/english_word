@@ -100,22 +100,36 @@ router.post('/data/import', async (req, res) => {
       rootNameToId.set(r.name, r.id);
     }
 
+    // 找到已有的默认词根（每用户只有一条）
+    const existingDefaultRoot = existingRoots.find((r) => r.isDefault) || null;
+
     for (const rootData of data.roots) {
       if (!rootData.name || !rootData.meaning) continue;
-      if (!rootNameToId.has(rootData.name)) {
-        const newRoot = await Root.create(
-          {
-            name: rootData.name,
-            meaning: rootData.meaning,
-            remark: rootData.remark || null,
-            userId: req.userId,
-            isDefault: rootData.isDefault || false,
-          },
-          { transaction: t }
-        );
-        rootNameToId.set(rootData.name, newRoot.id);
-        stats.rootsAdded++;
+
+      // 名称已存在，跳过创建
+      if (rootNameToId.has(rootData.name)) continue;
+
+      // 导入数据携带 isDefault=true 时，绝不创建第二条默认词根；
+      // 将该名称映射到用户已有的默认词根（若存在），否则忽略。
+      if (rootData.isDefault) {
+        if (existingDefaultRoot) {
+          rootNameToId.set(rootData.name, existingDefaultRoot.id);
+        }
+        continue;
       }
+
+      const newRoot = await Root.create(
+        {
+          name: rootData.name,
+          meaning: rootData.meaning,
+          remark: rootData.remark || null,
+          userId: req.userId,
+          isDefault: false, // 导入时强制为 false，避免意外创建第二默认词根
+        },
+        { transaction: t }
+      );
+      rootNameToId.set(rootData.name, newRoot.id);
+      stats.rootsAdded++;
     }
 
     // 步骤2：处理单词

@@ -169,3 +169,40 @@ describe('isReplay 模式', () => {
     expect(sessionStats.value.total).toBe(1);
   });
 });
+
+// ── 提交失败回滚 ──────────────────────────────────────────────────
+
+describe('handleChoice 提交失败时状态回滚', () => {
+  beforeEach(() => {
+    mockSpeak.mockReset();
+    mockSubmitReviewResult.mockReset();
+  });
+
+  it('提交失败后 choiceAnswered=false，choiceSelected=-1，卡片可重新作答', async () => {
+    mockSubmitReviewResult.mockRejectedValue(new Error('网络错误'));
+    const { mode, sessionStats } = makeSetup();
+    await mode.handleChoice(0);
+
+    expect(mode.choiceAnswered.value).toBe(false);
+    expect(mode.choiceSelected.value).toBe(-1);
+    // 统计不应累加
+    expect(sessionStats.value.total).toBe(0);
+    expect(sessionStats.value.good).toBe(0);
+  });
+
+  it('提交失败后可再次作答并成功提交', async () => {
+    // 第一次失败
+    mockSubmitReviewResult.mockRejectedValueOnce(new Error('网络错误'));
+    // 第二次成功
+    mockSubmitReviewResult.mockResolvedValueOnce({});
+
+    const { mode, sessionStats } = makeSetup();
+    await mode.handleChoice(0); // 失败
+    expect(mode.choiceAnswered.value).toBe(false);
+
+    await mode.handleChoice(0); // 重试成功
+    expect(mode.choiceAnswered.value).toBe(true);
+    expect(sessionStats.value.total).toBe(1);
+    expect(sessionStats.value.good).toBe(1);
+  });
+});

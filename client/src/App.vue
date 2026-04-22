@@ -24,7 +24,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted, onUnmounted } from 'vue';
+  import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
   import { useRouter, useRoute } from 'vue-router';
   import AlarmClock from './components/AlarmClock.vue';
   import { notifyUserSessionChanged, subscribeUserSessionChanges } from './utils/authSync.js';
@@ -37,13 +37,26 @@
   let stopUserSessionSync = () => {};
 
   const now = ref(new Date());
-  const timer = setInterval(() => {
-    now.value = new Date();
-  }, 1000);
+  let timer = null;
 
-  onUnmounted(() => {
-    clearInterval(timer);
-  });
+  const startClock = () => {
+    if (timer !== null) return;
+    timer = setInterval(() => {
+      now.value = new Date();
+    }, 1000);
+  };
+
+  const stopClock = () => {
+    if (timer !== null) {
+      clearInterval(timer);
+      timer = null;
+    }
+  };
+
+  // 管理员路由不显示带时钟的 header，不需要持续计时
+  watch(isAdminRoute, (isAdmin) => (isAdmin ? stopClock() : startClock()), { immediate: true });
+
+  onUnmounted(stopClock);
 
   const formattedTime = computed(() =>
     now.value.toLocaleString('en-US', {

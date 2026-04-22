@@ -23,7 +23,8 @@ const buildApp = () => {
 let app;
 let adminToken;
 let targetUser;
-const adminPassword = process.env.ADMIN_PASSWORD?.trim() || 'asd123123123';
+// 与 vitest.config.js 中注入的 ADMIN_PASSWORD 保持一致
+const adminPassword = process.env.ADMIN_PASSWORD?.trim() || 'test-admin-password';
 const suffix = () => Date.now() + Math.random().toString(36).slice(2, 6);
 
 beforeAll(async () => {
@@ -125,5 +126,26 @@ describe('PUT /api/admin/users/:id/status', () => {
       .post('/api/auth/login')
       .send({ username: targetUser.username, password: 'newpass123' });
     expect(restoredLogin.status).toBe(200);
+  });
+});
+
+// ── getAdminPassword 环境变量行为 ──────────────────────────────
+
+import { getAdminPassword } from '../utils/env.js';
+
+describe('getAdminPassword', () => {
+  it('ADMIN_PASSWORD 已配置时返回配置值', () => {
+    const original = process.env.ADMIN_PASSWORD;
+    process.env.ADMIN_PASSWORD = 'custom-secure-pass';
+    expect(getAdminPassword()).toBe('custom-secure-pass');
+    process.env.ADMIN_PASSWORD = original;
+  });
+
+  it('NODE_ENV=test 时未配置也不抛出（返回测试占位密码）', () => {
+    const original = process.env.ADMIN_PASSWORD;
+    delete process.env.ADMIN_PASSWORD;
+    // vitest 运行时 NODE_ENV 为 "test"，应返回内置占位密码而非抛出
+    expect(() => getAdminPassword()).not.toThrow();
+    process.env.ADMIN_PASSWORD = original;
   });
 });

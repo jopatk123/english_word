@@ -110,6 +110,80 @@ describe('validateAiConfig', () => {
 });
 
 // ================================================================
+// validateAiConfig — SSRF 防护
+// ================================================================
+
+describe('validateAiConfig SSRF 防护', () => {
+  const base = {
+    apiKey: 'sk-test12345678',
+    model: 'gpt-4o',
+    providerId: 'openai',
+    providerType: 'openai-compatible',
+    temperature: 0.2,
+  };
+
+  it('公网 HTTPS URL 正常通过', () => {
+    expect(() => validateAiConfig({ ...base, baseUrl: 'https://api.openai.com/v1' })).not.toThrow();
+  });
+
+  it('公网 HTTP URL 正常通过', () => {
+    expect(() => validateAiConfig({ ...base, baseUrl: 'http://api.example.com/v1' })).not.toThrow();
+  });
+
+  it('localhost 被拒绝', () => {
+    expect(() => validateAiConfig({ ...base, baseUrl: 'http://localhost:11434/api' })).toThrow(
+      '不允许指向本地或私有网络'
+    );
+  });
+
+  it('127.0.0.1 被拒绝', () => {
+    expect(() => validateAiConfig({ ...base, baseUrl: 'http://127.0.0.1:8080/v1' })).toThrow(
+      '不允许指向本地或私有网络'
+    );
+  });
+
+  it('192.168.x.x 私有网络被拒绝', () => {
+    expect(() => validateAiConfig({ ...base, baseUrl: 'http://192.168.1.100/api' })).toThrow(
+      '不允许指向本地或私有网络'
+    );
+  });
+
+  it('10.x.x.x 私有网络被拒绝', () => {
+    expect(() => validateAiConfig({ ...base, baseUrl: 'http://10.0.0.1/api' })).toThrow(
+      '不允许指向本地或私有网络'
+    );
+  });
+
+  it('172.16-31 私有网络被拒绝', () => {
+    expect(() => validateAiConfig({ ...base, baseUrl: 'http://172.16.0.1/api' })).toThrow(
+      '不允许指向本地或私有网络'
+    );
+  });
+
+  it('AWS 元数据端点 169.254.169.254 被拒绝', () => {
+    expect(() =>
+      validateAiConfig({ ...base, baseUrl: 'http://169.254.169.254/latest/meta-data' })
+    ).toThrow('不允许指向本地或私有网络');
+  });
+
+  it('IPv6 环回地址 ::1 被拒绝', () => {
+    expect(() => validateAiConfig({ ...base, baseUrl: 'http://[::1]:8080/api' })).toThrow(
+      '不允许指向本地或私有网络'
+    );
+  });
+
+  it('无效 URL 格式被拒绝', () => {
+    expect(() => validateAiConfig({ ...base, baseUrl: 'not-a-url' })).toThrow('格式无效');
+  });
+
+  it('非 http/https 协议被拒绝', () => {
+    expect(() => validateAiConfig({ ...base, baseUrl: 'ftp://api.example.com/v1' })).toThrow(
+      '仅支持 http 或 https 协议'
+    );
+  });
+});
+
+// ================================================================
 // sanitizeRootSuggestions
 // ================================================================
 

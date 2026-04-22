@@ -42,7 +42,9 @@ export function createStudySessionsRouter(options = {}) {
 
   /**
    * POST /study-sessions/start
-   * 开始一次学习计时；若已存在进行中的会话，则直接返回当前权威状态
+   * 开始一次学习计时；若已存在进行中的会话，则直接返回当前权威状态。
+   * 使用数据库唯一部分索引（idx_study_sessions_active）防止并发重复创建；
+   * 捕获唯一约束冲突并幂等回退到已有会话。
    */
   router.post('/start', async (req, res) => {
     try {
@@ -59,11 +61,27 @@ export function createStudySessionsRouter(options = {}) {
       }
 
       const { note } = req.body;
-      const session = await StudySession.create({
-        userId: req.userId,
-        startedAt: new Date(),
-        note: note || null,
-      });
+      let session;
+      try {
+        session = await StudySession.create({
+          userId: req.userId,
+          startedAt: new Date(),
+          note: note || null,
+        });
+      } catch (createErr) {
+        // 并发请求触发唯一约束冲突时（两个请求都通过了上面的 findActive 检查），
+        // 幂等地返回已有的活跃会话状态。
+        if (createErr?.name === 'SequelizeUniqueConstraintError') {
+          const existing = await findActiveStudySession(req.userId);
+          if (existing) {
+            return success(
+              res,
+              await getStudyTimerState(req.userId, { activeSession: existing, lastSession: existing })
+            );
+          }
+        }
+        throw createErr;
+      }
 
       const state = await getStudyTimerState(req.userId, {
         activeSession: session,

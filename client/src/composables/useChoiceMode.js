@@ -28,6 +28,8 @@ export function useChoiceMode({ currentCard, sessionStats, handleAgain, advanceC
   const choiceOptions = ref([]);
   const choiceSelected = ref(-1);
   const choiceAnswered = ref(false);
+  // 防止网络慢时用户重复点击触发二次提交
+  let _submitting = false;
 
   // 缓存所有队列单词用于本地生成干扰项
   let queueWords = [];
@@ -69,29 +71,36 @@ export function useChoiceMode({ currentCard, sessionStats, handleAgain, advanceC
   };
 
   const handleChoice = async (idx) => {
-    if (!currentCard.value) return;
+    if (!currentCard.value || choiceAnswered.value || _submitting) return;
 
     const wordId = currentCard.value.wordId;
     const wordName = currentCard.value.word.name;
     const selectedOption = choiceOptions.value[idx];
     if (!selectedOption) return;
 
-    choiceSelected.value = idx;
-    choiceAnswered.value = true;
     const correct = selectedOption.id === wordId;
     const quality = correct ? 3 : 1;
     const qualityMap = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy' };
-    // 答题后自动朗读当前单词
+    // 立即显示选中高亮（视觉反馈），但不锁卡片
+    choiceSelected.value = idx;
     speak(wordName);
+
+    _submitting = true;
     try {
       if (!isReplay?.value) {
         await submitReviewResult(wordId, quality);
       }
+      // 提交成功后才锁定卡片并更新统计
+      choiceAnswered.value = true;
       sessionStats.value.total++;
       sessionStats.value[qualityMap[quality]]++;
       if (quality === 1) handleAgain(wordId);
     } catch {
-      ElMessage.error('提交结果失败');
+      ElMessage.error('提交结果失败，请重试');
+      // 回滚选中状态，使卡片恢复可作答
+      choiceSelected.value = -1;
+    } finally {
+      _submitting = false;
     }
   };
 

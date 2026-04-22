@@ -68,6 +68,8 @@ export function useSpellingMode({
   const spellingCorrect = ref(false);
   const spellingHard = ref(false); // 接近正确（编辑距离小，但不完全相同）
   const spellingHintLevel = ref(0);
+  // 防止网络慢时用户重复提交
+  let _submitting = false;
 
   const spellingHint = computed(() => {
     if (!currentCard.value) return '输入单词...';
@@ -83,23 +85,24 @@ export function useSpellingMode({
   });
 
   const checkSpelling = async () => {
-    if (!currentCard.value || spellingAnswered.value) return;
+    if (!currentCard.value || spellingAnswered.value || _submitting) return;
 
     const normalizedInput = normalizeSpellingText(spellingInput.value);
     if (!normalizedInput) return;
 
     const wordId = currentCard.value.wordId;
     const wordName = currentCard.value.word.name;
-    spellingAnswered.value = true;
     const normalizedAnswer = normalizeSpellingText(wordName);
     const { quality, hard } = evaluateSpellingAttempt(normalizedInput, normalizedAnswer);
+
+    // 立即显示判断结果（乐观 UI），答题后自动朗读单词
+    spellingAnswered.value = true;
     spellingCorrect.value = quality === 3;
     spellingHard.value = hard;
-
-    // 答题后自动朗读单词
     speak(wordName);
 
     const qualityMap = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy' };
+    _submitting = true;
     try {
       if (!isReplay?.value) {
         await submitReviewResult(wordId, quality);
@@ -109,7 +112,13 @@ export function useSpellingMode({
       if (quality === 1) handleAgain(wordId);
       if (quality === 2) handleHard?.(wordId);
     } catch {
-      ElMessage.error('提交结果失败');
+      ElMessage.error('提交结果失败，请重试');
+      // 回滚到可重试状态
+      spellingAnswered.value = false;
+      spellingCorrect.value = false;
+      spellingHard.value = false;
+    } finally {
+      _submitting = false;
     }
   };
 

@@ -1,8 +1,10 @@
 import { mount } from '@vue/test-utils';
+import { reactive } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import SearchView from '../SearchView.vue';
 
-const routeMock = { query: {} };
+// 使用 reactive 使 watch(() => route.query.q) 能侦听到变化
+const routeMock = reactive({ query: {} });
 
 const {
   analyzeWordMock,
@@ -103,7 +105,10 @@ async function createWrapper() {
 describe('SearchView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    routeMock.query = {};
+    // 清空 query 而不是替换对象，保持 reactive 代理的响应性
+    for (const key of Object.keys(routeMock.query)) {
+      delete routeMock.query[key];
+    }
   });
 
   afterEach(() => {
@@ -157,5 +162,30 @@ describe('SearchView', () => {
       model: 'gpt-test',
     });
     expect(speakMock).not.toHaveBeenCalled();
+  });
+
+  it('route.query.q 变更后自动重新触发搜索', async () => {
+    analyzeWordMock.mockResolvedValue({
+      data: {
+        analysis: {
+          word: 'inspect',
+          phonetic: '/ɪnˈspekt/',
+          meaning: '检查',
+          partOfSpeech: [],
+          roots: [],
+          examples: [],
+        },
+      },
+    });
+
+    const wrapper = await createWrapper();
+
+    // 模拟路由 query 变化（同页面跳转 /search?q=inspect）
+    routeMock.query.q = 'inspect';
+    await flushPromises();
+
+    expect(analyzeWordMock).toHaveBeenCalledWith('inspect', expect.any(Object));
+    wrapper.unmount();
+    mountedWrappers.pop(); // 已手动 unmount
   });
 });

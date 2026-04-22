@@ -4,7 +4,10 @@
  *   - error(res, msg, code)
  */
 import { describe, it, expect, vi } from 'vitest';
+import request from 'supertest';
 import { success, error } from '../utils/response.js';
+import { createApp } from '../app.js';
+import { initDB } from '../models/index.js';
 
 // 构造一个最小化的 res mock
 const mockRes = () => {
@@ -65,5 +68,33 @@ describe('error()', () => {
     error(res);
     const body = res.json.mock.calls[0][0];
     expect(body.msg).toBe('服务器内部错误');
+  });
+});
+
+// ================================================================
+// SPA fallback — /api/* 未匹配路由返回 JSON 404
+// ================================================================
+
+describe('未知 API 路由返回 JSON 404（非 HTML）', () => {
+  let app;
+
+  it('初始化 DB + 创建 app', async () => {
+    await initDB();
+    app = createApp();
+    expect(app).toBeTruthy();
+  });
+
+  it('GET /api/nonexistent 返回 JSON 404，非 HTML', async () => {
+    const res = await request(app).get('/api/nonexistent-route-xyz');
+    expect(res.status).toBe(404);
+    expect(res.headers['content-type']).toMatch(/json/);
+    expect(res.body).toHaveProperty('code', 404);
+    expect(res.body.msg).toContain('API 路由不存在');
+  });
+
+  it('POST /api/nonexistent 也返回 JSON 404', async () => {
+    const res = await request(app).post('/api/unknown-endpoint').send({});
+    expect(res.status).toBe(404);
+    expect(res.headers['content-type']).toMatch(/json/);
   });
 });

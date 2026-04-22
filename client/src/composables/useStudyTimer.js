@@ -13,6 +13,22 @@ function unwrapResponse(response) {
   return response?.data ?? response;
 }
 
+// 模块级单例 AudioContext：避免每次报警都创建新上下文，防止资源泄漏。
+let _sharedAudioCtx = null;
+
+function _getOrCreateAudioContext() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+  if (!_sharedAudioCtx || _sharedAudioCtx.state === 'closed') {
+    _sharedAudioCtx = new AudioContextClass();
+  }
+  // 部分浏览器在用户交互前处于 suspended 状态，尝试恢复
+  if (_sharedAudioCtx.state === 'suspended') {
+    _sharedAudioCtx.resume().catch(() => {});
+  }
+  return _sharedAudioCtx;
+}
+
 export function useStudyTimer() {
   /* ── 计时器状态 ── */
   const isRunning = ref(false);
@@ -370,7 +386,8 @@ export function useStudyTimer() {
 
   function _playAlarmSound() {
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = _getOrCreateAudioContext();
+      if (!ctx) return;
       const notes = [
         { freq: 660, t: 0.0 },
         { freq: 880, t: 0.22 },

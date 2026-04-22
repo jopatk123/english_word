@@ -76,7 +76,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted, onUnmounted } from 'vue';
+  import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
   import { useRoute } from 'vue-router';
   import { Search } from '@element-plus/icons-vue';
   import { ElMessage } from 'element-plus';
@@ -204,6 +204,16 @@
       handleSearch();
     }
   });
+
+  // 同页路由参数变化（如外部直接修改 ?q=xxx）时重新触发搜索
+  watch(
+    () => route.query.q,
+    (q) => {
+      if (!q || typeof q !== 'string' || !q.trim()) return;
+      searchInput.value = q.trim();
+      handleSearch();
+    }
+  );
 
   onUnmounted(() => {
     stopAiSettingsSync();

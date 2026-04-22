@@ -20,6 +20,47 @@ const normalizeBaseUrl = (baseUrl) => {
   return baseUrl.trim().replace(/\/+$/, '');
 };
 
+/**
+ * 检测 URL 是否指向私有/环回/本地网络地址（SSRF 防护）。
+ * 仅做字面量匹配，不做 DNS 解析，可拦截最常见的攻击向量。
+ */
+const PRIVATE_HOST_PATTERNS = [
+  /^localhost$/i,
+  /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/,
+  /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/,
+  /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/,
+  /^192\.168\.\d{1,3}\.\d{1,3}$/,
+  /^169\.254\.\d{1,3}\.\d{1,3}$/, // 链路本地 / AWS/GCP 元数据端点
+  /^0\.0\.0\.0$/,
+  /^::1$/, // IPv6 环回
+  /^\[::1\]$/,
+  /^fc[0-9a-f]{2}:/i, // IPv6 唯一本地地址 fc00::/7
+  /^fd[0-9a-f]{2}:/i,
+  /^fe80:/i, // IPv6 链路本地
+];
+
+const assertSafeBaseUrl = (rawUrl) => {
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new Error('AI baseUrl 格式无效，请填写完整的 URL（如 https://api.openai.com/v1）');
+  }
+
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error('AI baseUrl 仅支持 http 或 https 协议');
+  }
+
+  const hostname = parsed.hostname;
+  for (const pattern of PRIVATE_HOST_PATTERNS) {
+    if (pattern.test(hostname)) {
+      throw new Error(
+        'AI baseUrl 不允许指向本地或私有网络地址，请填写公网可访问的 API 地址'
+      );
+    }
+  }
+};
+
 const getProviderMode = (providerId, providerType) => {
   if (providerType === 'anthropic' || providerId === 'anthropic') {
     return 'anthropic';
@@ -108,6 +149,8 @@ export const validateAiConfig = (config = {}) => {
   if (!apiKey || !baseUrl || !model || !providerId) {
     throw new Error('AI 配置不完整，请先填写厂商、Base URL、模型和 API Key');
   }
+
+  assertSafeBaseUrl(baseUrl);
 
   const rawTemp = parseFloat(config.temperature);
   const temperature =

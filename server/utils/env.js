@@ -25,5 +25,13 @@ export const getJwtSecret = () => {
 export const getAdminPassword = () => {
   const password = readEnv('ADMIN_PASSWORD');
   if (password) return password;
-  return 'asd123123123';
+
+  if (process.env.NODE_ENV === 'test') {
+    return 'test-admin-password';
+  }
+
+  throw new Error(
+    '缺少环境变量 ADMIN_PASSWORD，请参考项目根目录 .env.example 完成配置。\n' +
+      '为保证安全，系统不再提供内置默认密码。'
+  );
 };

@@ -41,6 +41,17 @@ export function createApp(options = {}) {
   const clientDist = path.resolve(__dirname, '../client/dist');
   app.use(express.static(clientDist));
 
+  // 对 /api/* 的未匹配请求返回 JSON 404，而非 HTML，
+  // 避免 API 客户端拿到 SPA 页面而误判请求成功。
+  app.use('/api', (req, res) => {
+    res.status(404).json({
+      code: 404,
+      data: null,
+      msg: `API 路由不存在: ${req.method} ${req.originalUrl}`,
+    });
+  });
+
+  // SPA fallback：仅对非 API 路由回退到前端入口
   app.get('*', (req, res) => {
     res.sendFile(path.join(clientDist, 'index.html'));
   });

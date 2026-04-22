@@ -161,6 +161,36 @@ async function m009_create_study_sessions() {
   console.log('[migration] M009: study_sessions 表已创建');
 }
 
+// M010：为每个用户最多一条 is_default=true 的词根添加唯一部分索引
+// SQLite 部分索引确保 DB 层幂等，防止并发竞争产生重复默认词根。
+async function m010_roots_unique_default_per_user() {
+  try {
+    await sequelize.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_roots_user_default
+       ON roots (user_id) WHERE is_default = 1`
+    );
+    console.log('[migration] M010: roots 每用户唯一默认词根部分索引已创建');
+  } catch (e) {
+    // SQLite 3.x 在索引已存在时不会重复抛错（IF NOT EXISTS），
+    // 此处兜底忽略 "already exists" 类型报错。
+    if (!String(e.message).toLowerCase().includes('already exists')) throw e;
+  }
+}
+
+// M011：为每个用户最多一条活跃 study_session 添加唯一部分索引（ended_at IS NULL）
+// 防止并发 POST /study-sessions/start 创建多条活跃会话。
+async function m011_study_sessions_unique_active() {
+  try {
+    await sequelize.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_study_sessions_active
+       ON study_sessions (user_id) WHERE ended_at IS NULL`
+    );
+    console.log('[migration] M011: study_sessions 活跃会话唯一索引已创建');
+  } catch (e) {
+    if (!String(e.message).toLowerCase().includes('already exists')) throw e;
+  }
+}
+
 /**
  * 按顺序执行所有迁移。每个迁移函数都是幂等的，可以安全重复运行。
  */
@@ -174,4 +204,6 @@ export async function runMigrations() {
   await m007_users_add_is_disabled();
   await m008_word_reviews_add_due_at();
   await m009_create_study_sessions();
+  await m010_roots_unique_default_per_user();
+  await m011_study_sessions_unique_active();
 }

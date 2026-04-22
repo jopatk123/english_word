@@ -284,3 +284,43 @@ describe('isReplay 模式', () => {
     expect(sessionStats.value.total).toBe(1);
   });
 });
+
+// ── 提交失败回滚 ──────────────────────────────────────────────────
+
+describe('checkSpelling 提交失败时状态回滚', () => {
+  beforeEach(() => {
+    mockSpeak.mockReset();
+    mockSubmitReviewResult.mockReset();
+  });
+
+  it('提交失败后 spellingAnswered=false，允许重试', async () => {
+    mockSubmitReviewResult.mockRejectedValue(new Error('网络错误'));
+    const { mode, sessionStats } = makeSetup('construct');
+    mode.spellingInput.value = 'construct';
+    await mode.checkSpelling();
+
+    expect(mode.spellingAnswered.value).toBe(false);
+    expect(mode.spellingCorrect.value).toBe(false);
+    // 统计不应累加
+    expect(sessionStats.value.total).toBe(0);
+    expect(sessionStats.value.good).toBe(0);
+  });
+
+  it('提交失败后可重试并成功', async () => {
+    // 第一次失败，第二次成功
+    mockSubmitReviewResult.mockRejectedValueOnce(new Error('网络错误'));
+    mockSubmitReviewResult.mockResolvedValueOnce({});
+
+    const { mode, sessionStats } = makeSetup('construct');
+    mode.spellingInput.value = 'construct';
+
+    await mode.checkSpelling(); // 失败
+    expect(mode.spellingAnswered.value).toBe(false);
+
+    await mode.checkSpelling(); // 重试成功
+    expect(mode.spellingAnswered.value).toBe(true);
+    expect(mode.spellingCorrect.value).toBe(true);
+    expect(sessionStats.value.total).toBe(1);
+    expect(sessionStats.value.good).toBe(1);
+  });
+});
