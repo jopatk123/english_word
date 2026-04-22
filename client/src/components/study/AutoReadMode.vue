@@ -5,7 +5,7 @@
     <div class="flashcard">
       <div class="card-word">{{ card.word.name }}</div>
       <div v-if="card.word.phonetic" class="card-phonetic">{{ card.word.phonetic }}</div>
-      <div class="card-hint">自动朗读中：单词会读 2 次，例句会读 1 次后进入下一词</div>
+      <div class="card-meaning">{{ card.word.meaning || '暂无释义' }}</div>
 
       <div v-if="card.word.examples && card.word.examples.length > 0" class="card-examples">
         <div v-for="ex in card.word.examples" :key="ex.id" class="card-example">
