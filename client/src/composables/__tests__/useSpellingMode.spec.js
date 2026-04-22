@@ -38,11 +38,19 @@ function makeSetup(cardName = 'construct') {
   const currentCard = makeCard(cardName);
   const sessionStats = ref({ total: 0, again: 0, hard: 0, good: 0, easy: 0 });
   const handleAgain = vi.fn();
+  const handleHard = vi.fn();
   const advanceCard = vi.fn();
   const isReplay = ref(false);
 
-  const mode = useSpellingMode({ currentCard, sessionStats, handleAgain, advanceCard, isReplay });
-  return { mode, sessionStats, handleAgain, advanceCard };
+  const mode = useSpellingMode({
+    currentCard,
+    sessionStats,
+    handleAgain,
+    handleHard,
+    advanceCard,
+    isReplay,
+  });
+  return { mode, sessionStats, handleAgain, handleHard, advanceCard };
 }
 
 // ── Hint level tests ────────────────────────────────────────────
@@ -123,9 +131,18 @@ describe('checkSpelling 评分', () => {
     expect(mode.spellingCorrect.value).toBe(true);
   });
 
+  it('会忽略连字符和撇号等标点后再判定', async () => {
+    const { mode } = makeSetup("don't");
+    mode.spellingInput.value = 'dont';
+    await mode.checkSpelling();
+
+    expect(mode.spellingCorrect.value).toBe(true);
+    expect(mockSubmitReviewResult).toHaveBeenCalledWith(1, 3);
+  });
+
   it('接近正确（1 个字母错误）→ quality=2，spellingHard=true，spellingCorrect=false', async () => {
     // construct → constract（1字母差距，threshold=ceil(9*0.2)=2 → 视为 hard）
-    const { mode, sessionStats, handleAgain } = makeSetup('construct');
+    const { mode, sessionStats, handleAgain, handleHard } = makeSetup('construct');
     mode.spellingInput.value = 'constract';
     await mode.checkSpelling();
 
@@ -135,6 +152,7 @@ describe('checkSpelling 评分', () => {
     expect(sessionStats.value.hard).toBe(1);
     expect(sessionStats.value.again).toBe(0);
     expect(handleAgain).not.toHaveBeenCalled();
+    expect(handleHard).toHaveBeenCalledWith(1);
   });
 
   it('完全错误（多字母差距）→ quality=1，spellingHard=false，handleAgain 被调用', async () => {

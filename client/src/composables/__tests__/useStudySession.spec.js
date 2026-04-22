@@ -11,6 +11,7 @@ import { ref } from 'vue';
 import { describe, it, expect, vi } from 'vitest';
 
 import { seekToStudyCard, useStudySession } from '../useStudySession.js';
+import { FOLLOW_UP_OFFSETS, insertFollowUpCard } from '../studyQueue.js';
 
 vi.mock('../../api/index.js', () => ({
   getReviewDue: vi.fn().mockResolvedValue({ data: [] }),
@@ -170,6 +171,50 @@ describe('seekToStudyCard 跳转逻辑', () => {
     expect(sameResult).toBe(false);
     expect(outOfRangeResult).toBe(true);
     expect(deps.currentIndex.value).toBe(3);
+  });
+});
+
+describe('insertFollowUpCard 队列插入策略', () => {
+  it('在当前卡片后留出指定间隔再插入复习卡', () => {
+    const queue = [makeItem(1), makeItem(2), makeItem(3), makeItem(4)];
+    const currentCard = queue[0];
+
+    const result = insertFollowUpCard(queue, currentCard, 0, FOLLOW_UP_OFFSETS.HARD);
+
+    expect(result.map((item) => item.wordId)).toEqual([1, 2, 1, 3, 4]);
+    expect(result[2]).not.toBe(currentCard);
+  });
+
+  it('靠近队尾时会安全追加到末尾', () => {
+    const queue = [makeItem(1), makeItem(2)];
+    const result = insertFollowUpCard(queue, queue[1], 1, FOLLOW_UP_OFFSETS.AGAIN);
+
+    expect(result.map((item) => item.wordId)).toEqual([1, 2, 2]);
+  });
+});
+
+describe('useStudySession 的 hard 回插', () => {
+  it('quality=2 会把当前词回插到短间隔位置', async () => {
+    const wrapper = mount({
+      template: '<div />',
+      setup() {
+        return useStudySession();
+      },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    wrapper.vm.queue = [makeItem(1), makeItem(2), makeItem(3)];
+    wrapper.vm.originalQueue = [...wrapper.vm.queue];
+    wrapper.vm.currentIndex = 0;
+
+    await wrapper.vm.submitRating(2);
+
+    expect(wrapper.vm.queue.map((item) => item.wordId)).toEqual([1, 2, 1, 3]);
+    expect(wrapper.vm.currentIndex).toBe(1);
+    expect(wrapper.vm.sessionStats.hard).toBe(1);
+
+    wrapper.unmount();
   });
 });
 

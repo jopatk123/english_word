@@ -6,6 +6,7 @@ import { useSpeech } from '../utils/speech.js';
 import { createTabSyncChannel } from '../utils/tabSync.js';
 import { useChoiceMode } from './useChoiceMode.js';
 import { useSpellingMode } from './useSpellingMode.js';
+import { FOLLOW_UP_OFFSETS, MAX_FOLLOW_UP_INSERTIONS, insertFollowUpCard } from './studyQueue.js';
 
 let studySessionSyncChannel;
 
@@ -67,8 +68,8 @@ export function useStudySession() {
   const submitting = ref(false);
   const finished = ref(false);
   const sessionStats = ref({ total: 0, again: 0, hard: 0, good: 0, easy: 0 });
-  const MAX_AGAIN_PER_WORD = 3;
   const againCountMap = ref({});
+  const followUpCountMap = ref({});
   const resumeInfo = ref(null);
   const isReplay = ref(false);
   const sessionRevision = ref(0);
@@ -96,12 +97,26 @@ export function useStudySession() {
   const againWordCount = computed(() => againWordIds.value.length);
   const originalQueueLength = computed(() => originalQueue.value.length);
 
+  const queueFollowUpCard = (wordId, offset) => {
+    if (!currentCard.value || currentCard.value.wordId !== wordId) return;
+
+    const currentCount = followUpCountMap.value[wordId] || 0;
+    if (currentCount >= MAX_FOLLOW_UP_INSERTIONS) return;
+
+    followUpCountMap.value[wordId] = currentCount + 1;
+    queue.value = insertFollowUpCard(queue.value, currentCard.value, currentIndex.value, offset);
+  };
+
   const handleAgain = (wordId) => {
+    if (!currentCard.value || currentCard.value.wordId !== wordId) return;
+
     const count = againCountMap.value[wordId] || 0;
-    if (count < MAX_AGAIN_PER_WORD) {
-      againCountMap.value[wordId] = count + 1;
-      queue.value.push({ ...currentCard.value });
-    }
+    againCountMap.value[wordId] = count + 1;
+    queueFollowUpCard(wordId, FOLLOW_UP_OFFSETS.AGAIN);
+  };
+
+  const handleHard = (wordId) => {
+    queueFollowUpCard(wordId, FOLLOW_UP_OFFSETS.HARD);
   };
 
   // 推进到下一张卡片（通知各模式重置自身状态）
@@ -126,6 +141,7 @@ export function useStudySession() {
     currentCard,
     sessionStats,
     handleAgain,
+    handleHard,
     advanceCard,
     isReplay,
   });
@@ -241,6 +257,7 @@ export function useStudySession() {
     showAnswer.value = false;
     sessionStats.value = { total: 0, again: 0, hard: 0, good: 0, easy: 0 };
     againCountMap.value = {};
+    followUpCountMap.value = {};
     isReplay.value = replay;
   };
 
@@ -382,6 +399,7 @@ export function useStudySession() {
       sessionStats.value.total++;
       sessionStats.value[qualityMap[quality]]++;
       if (quality === 1) handleAgain(wordId);
+      if (quality === 2) handleHard(wordId);
       if (revision === sessionRevision.value) {
         advanceCard();
       }

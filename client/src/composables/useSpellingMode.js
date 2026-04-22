@@ -5,6 +5,7 @@
  * @param {import('vue').ComputedRef} deps.currentCard       当前复习卡片
  * @param {import('vue').Ref}        deps.sessionStats       会话统计（由 useStudySession 提供）
  * @param {Function}                 deps.handleAgain        重复出现单词
+ * @param {Function}                 deps.handleHard         较难单词的短间隔回插
  * @param {Function}                 deps.advanceCard        向下一张卡片推进
  * @param {import('vue').Ref}        deps.isReplay           是否为重播模式
  */
@@ -33,7 +34,34 @@ function levenshtein(a, b) {
   return dp[m][n];
 }
 
-export function useSpellingMode({ currentCard, sessionStats, handleAgain, advanceCard, isReplay }) {
+function normalizeSpellingText(text) {
+  return String(text)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+function evaluateSpellingAttempt(input, answer) {
+  if (input === answer) {
+    return { quality: 3, hard: false };
+  }
+
+  const dist = levenshtein(input, answer);
+  const threshold = Math.max(1, Math.ceil(answer.length * 0.2));
+  const hard = dist <= threshold;
+
+  return { quality: hard ? 2 : 1, hard };
+}
+
+export function useSpellingMode({
+  currentCard,
+  sessionStats,
+  handleAgain,
+  handleHard,
+  advanceCard,
+  isReplay,
+}) {
   const { speak } = useSpeech();
   const spellingInput = ref('');
   const spellingAnswered = ref(false);
@@ -55,25 +83,18 @@ export function useSpellingMode({ currentCard, sessionStats, handleAgain, advanc
   });
 
   const checkSpelling = async () => {
-    if (!spellingInput.value.trim() || spellingAnswered.value) return;
+    if (!currentCard.value || spellingAnswered.value) return;
+
+    const normalizedInput = normalizeSpellingText(spellingInput.value);
+    if (!normalizedInput) return;
+
     const wordId = currentCard.value.wordId;
     const wordName = currentCard.value.word.name;
     spellingAnswered.value = true;
-    const input = spellingInput.value.trim().toLowerCase();
-    const answer = wordName.toLowerCase();
-    spellingCorrect.value = input === answer;
-
-    // 模糊评分：完全正确=3，接近正确(编辑距离≤2且不超过单词长度20%)=2，完全错误=1
-    let quality;
-    if (spellingCorrect.value) {
-      quality = 3;
-      spellingHard.value = false;
-    } else {
-      const dist = levenshtein(input, answer);
-      const threshold = Math.max(1, Math.ceil(answer.length * 0.2));
-      quality = dist <= threshold ? 2 : 1;
-      spellingHard.value = quality === 2;
-    }
+    const normalizedAnswer = normalizeSpellingText(wordName);
+    const { quality, hard } = evaluateSpellingAttempt(normalizedInput, normalizedAnswer);
+    spellingCorrect.value = quality === 3;
+    spellingHard.value = hard;
 
     // 答题后自动朗读单词
     speak(wordName);
@@ -86,6 +107,7 @@ export function useSpellingMode({ currentCard, sessionStats, handleAgain, advanc
       sessionStats.value.total++;
       sessionStats.value[qualityMap[quality]]++;
       if (quality === 1) handleAgain(wordId);
+      if (quality === 2) handleHard?.(wordId);
     } catch {
       ElMessage.error('提交结果失败');
     }
