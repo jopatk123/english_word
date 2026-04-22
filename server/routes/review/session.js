@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Op, literal } from 'sequelize';
-import { Word, Root, WordReview, ReviewHistory } from '../../models/index.js';
+import { sequelize, Word, Root, WordReview, ReviewHistory } from '../../models/index.js';
 import { success, error } from '../../utils/response.js';
 import { getNextReview, todayStr, buildDueSchedule } from '../../utils/srs.js';
 
@@ -60,50 +60,65 @@ router.post('/:wordId/result', async (req, res) => {
       return error(res, 'quality 必须是 1-4 之间的整数', 400);
     }
 
-    const review = await WordReview.findOne({
-      where: { userId: req.userId, wordId },
+    const updatedReview = await sequelize.transaction(async (transaction) => {
+      const review = await WordReview.findOne({
+        where: { userId: req.userId, wordId },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!review) {
+        const notFoundError = new Error('该单词不在学习队列中');
+        notFoundError.code = 404;
+        throw notFoundError;
+      }
+
+      const oldInterval = review.interval;
+      const oldEase = review.easeFactor;
+      const successCount = Math.max(0, Math.trunc(Number(review.successCount) || 0));
+      const nextSuccessCount = successCount + (quality >= 3 ? 1 : 0);
+      const { interval, delayMinutes, easeFactor, status } = getNextReview(
+        quality,
+        review.interval,
+        review.easeFactor,
+        review.status,
+        review.reviewCount,
+        successCount
+      );
+      const { dueAt, dueDate } = buildDueSchedule(delayMinutes, req.body.tz);
+      const reviewedAt = new Date();
+
+      await ReviewHistory.create(
+        {
+          userId: req.userId,
+          wordId: parseInt(wordId),
+          quality,
+          intervalBefore: oldInterval,
+          intervalAfter: interval,
+          easeFactorBefore: oldEase,
+          easeFactorAfter: easeFactor,
+          reviewedAt,
+        },
+        { transaction }
+      );
+
+      return review.update(
+        {
+          status,
+          interval,
+          easeFactor,
+          dueDate,
+          dueAt,
+          reviewCount: review.reviewCount + 1,
+          successCount: nextSuccessCount,
+          lastReviewedAt: reviewedAt,
+        },
+        { transaction }
+      );
     });
-    if (!review) return error(res, '该单词不在学习队列中', 404);
 
-    const oldInterval = review.interval;
-    const oldEase = review.easeFactor;
-    const successCount = Math.max(0, Math.trunc(Number(review.successCount) || 0));
-    const nextSuccessCount = successCount + (quality >= 3 ? 1 : 0);
-    const { interval, delayMinutes, easeFactor, status } = getNextReview(
-      quality,
-      review.interval,
-      review.easeFactor,
-      review.status,
-      review.reviewCount,
-      successCount
-    );
-    const { dueAt, dueDate } = buildDueSchedule(delayMinutes, req.body.tz);
-
-    await ReviewHistory.create({
-      userId: req.userId,
-      wordId: parseInt(wordId),
-      quality,
-      intervalBefore: oldInterval,
-      intervalAfter: interval,
-      easeFactorBefore: oldEase,
-      easeFactorAfter: easeFactor,
-      reviewedAt: new Date(),
-    });
-
-    await review.update({
-      status,
-      interval,
-      easeFactor,
-      dueDate,
-      dueAt,
-      reviewCount: review.reviewCount + 1,
-      successCount: nextSuccessCount,
-      lastReviewedAt: new Date(),
-    });
-
-    success(res, review);
+    success(res, updatedReview);
   } catch (e) {
-    error(res, e.message);
+    error(res, e.message, e.code || 500);
   }
 });
 

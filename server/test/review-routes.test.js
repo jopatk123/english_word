@@ -524,6 +524,34 @@ describe('POST /review/:wordId/result', () => {
     expect(res.body.data.successCount).toBe(3);
   });
 
+  it('已掌握单词再次答错后会回到 learning 且不增加成功次数', async () => {
+    const knownWord = await Word.create({
+      name: `known_fallback_${suf()}`,
+      meaning: '已掌握回退',
+      userId,
+    });
+    await WordRoot.create({ wordId: knownWord.id, rootId });
+    await WordReview.create({
+      userId,
+      wordId: knownWord.id,
+      status: 'known',
+      interval: 45,
+      easeFactor: 2.8,
+      dueDate: '2099-01-13',
+      reviewCount: 6,
+      successCount: 3,
+    });
+
+    const res = await request(app).post(`/review/${knownWord.id}/result`).send({ quality: 1 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('learning');
+    expect(res.body.data.interval).toBe(0);
+    expect(res.body.data.reviewCount).toBe(7);
+    expect(res.body.data.successCount).toBe(3);
+    expect(res.body.data.dueAt).toBeTruthy();
+  });
+
   it('quality 超出范围返回 400', async () => {
     const res = await request(app).post(`/review/${wordId}/result`).send({ quality: 5 });
     expect(res.status).toBe(400);
