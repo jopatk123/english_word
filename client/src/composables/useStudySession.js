@@ -155,9 +155,13 @@ export function useStudySession() {
 
   const playAutoReadCard = async (card) => {
     const runToken = ++autoReadToken;
-    const texts = buildAutoReadTexts(card);
+    const word = card?.word?.name?.trim();
+    const sentences = (card?.word?.examples || [])
+      .map((example) => example?.sentence?.trim())
+      .filter(Boolean);
+    const wordTexts = word ? [word, word] : [];
 
-    if (texts.length === 0) {
+    if (wordTexts.length === 0 && sentences.length === 0) {
       if (runToken === autoReadToken) {
         sessionStats.value.total++;
         advanceCard();
@@ -165,7 +169,13 @@ export function useStudySession() {
       return;
     }
 
-    await speakSequence(texts);
+    if (wordTexts.length > 0) {
+      await speakSequence(wordTexts, 'en-US');
+    }
+
+    if (sentences.length > 0) {
+      await speakSequence(sentences, 'en-US', 2000, true);
+    }
 
     if (runToken !== autoReadToken || studyMode.value !== 'autoRead' || !modeSelected.value) {
       return;

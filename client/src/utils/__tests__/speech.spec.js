@@ -105,6 +105,51 @@ describe('useSpeech().speak()', () => {
       'sequence-sentence',
     ]);
   });
+
+  it('speakSequence 可以在例句之间等待指定延迟', async () => {
+    vi.useFakeTimers();
+    const { speakMock } = setupSpeechMock([makeVoice('Samantha', 'en-US')]);
+    speakMock.mockImplementation((utterance) => utterance.onend?.());
+
+    const { speakSequence } = useSpeech();
+    const sequencePromise = speakSequence(['delay-a', 'delay-b'], 'en-US', 2000);
+
+    await Promise.resolve();
+    expect(speakMock).toHaveBeenCalledTimes(1);
+    expect(speakMock.mock.calls[0][0].text).toBe('delay-a');
+
+    await vi.advanceTimersByTimeAsync(2000);
+    await Promise.resolve();
+
+    expect(speakMock).toHaveBeenCalledTimes(2);
+    expect(speakMock.mock.calls[1][0].text).toBe('delay-b');
+
+    await sequencePromise;
+    vi.useRealTimers();
+  });
+
+  it('speakSequence 可以在最后一句后继续等待指定延迟', async () => {
+    vi.useFakeTimers();
+    const { speakMock } = setupSpeechMock([makeVoice('Samantha', 'en-US')]);
+    speakMock.mockImplementation((utterance) => utterance.onend?.());
+
+    const { speakSequence } = useSpeech();
+    const sequencePromise = speakSequence(['delay-a', 'delay-b'], 'en-US', 2000, true);
+
+    await Promise.resolve();
+    expect(speakMock).toHaveBeenCalledTimes(1);
+    expect(speakMock.mock.calls[0][0].text).toBe('delay-a');
+
+    await vi.advanceTimersByTimeAsync(2000);
+    await Promise.resolve();
+
+    expect(speakMock).toHaveBeenCalledTimes(2);
+    expect(speakMock.mock.calls[1][0].text).toBe('delay-b');
+
+    await vi.advanceTimersByTimeAsync(2000);
+    await sequencePromise;
+    vi.useRealTimers();
+  });
 });
 
 // ─── 语音选择策略 ─────────────────────────────────────────────
