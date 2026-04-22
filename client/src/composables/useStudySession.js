@@ -30,12 +30,17 @@ export function seekToStudyCard({
   spelling,
   saveProgress,
   incrementRevision,
+  stopAutoRead,
 }) {
   if (submitting?.value) return false;
   if (!Number.isFinite(targetIndex) || queue.value.length === 0) return false;
 
   const nextIndex = Math.min(Math.max(Math.trunc(targetIndex), 0), queue.value.length - 1);
   if (nextIndex === currentIndex.value) return false;
+
+  if (typeof stopAutoRead === 'function') {
+    stopAutoRead();
+  }
 
   currentIndex.value = nextIndex;
   finished.value = false;
@@ -56,6 +61,22 @@ export function seekToStudyCard({
   return true;
 }
 
+export function buildAutoReadTexts(card) {
+  const word = card?.word?.name?.trim();
+  const sentences = (card?.word?.examples || [])
+    .map((example) => example?.sentence?.trim())
+    .filter(Boolean);
+  const texts = [];
+
+  if (word) {
+    texts.push(word, word);
+  }
+
+  texts.push(...sentences);
+
+  return texts;
+}
+
 export function useStudySession() {
   const route = useRoute();
   let stopSessionSync = () => {};
@@ -73,13 +94,20 @@ export function useStudySession() {
   const resumeInfo = ref(null);
   const isReplay = ref(false);
   const sessionRevision = ref(0);
+  let autoReadToken = 0;
 
   // 学习模式
   const studyMode = ref('flashcard');
   const modeSelected = ref(false);
-  const modeNames = { flashcard: '闪卡', choice: '选择题', spelling: '拼写', listening: '听力' };
+  const modeNames = {
+    flashcard: '闪卡',
+    choice: '选择题',
+    spelling: '拼写',
+    listening: '听力',
+    autoRead: '自动朗读',
+  };
 
-  const { speak } = useSpeech();
+  const { speak, speakSequence, cancelSpeech } = useSpeech();
 
   const getScope = () => (typeof route.query.scope === 'string' ? route.query.scope : '');
 
@@ -117,6 +145,33 @@ export function useStudySession() {
 
   const handleHard = (wordId) => {
     queueFollowUpCard(wordId, FOLLOW_UP_OFFSETS.HARD);
+  };
+
+  const stopAutoRead = () => {
+    autoReadToken += 1;
+    cancelSpeech();
+  };
+
+  const playAutoReadCard = async (card) => {
+    const runToken = ++autoReadToken;
+    const texts = buildAutoReadTexts(card);
+
+    if (texts.length === 0) {
+      if (runToken === autoReadToken) {
+        sessionStats.value.total++;
+        advanceCard();
+      }
+      return;
+    }
+
+    await speakSequence(texts);
+
+    if (runToken !== autoReadToken || studyMode.value !== 'autoRead' || !modeSelected.value) {
+      return;
+    }
+
+    sessionStats.value.total++;
+    advanceCard();
   };
 
   // 推进到下一张卡片（通知各模式重置自身状态）
@@ -158,16 +213,22 @@ export function useStudySession() {
       const justEnteredMode = mode !== prevMode;
       const justStarted = selected && !prevSelected;
 
-      if (isNewCard || justEnteredMode || justStarted) {
-        nextTick(() => {
-          speak(card.word.name);
-        });
+      if (!(isNewCard || justEnteredMode || justStarted)) return;
+
+      if (mode === 'autoRead') {
+        void playAutoReadCard(card);
+        return;
       }
+
+      nextTick(() => {
+        speak(card.word.name);
+      });
     },
     { immediate: true }
   );
 
   const selectMode = (mode) => {
+    stopAutoRead();
     studyMode.value = mode;
     modeSelected.value = true;
     localStorage.setItem('study-mode', mode);
@@ -227,6 +288,7 @@ export function useStudySession() {
 
   // 断点续学操作
   const applyResume = () => {
+    stopAutoRead();
     const progress = resumeInfo.value;
     resumeInfo.value = null;
     currentIndex.value = progress.index;
@@ -251,6 +313,7 @@ export function useStudySession() {
   };
 
   const resetSession = (replay = false) => {
+    stopAutoRead();
     currentIndex.value = 0;
     finished.value = false;
     modeSelected.value = false;
@@ -383,6 +446,7 @@ export function useStudySession() {
       spelling,
       saveProgress,
       incrementRevision,
+      stopAutoRead,
     });
 
   const submitRating = async (quality) => {
@@ -479,6 +543,7 @@ export function useStudySession() {
   });
 
   onUnmounted(() => {
+    stopAutoRead();
     stopSessionSync();
     window.removeEventListener('keydown', handleKeyDown);
   });

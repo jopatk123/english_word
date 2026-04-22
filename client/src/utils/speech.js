@@ -1,6 +1,8 @@
 import { ref } from 'vue';
 
 const speakingText = ref('');
+let pendingSpeech = null;
+let speechRequestId = 0;
 
 /**
  * 从已加载的 voices 列表中挑选最优英语语音。
@@ -38,23 +40,37 @@ function withVoices(callback) {
   }
 }
 
-export function useSpeech() {
-  const speak = (text, lang = 'en-US') => {
-    if (!('speechSynthesis' in window)) return;
+function isSpeechSupported() {
+  return typeof window !== 'undefined' && 'speechSynthesis' in window;
+}
 
-    // Toggle: click again to stop
-    if (speakingText.value === text) {
-      window.speechSynthesis.cancel();
-      speakingText.value = '';
-      return;
-    }
+function cancelSpeech() {
+  const pending = pendingSpeech;
+  pendingSpeech = null;
+  speakingText.value = '';
 
+  if (isSpeechSupported()) {
     window.speechSynthesis.cancel();
-    speakingText.value = text;
+  }
+
+  if (pending) {
+    pending.resolve(false);
+  }
+}
+
+function startSpeech(text, lang = 'en-US') {
+  if (!isSpeechSupported()) return Promise.resolve(false);
+
+  cancelSpeech();
+
+  const requestId = ++speechRequestId;
+  speakingText.value = text;
+
+  return new Promise((resolve) => {
+    pendingSpeech = { id: requestId, resolve };
 
     withVoices(() => {
-      // 取消期间浏览器可能已切换状态，再次确认
-      if (speakingText.value !== text) return;
+      if (!pendingSpeech || pendingSpeech.id !== requestId) return;
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = lang;
@@ -63,16 +79,43 @@ export function useSpeech() {
       const voice = pickEnglishVoice();
       if (voice) utterance.voice = voice;
 
-      utterance.onend = () => {
+      const finalize = (result) => {
+        if (!pendingSpeech || pendingSpeech.id !== requestId) return;
+        pendingSpeech = null;
         speakingText.value = '';
+        resolve(result);
       };
-      utterance.onerror = () => {
-        speakingText.value = '';
-      };
+
+      utterance.onend = () => finalize(true);
+      utterance.onerror = () => finalize(false);
 
       window.speechSynthesis.speak(utterance);
     });
+  });
+}
+
+export function useSpeech() {
+  const speak = (text, lang = 'en-US') => {
+    if (!isSpeechSupported()) return;
+
+    // Toggle: click again to stop
+    if (speakingText.value === text) {
+      cancelSpeech();
+      return;
+    }
+
+    void startSpeech(text, lang);
   };
 
-  return { speak, speakingText };
+  const speakAsync = (text, lang = 'en-US') => startSpeech(text, lang);
+
+  const speakSequence = async (texts, lang = 'en-US') => {
+    const sequence = Array.isArray(texts) ? texts : [texts];
+    for (const text of sequence) {
+      if (typeof text !== 'string' || !text.trim()) continue;
+      await speakAsync(text, lang);
+    }
+  };
+
+  return { speak, speakAsync, speakSequence, cancelSpeech, speakingText };
 }

@@ -2,6 +2,7 @@
  * 测试：client/src/utils/speech.js
  *   - pickEnglishVoice() 选音策略（通过 useSpeech 间接验证）
  *   - useSpeech().speak() 核心行为
+ *   - useSpeech().speakSequence() 顺序朗读
  *   - 重复调用同一文本时执行 cancel（切换朗读）
  *
  * 注意：speakingText 是模块级 ref 单例，每个测试须用不同文本，
@@ -87,6 +88,22 @@ describe('useSpeech().speak()', () => {
     // 第二次：相同文本触发取消
     speak('toggle-test');
     expect(cancelMock).toHaveBeenCalled();
+  });
+
+  it('speakSequence 会按顺序朗读重复文本和句子', async () => {
+    const { speakMock } = setupSpeechMock([makeVoice('Samantha', 'en-US')]);
+    speakMock.mockImplementation((utterance) => utterance.onend?.());
+
+    const { speakSequence } = useSpeech();
+
+    await speakSequence(['sequence-word', 'sequence-word', 'sequence-sentence']);
+
+    expect(speakMock).toHaveBeenCalledTimes(3);
+    expect(speakMock.mock.calls.map(([utterance]) => utterance.text)).toEqual([
+      'sequence-word',
+      'sequence-word',
+      'sequence-sentence',
+    ]);
   });
 });
 

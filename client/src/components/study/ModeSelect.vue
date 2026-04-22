@@ -37,6 +37,11 @@
         <div class="mode-name">听力模式</div>
         <div class="mode-desc">听发音拼单词，锻炼听力</div>
       </div>
+      <div class="mode-card" @click="$emit('select', 'autoRead')">
+        <div class="mode-icon">🔊</div>
+        <div class="mode-name">自动朗读</div>
+        <div class="mode-desc">单词读 2 次，例句读 1 次，不记录熟练度</div>
+      </div>
     </div>
     <div class="mode-count">共 {{ queueLength }} 个单词待复习</div>
   </div>

@@ -1,4 +1,72 @@
-/**
+import { ref } from 'vue';
+import { describe, it, expect, vi } from 'vitest';
+import { seekToStudyCard } from '../useStudySession.js';
+
+describe('seekToStudyCard', () => {
+  const createDeps = (overrides = {}) => ({
+    queue: ref([
+      { wordId: 1, word: { id: 1, name: 'alpha' } },
+      { wordId: 2, word: { id: 2, name: 'beta' } },
+      { wordId: 3, word: { id: 3, name: 'gamma' } },
+    ]),
+    currentIndex: ref(1),
+    finished: ref(false),
+    showAnswer: ref(true),
+    submitting: ref(false),
+    studyMode: ref('autoRead'),
+    choice: {
+      resetChoice: vi.fn(),
+      setQueueWords: vi.fn(),
+      loadChoices: vi.fn(),
+    },
+    spelling: {
+      resetSpelling: vi.fn(),
+    },
+    saveProgress: vi.fn(),
+    incrementRevision: vi.fn(),
+    stopAutoRead: vi.fn(),
+    ...overrides,
+  });
+
+  it('same index does nothing', () => {
+    const deps = createDeps();
+
+    const result = seekToStudyCard({
+      targetIndex: 1,
+      ...deps,
+    });
+
+    expect(result).toBe(false);
+    expect(deps.stopAutoRead).not.toHaveBeenCalled();
+    expect(deps.saveProgress).not.toHaveBeenCalled();
+    expect(deps.currentIndex.value).toBe(1);
+  });
+
+  it('jumps to a new index and resets session state', () => {
+    const deps = createDeps({ studyMode: ref('choice') });
+
+    const result = seekToStudyCard({
+      targetIndex: 2,
+      ...deps,
+    });
+
+    expect(result).toBe(true);
+    expect(deps.stopAutoRead).toHaveBeenCalledTimes(1);
+    expect(deps.currentIndex.value).toBe(2);
+    expect(deps.finished.value).toBe(false);
+    expect(deps.showAnswer.value).toBe(false);
+    expect(deps.choice.resetChoice).toHaveBeenCalledTimes(1);
+    expect(deps.spelling.resetSpelling).toHaveBeenCalledTimes(1);
+    expect(deps.choice.setQueueWords).toHaveBeenCalledWith([
+      { id: 1, name: 'alpha' },
+      { id: 2, name: 'beta' },
+      { id: 3, name: 'gamma' },
+    ]);
+    expect(deps.choice.loadChoices).toHaveBeenCalledTimes(1);
+    expect(deps.incrementRevision).toHaveBeenCalledTimes(1);
+    expect(deps.saveProgress).toHaveBeenCalledTimes(1);
+  });
+});/**
  * 测试：continueReview 排队策略与 seek 跳转逻辑（纯逻辑）
  *
  * continueReview() 的核心行为等价于：
@@ -22,7 +90,11 @@ vi.mock('../../api/index.js', () => ({
 }));
 
 vi.mock('../../utils/speech.js', () => ({
-  useSpeech: () => ({ speak: vi.fn() }),
+  useSpeech: () => ({
+    speak: vi.fn(),
+    speakSequence: vi.fn().mockResolvedValue(undefined),
+    cancelSpeech: vi.fn(),
+  }),
 }));
 
 vi.mock('vue-router', () => ({

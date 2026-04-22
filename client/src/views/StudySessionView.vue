@@ -108,6 +108,15 @@
       @seek="seekToIndex"
     />
 
+    <!-- 自动朗读模式 -->
+    <AutoReadMode
+      v-else-if="currentCard && studyMode === 'autoRead'"
+      :card="currentCard"
+      :currentIndex="currentIndex"
+      :total="queue.length"
+      @seek="seekToIndex"
+    />
+
     <!-- 无待复习 -->
     <div v-else class="session-empty">
       <p>暂无待复习的单词</p>
@@ -123,6 +132,7 @@
   import FlashcardMode from '../components/study/FlashcardMode.vue';
   import ChoiceMode from '../components/study/ChoiceMode.vue';
   import SpellingMode from '../components/study/SpellingMode.vue';
+  import AutoReadMode from '../components/study/AutoReadMode.vue';
 
   const {
     loading,
