@@ -14,14 +14,8 @@ describe('seekToStudyCard', () => {
     showAnswer: ref(true),
     submitting: ref(false),
     studyMode: ref('autoRead'),
-    choice: {
-      resetChoice: vi.fn(),
-      setQueueWords: vi.fn(),
-      loadChoices: vi.fn(),
-    },
-    spelling: {
-      resetSpelling: vi.fn(),
-    },
+    resetModes: vi.fn(),
+    initModeCard: vi.fn(),
     saveProgress: vi.fn(),
     incrementRevision: vi.fn(),
     stopAutoRead: vi.fn(),
@@ -55,14 +49,8 @@ describe('seekToStudyCard', () => {
     expect(deps.currentIndex.value).toBe(2);
     expect(deps.finished.value).toBe(false);
     expect(deps.showAnswer.value).toBe(false);
-    expect(deps.choice.resetChoice).toHaveBeenCalledTimes(1);
-    expect(deps.spelling.resetSpelling).toHaveBeenCalledTimes(1);
-    expect(deps.choice.setQueueWords).toHaveBeenCalledWith([
-      { id: 1, name: 'alpha' },
-      { id: 2, name: 'beta' },
-      { id: 3, name: 'gamma' },
-    ]);
-    expect(deps.choice.loadChoices).toHaveBeenCalledTimes(1);
+    expect(deps.resetModes).toHaveBeenCalledTimes(1);
+    expect(deps.initModeCard).toHaveBeenCalledWith('choice');
     expect(deps.incrementRevision).toHaveBeenCalledTimes(1);
     expect(deps.saveProgress).toHaveBeenCalledTimes(1);
   });
@@ -165,14 +153,8 @@ describe('seekToStudyCard 跳转逻辑', () => {
     const showAnswer = ref(true);
     const submitting = ref(false);
     const studyMode = ref('choice');
-    const choice = {
-      resetChoice: vi.fn(),
-      setQueueWords: vi.fn(),
-      loadChoices: vi.fn(),
-    };
-    const spelling = {
-      resetSpelling: vi.fn(),
-    };
+    const resetModes = vi.fn();
+    const initModeCard = vi.fn();
     const saveProgress = vi.fn();
     const incrementRevision = vi.fn();
 
@@ -183,15 +165,15 @@ describe('seekToStudyCard 跳转逻辑', () => {
       showAnswer,
       submitting,
       studyMode,
-      choice,
-      spelling,
+      resetModes,
+      initModeCard,
       saveProgress,
       incrementRevision,
       ...overrides,
     };
   };
 
-  it('跳转时会重置当前卡片状态并加载目标题', () => {
+  it('跳转时会重置模式状态并通知目标模式初始化', () => {
     const deps = makeDeps();
 
     const result = seekToStudyCard({
@@ -203,12 +185,8 @@ describe('seekToStudyCard 跳转逻辑', () => {
     expect(deps.currentIndex.value).toBe(2);
     expect(deps.finished.value).toBe(false);
     expect(deps.showAnswer.value).toBe(false);
-    expect(deps.choice.resetChoice).toHaveBeenCalledTimes(1);
-    expect(deps.spelling.resetSpelling).toHaveBeenCalledTimes(1);
-    expect(deps.choice.setQueueWords).toHaveBeenCalledWith(
-      deps.queue.value.map((item) => item.word)
-    );
-    expect(deps.choice.loadChoices).toHaveBeenCalledTimes(1);
+    expect(deps.resetModes).toHaveBeenCalledTimes(1);
+    expect(deps.initModeCard).toHaveBeenCalledWith('choice');
     expect(deps.incrementRevision).toHaveBeenCalledTimes(1);
     expect(deps.saveProgress).toHaveBeenCalledTimes(1);
   });

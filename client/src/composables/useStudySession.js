@@ -6,6 +6,7 @@ import { useSpeech } from '../utils/speech.js';
 import { createTabSyncChannel } from '../utils/tabSync.js';
 import { useChoiceMode } from './useChoiceMode.js';
 import { useSpellingMode } from './useSpellingMode.js';
+import { useStudyKeyboard } from './useStudyKeyboard.js';
 import { FOLLOW_UP_OFFSETS, MAX_FOLLOW_UP_INSERTIONS, insertFollowUpCard } from './studyQueue.js';
 
 let studySessionSyncChannel;
@@ -31,8 +32,8 @@ export function seekToStudyCard({
   showAnswer,
   submitting,
   studyMode,
-  choice,
-  spelling,
+  resetModes,
+  initModeCard,
   saveProgress,
   incrementRevision,
   stopAutoRead,
@@ -50,18 +51,13 @@ export function seekToStudyCard({
   currentIndex.value = nextIndex;
   finished.value = false;
   showAnswer.value = false;
-  choice.resetChoice();
-  spelling.resetSpelling();
+  resetModes();
 
   if (typeof incrementRevision === 'function') {
     incrementRevision();
   }
 
-  if (studyMode.value === 'choice') {
-    choice.setQueueWords(queue.value.map((record) => record.word));
-    choice.loadChoices();
-  }
-
+  initModeCard(studyMode.value);
   saveProgress();
   return true;
 }
@@ -183,15 +179,14 @@ export function useStudySession() {
   const advanceCard = () => {
     currentIndex.value++;
     showAnswer.value = false;
-    choice.resetChoice();
-    spelling.resetSpelling();
+    resetAllModes();
 
     if (currentIndex.value >= queue.value.length) {
       finished.value = true;
       clearProgress();
     } else {
       saveProgress();
-      if (studyMode.value === 'choice') choice.loadChoices();
+      initModeCard(studyMode.value);
     }
   };
 
@@ -205,6 +200,25 @@ export function useStudySession() {
     advanceCard,
     isReplay,
   });
+
+  // ── 模式生命周期辅助 ───────────────────────────────────────────
+  // 新增模式时：只需在这两个函数里各加一行，其余调用点不变。
+
+  /** 重置所有模式的局部状态（切卡、跳转、远端同步时调用）。 */
+  const resetAllModes = () => {
+    choice.resetChoice();
+    spelling.resetSpelling();
+  };
+
+  /**
+   * 按指定模式初始化新卡片（如加载选择题选项）。
+   * @param {string} mode
+   */
+  const initModeCard = (mode) => {
+    if (mode === 'choice') {
+      refreshChoiceState(choice, queue);
+    }
+  };
 
   // 自动朗读：所有模式在新卡出现时朗读一次（闪卡翻牌时另由 flipCard 朗读）
   watch(
@@ -243,9 +257,7 @@ export function useStudySession() {
       scope: getScope(),
       queueIds: getQueueIds(),
     });
-    if (mode === 'choice') {
-      refreshChoiceState(choice, queue);
-    }
+    initModeCard(mode);
   };
 
   const fetchDue = async () => {
@@ -299,9 +311,7 @@ export function useStudySession() {
     againCountMap.value = progress.againMap || {};
     studyMode.value = progress.mode || 'flashcard';
     modeSelected.value = true;
-    if (studyMode.value === 'choice') {
-      refreshChoiceState(choice, queue);
-    }
+    initModeCard(studyMode.value);
     saveProgress();
   };
 
@@ -389,12 +399,8 @@ export function useStudySession() {
     );
     finished.value = queue.value.length > 0 && progress.index >= queue.value.length;
     showAnswer.value = false;
-    choice.resetChoice();
-    spelling.resetSpelling();
-
-    if (studyMode.value === 'choice') {
-      refreshChoiceState(choice, queue);
-    }
+    resetAllModes();
+    initModeCard(studyMode.value);
   };
 
   const handleStudySessionSync = (event) => {
@@ -405,10 +411,7 @@ export function useStudySession() {
 
       studyMode.value = event.mode || studyMode.value;
       modeSelected.value = Boolean(event.mode || modeSelected.value);
-
-      if (studyMode.value === 'choice') {
-        refreshChoiceState(choice, queue);
-      }
+      initModeCard(studyMode.value);
       return;
     }
 
@@ -442,8 +445,8 @@ export function useStudySession() {
       showAnswer,
       submitting,
       studyMode,
-      choice,
-      spelling,
+      resetModes: resetAllModes,
+      initModeCard,
       saveProgress,
       incrementRevision,
       stopAutoRead,
@@ -474,67 +477,29 @@ export function useStudySession() {
     }
   };
 
-  // 键盘快捷键
-  const handleKeyDown = (e) => {
-    if (!modeSelected.value || finished.value || !currentCard.value) return;
-    const inInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
-
-    // 闪卡模式
-    if (studyMode.value === 'flashcard' && !inInput) {
-      if (e.code === 'Space') {
-        e.preventDefault();
-        if (!showAnswer.value) {
-          flipCard();
-        } else {
-          speak(currentCard.value.word.name);
-        }
-      }
-      if (showAnswer.value && !submitting.value) {
-        if (e.key === '1') submitRating(1);
-        else if (e.key === '2') submitRating(2);
-        else if (e.key === '3') submitRating(3);
-        else if (e.key === '4') submitRating(4);
-      }
-    }
-
-    // 选择题模式（无文本输入框，不受 inInput 影响）
-    if (studyMode.value === 'choice') {
-      if (!choice.choiceAnswered.value) {
-        const idx = { a: 0, 1: 0, b: 1, 2: 1, c: 2, 3: 2, d: 3, 4: 3 }[e.key.toLowerCase()];
-        if (idx !== undefined && idx < choice.choiceOptions.value.length) {
-          e.preventDefault();
-          choice.handleChoice(idx);
-        }
-      } else if (e.code === 'Enter' || e.code === 'Space') {
-        e.preventDefault();
-        choice.choiceNext();
-      }
-    }
-
-    // 拼写 & 听力模式
-    if (studyMode.value === 'spelling' || studyMode.value === 'listening') {
-      if (spelling.spellingAnswered.value) {
-        // 答完后 Enter/Space 进入下一题
-        if (e.code === 'Enter' || e.code === 'Space') {
-          e.preventDefault();
-          spelling.spellingNext();
-        }
-        return;
-      }
-
-      if (e.code === 'Enter') {
-        e.preventDefault();
-        spelling.checkSpelling();
-        return;
-      }
-
-      // 听力模式：Space 始终重播发音，不向输入框写入空格
-      if (studyMode.value === 'listening' && e.code === 'Space') {
-        e.preventDefault();
-        speak(currentCard.value.word.name);
-      }
-    }
-  };
+  // 键盘快捷键（逻辑已提取至 useStudyKeyboard，此处仅负责挂载/卸载）
+  const { handleKeyDown } = useStudyKeyboard({
+    studyMode,
+    modeSelected,
+    finished,
+    currentCard,
+    showAnswer,
+    submitting,
+    speak,
+    choice: {
+      choiceAnswered: choice.choiceAnswered,
+      choiceOptions: choice.choiceOptions,
+      handleChoice: choice.handleChoice,
+      choiceNext: choice.choiceNext,
+    },
+    spelling: {
+      spellingAnswered: spelling.spellingAnswered,
+      checkSpelling: spelling.checkSpelling,
+      spellingNext: spelling.spellingNext,
+    },
+    flipCard,
+    submitRating,
+  });
 
   onMounted(() => {
     fetchDue();

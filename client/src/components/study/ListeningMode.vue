@@ -3,19 +3,19 @@
     <SessionProgress :currentIndex="currentIndex" :total="total" @seek="$emit('seek', $event)" />
 
     <div class="flashcard spelling-card">
-      <!-- 显示释义和词根供用户拼写 -->
-      <div class="card-meaning" style="font-size: 22px; margin-bottom: 16px">
-        {{ card.word.meaning }}
-      </div>
-      <div v-if="card.word.roots?.length" class="card-root-tag">
-        词根：{{ card.word.roots.map((r) => `${r.name}（${r.meaning}）`).join('、') }}
+      <div class="listening-prompt">听发音，拼写单词</div>
+      <SpeakButton :text="card.word.name" size="large" />
+
+      <!-- 渐进式字母提示（仅在点击提示后显示） -->
+      <div v-if="hintLevel > 0 && !answered" class="listening-hint">
+        提示：{{ hint }}
       </div>
 
-      <div class="spelling-input-area">
+      <div class="spelling-input-area" style="margin-top: 20px">
         <div class="spelling-input-row">
           <el-input
             v-model="localInput"
-            :placeholder="spellingHint"
+            placeholder="输入你听到的单词..."
             size="large"
             :disabled="answered"
             ref="inputRef"
@@ -24,13 +24,16 @@
             提示
           </el-button>
         </div>
+
         <div v-if="answered" class="spelling-feedback">
           <div v-if="correct" class="spelling-correct">✅ 正确！</div>
           <div v-else-if="hard" class="spelling-hard">
             🟡 接近正确！正确答案：<strong>{{ card.word.name }}</strong>
+            <div class="word-meaning-reveal">{{ card.word.meaning }}</div>
           </div>
           <div v-else class="spelling-wrong">
             ❌ 正确答案：<strong>{{ card.word.name }}</strong>
+            <div class="word-meaning-reveal">{{ card.word.meaning }}</div>
           </div>
         </div>
       </div>
@@ -46,13 +49,16 @@
         </el-button>
       </div>
 
-      <div class="keyboard-hint">快捷键：<kbd>Enter</kbd> 确认/下一个</div>
+      <div class="keyboard-hint">
+        快捷键：<kbd>空格</kbd> 重播发音；<kbd>Enter</kbd> 确认/下一个
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
   import { ref, computed, onMounted, watch, nextTick } from 'vue';
+  import SpeakButton from '../SpeakButton.vue';
   import SessionProgress from './SessionProgress.vue';
 
   const props = defineProps({
@@ -65,7 +71,9 @@
     hard: { type: Boolean, default: false },
     submitting: { type: Boolean, default: false },
     /** 渐进式提示文本（由 useSpellingMode.spellingHint 提供） */
-    spellingHint: { type: String, default: '输入单词拼写...' },
+    hint: { type: String, default: '' },
+    /** 当前已显示的提示级别（0 = 未显示） */
+    hintLevel: { type: Number, default: 0 },
     isLast: { type: Boolean, default: false },
   });
 

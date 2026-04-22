@@ -73,7 +73,6 @@
       :card="currentCard"
       :currentIndex="currentIndex"
       :total="queue.length"
-      mode="spelling"
       v-model:inputValue="spellingInput"
       :answered="spellingAnswered"
       :correct="spellingCorrect"
@@ -88,19 +87,18 @@
     />
 
     <!-- 听力模式 -->
-    <SpellingMode
+    <ListeningMode
       v-else-if="currentCard && studyMode === 'listening'"
       :card="currentCard"
       :currentIndex="currentIndex"
       :total="queue.length"
-      mode="listening"
       v-model:inputValue="spellingInput"
       :answered="spellingAnswered"
       :correct="spellingCorrect"
       :hard="spellingHard"
       :submitting="submitting"
-      :spellingHint="spellingHint"
-      :spellingHintLevel="spellingHintLevel"
+      :hint="spellingHint"
+      :hintLevel="spellingHintLevel"
       :isLast="currentIndex + 1 >= queue.length"
       @check="checkSpelling"
       @hint="showSpellingHint"
@@ -132,6 +130,7 @@
   import FlashcardMode from '../components/study/FlashcardMode.vue';
   import ChoiceMode from '../components/study/ChoiceMode.vue';
   import SpellingMode from '../components/study/SpellingMode.vue';
+  import ListeningMode from '../components/study/ListeningMode.vue';
   import AutoReadMode from '../components/study/AutoReadMode.vue';
 
   const {
