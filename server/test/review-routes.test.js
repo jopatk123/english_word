@@ -473,7 +473,7 @@ describe('POST /review/:wordId/result', () => {
     }
   });
 
-  it('quality=4 但复习次数不足时不会直接升为 known', async () => {
+  it('quality=4 但成功次数不足时不会直接升为 known', async () => {
     const promotedWord = await Word.create({
       name: `promoted_${suf()}`,
       meaning: '长间隔但次数不足',
@@ -487,14 +487,41 @@ describe('POST /review/:wordId/result', () => {
       interval: 30,
       easeFactor: 2.5,
       dueDate: '2099-01-11',
-      reviewCount: 0,
+      reviewCount: 10,
+      successCount: 1,
     });
 
     const res = await request(app).post(`/review/${promotedWord.id}/result`).send({ quality: 4 });
 
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe('review');
-    expect(res.body.data.reviewCount).toBe(1);
+    expect(res.body.data.reviewCount).toBe(11);
+    expect(res.body.data.successCount).toBe(2);
+  });
+
+  it('成功次数达到阈值后可升为 known', async () => {
+    const maturedWord = await Word.create({
+      name: `matured_${suf()}`,
+      meaning: '成功次数达标',
+      userId,
+    });
+    await WordRoot.create({ wordId: maturedWord.id, rootId });
+    await WordReview.create({
+      userId,
+      wordId: maturedWord.id,
+      status: 'review',
+      interval: 30,
+      easeFactor: 2.5,
+      dueDate: '2099-01-12',
+      reviewCount: 5,
+      successCount: 2,
+    });
+
+    const res = await request(app).post(`/review/${maturedWord.id}/result`).send({ quality: 4 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('known');
+    expect(res.body.data.successCount).toBe(3);
   });
 
   it('quality 超出范围返回 400', async () => {
@@ -541,6 +568,7 @@ describe('POST /review/:wordId/reset', () => {
     const rw = await WordReview.findOne({ where: { userId, wordId } });
     expect(rw.status).toBe('new');
     expect(rw.interval).toBe(0);
+    expect(rw.successCount).toBe(0);
     expect(rw.dueAt).toBeTruthy();
   });
 });

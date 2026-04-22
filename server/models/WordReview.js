@@ -59,6 +59,13 @@ const WordReview = sequelize.define(
       field: 'review_count',
       comment: '累计复习次数',
     },
+    successCount: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: 'success_count',
+      comment: '成功复习次数（quality >= 3）',
+    },
     lastReviewedAt: {
       type: DataTypes.DATE,
       allowNull: true,

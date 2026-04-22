@@ -75,8 +75,14 @@ describe('SRS 算法 getNextReview（当前版本）', () => {
     expect(result.easeFactor).toBeCloseTo(2.65, 5);
   });
 
+  it('known 的判定只依赖成功次数，不受累计 reviewCount 影响', () => {
+    const result = getNextReview(4, 30, 2.5, 'review', 10, 1);
+    expect(result.interval).toBe(Math.ceil(30 * 2.5 * 1.3));
+    expect(result.status).toBe('review');
+  });
+
   it('复习次数足够且间隔 >= 21 天时 status 为 known', () => {
-    const result = getNextReview(4, 15, 2.5, 'review', 2);
+    const result = getNextReview(4, 15, 2.5, 'review', 2, 2);
     expect(result.status).toBe('known');
     expect(result.interval).toBeGreaterThanOrEqual(21);
   });
