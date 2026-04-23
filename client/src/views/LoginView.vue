@@ -1,7 +1,18 @@
 <template>
   <div class="login-view">
     <div class="login-card">
-      <h2 class="login-title">📖 背单词</h2>
+      <div class="login-hero">
+        <p class="login-kicker">词根记忆法</p>
+        <h2 class="login-title">词根背单词工具</h2>
+        <p class="login-subtitle">
+          登录后继续管理词根、单词和例句，学习进度会保存在当前浏览器中。
+        </p>
+        <div class="login-badges">
+          <span>词根管理</span>
+          <span>例句整理</span>
+          <span>AI 辅助</span>
+        </div>
+      </div>
       <el-tabs v-model="activeTab" class="login-tabs">
         <el-tab-pane label="登录" name="login">
           <el-form
@@ -183,36 +194,107 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 70vh;
+    min-height: 72vh;
+    padding: 32px 16px;
   }
+
   .login-card {
-    width: 400px;
+    position: relative;
+    overflow: hidden;
+    width: min(100%, 440px);
     padding: 32px;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.86);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 28px;
+    box-shadow: var(--ew-shadow);
+    backdrop-filter: blur(16px);
   }
-  .login-title {
-    text-align: center;
+
+  .login-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 6px;
+    background: linear-gradient(90deg, var(--ew-brand) 0%, #0ea5e9 50%, var(--ew-accent) 100%);
+  }
+
+  .login-hero {
     margin-bottom: 24px;
-    font-size: 24px;
+    padding-top: 8px;
+  }
+
+  .login-kicker {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--ew-brand);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .login-title {
+    margin: 10px 0 8px;
+    color: var(--ew-text);
+    font-size: 26px;
+    line-height: 1.2;
   }
 
   .login-subtitle {
-    text-align: center;
-    margin: -12px 0 20px;
-    color: #6b7280;
-    font-size: 13px;
+    margin: 0;
+    color: var(--ew-text-soft);
+    font-size: 14px;
+    line-height: 1.7;
   }
+
+  .login-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .login-badges span {
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--ew-brand);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
   .login-tabs :deep(.el-tabs__header) {
     margin-bottom: 20px;
   }
+
   .login-btn {
     width: 100%;
+    height: 48px;
+    border-radius: 14px;
   }
 
   .admin-link-btn {
     width: 100%;
     margin-top: 12px;
+  }
+
+  @media (max-width: 480px) {
+    .login-view {
+      min-height: 68vh;
+      padding: 20px 12px;
+    }
+
+    .login-card {
+      padding: 24px 18px;
+      border-radius: 24px;
+    }
+
+    .login-title {
+      font-size: 22px;
+    }
   }
 </style>

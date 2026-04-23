@@ -1,3 +1,20 @@
+:root {
+  color-scheme: light;
+  --ew-bg-start: #f8fbff;
+  --ew-bg-end: #eef4fb;
+  --ew-surface: rgba(255, 255, 255, 0.84);
+  --ew-surface-strong: #ffffff;
+  --ew-border: rgba(148, 163, 184, 0.16);
+  --ew-text: #182132;
+  --ew-text-soft: #5b6577;
+  --ew-brand: #2563eb;
+  --ew-brand-strong: #0f766e;
+  --ew-accent: #f59e0b;
+  --ew-shadow: 0 18px 48px rgba(15, 23, 42, 0.12);
+  --ew-radius-lg: 28px;
+  --ew-radius-md: 20px;
+}
+
 /* ========== 全局样式 ========== */
 * {
   margin: 0;
@@ -5,11 +22,34 @@
   box-sizing: border-box;
 }
 
+html {
+  min-height: 100%;
+}
+
 body {
+  min-height: 100vh;
   font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: #f5f7fa;
-  color: #333;
+    'Avenir Next', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei UI', 'Source Han Sans SC',
+    sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 28%),
+    radial-gradient(circle at top right, rgba(15, 118, 110, 0.1), transparent 24%),
+    linear-gradient(180deg, var(--ew-bg-start) 0%, var(--ew-bg-end) 100%);
+  color: var(--ew-text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+#app {
+  min-height: 100vh;
 }
 
 /* ========== App 布局 ========== */
@@ -20,22 +60,26 @@ body {
 }
 
 .app-main {
-  max-width: 960px;
+  flex: 1;
+  max-width: 1040px;
   width: 100%;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: 24px 16px 32px;
 }
 
 .empty-tip {
   text-align: center;
-  color: #c0c4cc;
-  padding: 40px 0;
+  color: var(--ew-text-soft);
+  padding: 40px 24px;
   font-size: 14px;
+  border: 1px dashed rgba(148, 163, 184, 0.24);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.52);
 }
 
 /* ========== 响应式 - 基础 ========== */
 @media (max-width: 768px) {
   .app-main {
-    padding: 16px 10px;
+    padding: 16px 10px 24px;
   }
 }

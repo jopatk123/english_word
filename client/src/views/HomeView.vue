@@ -1,5 +1,29 @@
 <template>
   <div class="home-view">
+    <section class="home-hero">
+      <div class="home-hero-copy">
+        <p class="home-hero-kicker">词根记忆法</p>
+        <h1>把词根、单词和例句放进同一条学习路径里</h1>
+        <p class="home-hero-text">
+          首页用于快速搜索、整理词根并补充例句，帮助你在不打断节奏的前提下推进学习。
+        </p>
+      </div>
+      <div class="home-hero-highlights">
+        <div class="hero-metric">
+          <strong>快速搜索</strong>
+          <span>词根 / 单词 / 含义</span>
+        </div>
+        <div class="hero-metric">
+          <strong>统一管理</strong>
+          <span>添加、编辑、删除</span>
+        </div>
+        <div class="hero-metric">
+          <strong>持续积累</strong>
+          <span>例句与复习同步</span>
+        </div>
+      </div>
+    </section>
+
     <!-- 搜索区域 -->
     <div class="search-section">
       <el-input
@@ -152,6 +176,7 @@
       const res = await getRoots(keyword);
       roots.value = res.data;
     } catch {
+      roots.value = [];
       ElMessage.error('获取词根列表失败');
     } finally {
       loading.value = false;
@@ -168,6 +193,7 @@
       wordResults.value = res.data;
     } catch {
       wordResults.value = [];
+      ElMessage.error('搜索单词失败，请稍后重试');
     }
   };
 

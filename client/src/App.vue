@@ -2,19 +2,26 @@
   <router-view v-if="isAdminRoute" />
   <div v-else class="app-container">
     <el-header class="app-header">
-      <div class="header-content" @click="$router.push('/')">
-      </div>
-      <div class="header-clock">{{ formattedTime }}</div>
-      <div v-if="user" class="header-nav">
-        <el-button class="nav-btn" link @click="$router.push('/search')">🔍 搜索</el-button>
-        <el-button class="nav-btn" link @click="$router.push('/')">📚 学单词</el-button>
-        <el-button class="nav-btn" link @click="$router.push('/study')">📝 背单词</el-button>
-        <el-button class="nav-btn" link @click="$router.push('/ai/settings')">🤖 AI 配置</el-button>
-        <AlarmClock class="header-alarm" />
-      </div>
-      <div v-if="user" class="header-user">
-        <span class="username">{{ user.username }}</span>
-        <el-button link @click="handleLogout">退出</el-button>
+      <div class="header-shell">
+        <button class="header-brand" type="button" aria-label="返回首页" @click="router.push('/')">
+          <span class="brand-mark" aria-hidden="true">📖</span>
+          <span class="brand-copy">
+            <span class="brand-title">词根背单词工具</span>
+            <span class="brand-subtitle">词根记忆法 · 学习与复习一体化</span>
+          </span>
+        </button>
+        <div class="header-clock">{{ formattedTime }}</div>
+        <div v-if="user" class="header-nav">
+          <el-button class="nav-btn" link @click="$router.push('/search')">🔍 搜索</el-button>
+          <el-button class="nav-btn" link @click="$router.push('/')">📚 学单词</el-button>
+          <el-button class="nav-btn" link @click="$router.push('/study')">📝 背单词</el-button>
+          <el-button class="nav-btn" link @click="$router.push('/ai/settings')">🤖 AI 配置</el-button>
+          <AlarmClock class="header-alarm" />
+        </div>
+        <div v-if="user" class="header-user">
+          <span class="username">{{ user.username }}</span>
+          <el-button link @click="handleLogout">退出</el-button>
+        </div>
       </div>
     </el-header>
     <el-main class="app-main">

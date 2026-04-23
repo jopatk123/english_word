@@ -1,20 +1,122 @@
 /* ========== 首页 ========== */
+.home-view {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.9fr);
+  gap: 18px;
+  padding: 24px 26px;
+  border-radius: var(--ew-radius-lg);
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(15, 118, 110, 0.12) 52%,
+      rgba(255, 255, 255, 0.84) 100%);
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  box-shadow: var(--ew-shadow);
+}
+
+.home-hero-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.home-hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--ew-brand);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.home-hero h1 {
+  margin: 0;
+  max-width: 18ch;
+  color: var(--ew-text);
+  font-size: 28px;
+  line-height: 1.18;
+}
+
+.home-hero-text {
+  margin: 0;
+  color: var(--ew-text-soft);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.home-hero-highlights {
+  display: grid;
+  gap: 12px;
+}
+
+.hero-metric {
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.hero-metric strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--ew-text);
+  font-size: 15px;
+}
+
+.hero-metric span {
+  color: var(--ew-text-soft);
+  font-size: 13px;
+}
+
+.search-section,
+.search-results,
+.root-section {
+  margin-bottom: 0;
+  padding: 20px 22px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: var(--ew-shadow);
+  backdrop-filter: blur(16px);
+}
+
 .search-section {
-  margin-bottom: 24px;
+  display: flex;
+  justify-content: flex-start;
 }
 
 .search-input {
-  max-width: 500px;
+  width: 100%;
+  max-width: 560px;
 }
 
 .search-results {
-  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .search-results h3 {
-  margin-bottom: 12px;
-  color: #606266;
+  margin: 0;
+  color: var(--ew-text);
   font-size: 16px;
+  font-weight: 600;
+}
+
+.root-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .root-section .section-header,
@@ -22,7 +124,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 0;
 }
 
 .section-actions,
@@ -34,8 +137,9 @@
 
 .root-section .section-header h2,
 .detail-view .section-header h3 {
+  margin: 0;
+  color: var(--ew-text);
   font-size: 18px;
-  color: #303133;
 }
 
 /* ========== 详情页 ========== */
@@ -56,30 +160,30 @@
 }
 
 .root-name {
+  color: var(--ew-text);
   font-size: 24px;
   font-weight: 700;
-  color: #303133;
 }
 
 .phonetic {
   font-size: 16px;
-  color: #909399;
+  color: #7b8292;
   font-style: italic;
 }
 
 .root-meaning {
   font-size: 16px;
-  color: #606266;
+  color: #4b5565;
 }
 
 .remark-text {
-  color: #606266;
+  color: #4b5565;
   font-size: 14px;
   line-height: 1.6;
 }
 
 .remark-text.muted {
-  color: #c0c4cc;
+  color: #b5bcc8;
 }
 
 /* ========== 例句卡片 ========== */
@@ -105,17 +209,17 @@
 }
 
 .example-sentence {
-  font-size: 15px;
-  color: #303133;
-  line-height: 1.6;
   margin-bottom: 6px;
+  color: var(--ew-text);
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .example-translation {
-  font-size: 14px;
-  color: #909399;
-  line-height: 1.5;
   margin-bottom: 4px;
+  color: #7b8292;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .example-remark {
@@ -135,6 +239,22 @@
 
 /* ========== 响应式 - 搜索 & 详情 ========== */
 @media (max-width: 768px) {
+  .home-hero {
+    grid-template-columns: 1fr;
+    padding: 20px;
+  }
+
+  .home-hero h1 {
+    font-size: 24px;
+  }
+
+  .search-section,
+  .search-results,
+  .root-section {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
   .search-input {
     max-width: 100%;
   }
@@ -162,10 +282,10 @@
 }
 
 @media (max-width: 480px) {
-  .section-header {
+  .root-section .section-header,
+  .detail-view .section-header {
     flex-direction: column;
-    gap: 8px;
-    align-items: flex-start !important;
+    align-items: flex-start;
   }
 
   .section-actions,
