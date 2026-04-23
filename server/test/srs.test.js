@@ -70,10 +70,15 @@ describe('srs.js 工具模块', () => {
       expect(r.interval).toBe(MAX_INTERVAL);
     });
 
-    it('复习次数足够且间隔 >= 21 天时 status=known', () => {
+    it('quality=4 且复习次数足够、间隔 >= 21 天时 status=known', () => {
       const r = getNextReview(4, 15, 2.5, 'review', 2);
       expect(r.interval).toBeGreaterThanOrEqual(21);
       expect(r.status).toBe('known');
+    });
+
+    it('quality=3 即使成功次数和间隔达标也不会直接升 known', () => {
+      const r = getNextReview(3, 21, 2.5, 'review', 2);
+      expect(r.status).toBe('review');
     });
 
     it('quality=2(hard) 即使间隔很长也不会直接升 known', () => {

@@ -128,7 +128,7 @@ export function getNextReview(
   newInterval = Math.min(newInterval, MAX_INTERVAL);
   // 已掌握需要“足够多次成功复习 + 足够长的间隔”，避免单次长间隔误判。
   const status =
-    quality >= 3 &&
+    quality === 4 &&
     completedSuccesses >= KNOWN_REVIEW_COUNT_THRESHOLD &&
     newInterval >= KNOWN_STATUS_THRESHOLD
       ? REVIEW_STATUS.KNOWN

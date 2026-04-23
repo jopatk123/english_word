@@ -187,7 +187,7 @@ describe('SRS 算法 getNextReview', () => {
     const status =
       quality === 1
         ? 'learning'
-        : quality >= 3 && completedReviews >= KNOWN_REVIEW_COUNT_THRESHOLD && newInterval >= 21
+        : quality === 4 && completedReviews >= KNOWN_REVIEW_COUNT_THRESHOLD && newInterval >= 21
           ? 'known'
           : 'review';
     return { interval: newInterval, easeFactor: newEase, status };
