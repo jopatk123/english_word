@@ -41,6 +41,12 @@ export const createTabSyncChannel = (channelName) => {
   const channel =
     typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(fullChannelName) : null;
 
+  const notifySubscribers = (payload, meta) => {
+    subscribers.forEach((handler) => {
+      handler(payload, meta);
+    });
+  };
+
   const emitEnvelope = (envelope, via) => {
     if (!envelope?.id || envelope.senderId === TAB_ID || seenIds.has(envelope.id)) {
       return;
@@ -49,11 +55,9 @@ export const createTabSyncChannel = (channelName) => {
     seenIds.add(envelope.id);
     trimSeenIds(seenIds);
 
-    subscribers.forEach((handler) => {
-      handler(envelope.payload, {
-        via,
-        sentAt: envelope.sentAt,
-      });
+    notifySubscribers(envelope.payload, {
+      via,
+      sentAt: envelope.sentAt,
     });
   };
 
@@ -91,6 +95,14 @@ export const createTabSyncChannel = (channelName) => {
       sentAt: Date.now(),
       payload: serializablePayload,
     };
+
+    seenIds.add(envelope.id);
+    trimSeenIds(seenIds);
+
+    notifySubscribers(envelope.payload, {
+      via: 'local',
+      sentAt: envelope.sentAt,
+    });
 
     if (channel) {
       try {

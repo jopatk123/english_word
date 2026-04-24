@@ -45,6 +45,21 @@ describe('createTabSyncChannel', () => {
     vi.unstubAllGlobals();
   });
 
+  it('在当前标签页 publish 时也会通知订阅者', () => {
+    const channel = createTabSyncChannel('local-publish');
+    openChannels.push(channel);
+    const handler = vi.fn();
+
+    channel.subscribe(handler);
+    channel.publish({ type: 'login' });
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalledWith(
+      { type: 'login' },
+      expect.objectContaining({ via: 'local' })
+    );
+  });
+
   it('能接收来自其他标签页的 storage 同步事件', () => {
     const channel = createTabSyncChannel('spec');
     openChannels.push(channel);
