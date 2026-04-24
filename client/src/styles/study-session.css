@@ -584,6 +584,7 @@
   .rate-btn {
     min-width: 70px;
     font-size: 13px;
+    height: 42px;
   }
 
   .spelling-input-row {
@@ -598,10 +599,115 @@
   .mode-options {
     grid-template-columns: 1fr;
   }
+
+  .complete-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .complete-actions .el-button {
+    width: 100%;
+  }
+
+  .session-complete {
+    padding: 32px 16px;
+  }
+
+  .session-complete h2 {
+    font-size: 20px;
+  }
+
+  .flip-action .el-button {
+    min-width: 0;
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .result-bars {
+    gap: 10px;
+  }
+
+  .mode-select {
+    padding: 24px 12px;
+  }
+
+  .mode-select h2 {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
 }
 
 @media (max-width: 480px) {
   .flashcard {
-    padding: 24px 16px;
+    padding: 20px 14px;
+    min-height: 240px;
+    border-radius: 14px;
+  }
+
+  .card-word {
+    font-size: 24px;
+  }
+
+  .card-phonetic {
+    font-size: 14px;
+  }
+
+  .card-meaning {
+    font-size: 16px;
+  }
+
+  .card-remark {
+    font-size: 13px;
+  }
+
+  .card-example .example-en {
+    font-size: 13px;
+  }
+
+  .card-example .example-zh {
+    font-size: 12px;
+  }
+
+  .rating-buttons {
+    gap: 6px;
+    margin-top: 16px;
+  }
+
+  .rate-btn {
+    height: 44px;
+    font-size: 13px;
+    border-radius: 10px !important;
+  }
+
+  .flip-action {
+    margin-top: 16px;
+  }
+
+  .choice-option {
+    padding: 12px 14px;
+  }
+
+  .choice-text {
+    font-size: 14px;
+  }
+
+  .mode-card {
+    padding: 18px 12px;
+  }
+
+  .mode-icon {
+    font-size: 28px;
+  }
+
+  .mode-name {
+    font-size: 15px;
+  }
+
+  .complete-icon {
+    font-size: 48px;
+  }
+
+  .progress-text {
+    font-size: 12px;
   }
 }

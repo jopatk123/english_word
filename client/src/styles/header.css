@@ -3,6 +3,8 @@
   position: sticky;
   top: 0;
   z-index: 100;
+  height: auto;
+  min-height: 60px;
   padding: 14px 16px 12px;
   background: linear-gradient(
     135deg,
@@ -18,7 +20,7 @@
 .header-shell {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   width: 100%;
   max-width: 1040px;
   margin: 0 auto;
@@ -38,11 +40,17 @@
   white-space: nowrap;
 }
 
+/* 短格式默认隐藏，仅在小屏显示 */
+.clock-short {
+  display: none;
+}
+
 .header-user {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .header-user .username {
@@ -63,20 +71,25 @@
 .header-nav {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
+  row-gap: 8px;
+  justify-content: flex-end;
 }
 
 .header-nav .nav-btn {
   color: rgba(255, 255, 255, 0.94) !important;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  min-height: 34px;
-  padding: 0 12px;
+  min-height: 32px;
+  padding: 0 10px;
+  line-height: 1;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(10px);
+  white-space: nowrap;
+  flex: 0 0 auto;
   transition:
     transform 0.18s ease,
     background-color 0.18s ease,
@@ -93,38 +106,101 @@
 
 /* 闹钟组件在导航栏中的布局 */
 .header-alarm {
-  margin-left: 2px;
+  margin-left: 0;
 }
 
 /* ========== 响应式 - 顶栏 ========== */
-@media (max-width: 768px) {
+@media (max-width: 980px) {
   .app-header {
     padding: 12px 12px 10px;
   }
 
   .header-shell {
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'clock'
+      'nav';
+    align-items: center;
+    gap: 8px 10px;
   }
 
   .header-clock {
+    grid-area: clock;
     width: 100%;
     margin-right: 0;
   }
 
-  .header-nav,
-  .header-user {
+  .header-nav {
+    grid-area: nav;
     width: 100%;
-  }
-
-  .header-user {
+    min-width: 0;
     justify-content: flex-start;
   }
+
+  .header-user .username {
+    display: none;
+  }
 }
-@media (max-width: 480px) {
+
+@media (max-width: 768px) {
+  .app-header {
+    padding: 10px 12px 8px;
+  }
+
+  .header-shell {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .header-clock {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+
+  .header-nav {
+    width: 100%;
+    gap: 6px;
+  }
+
   .header-nav .nav-btn {
     font-size: 13px;
     padding: 0 10px;
+    min-height: 32px;
+  }
+
+  .header-user .username {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    padding: 8px 10px 6px;
+  }
+
+  .header-clock {
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+
+  /* 小屏显示短格式，隐藏完整格式 */
+  .clock-full {
+    display: none;
+  }
+
+  .clock-short {
+    display: inline;
+  }
+
+  .header-nav .nav-btn {
+    font-size: 12px;
+    padding: 0 8px;
+    min-height: 30px;
+  }
+
+  .header-user .el-button {
+    font-size: 13px;
+    padding: 0 8px;
   }
 }

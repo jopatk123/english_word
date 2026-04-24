@@ -112,7 +112,7 @@
 
 <style scoped>
   .st-panel {
-    width: 300px;
+    width: min(300px, calc(100vw - 16px));
     background: #fff;
     border-radius: 14px;
     box-shadow:
@@ -120,6 +120,7 @@
       0 2px 10px rgba(0, 0, 0, 0.1);
     color: #333;
     overflow: hidden;
+    box-sizing: border-box;
   }
 
   /* 标题栏 */
@@ -301,8 +302,19 @@
   }
 
   @media (max-width: 768px) {
-    .st-panel {
-      width: 280px;
+    .stp-elapsed {
+      font-size: 44px;
+    }
+
+    .stp-timer-area {
+      padding: 16px 16px 6px;
+    }
+
+    .stp-btn-start,
+    .stp-btn-stop {
+      padding: 14px;
+      font-size: 16px;
+      min-height: 48px;
     }
   }
 </style>

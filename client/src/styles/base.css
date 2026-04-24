@@ -83,3 +83,73 @@ select {
     padding: 16px 10px 24px;
   }
 }
+
+@media (max-width: 480px) {
+  .app-main {
+    padding: 12px 8px 20px;
+  }
+}
+
+/* ========== 移动端通用优化 ========== */
+/* 禁用移动端点击高亮闪烁 */
+button,
+a,
+[role='button'] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 触摸目标最小高度 44px（iOS 规范） */
+.el-button {
+  min-height: 36px;
+}
+
+/* 防止 iOS 双击缩放 */
+html {
+  touch-action: manipulation;
+}
+
+/* 表格横向滚动容器 */
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 移动端隐藏键盘快捷键提示 */
+@media (hover: none) and (pointer: coarse) {
+  .keyboard-hint {
+    display: none;
+  }
+}
+
+/* ========== Element Plus 移动端全局修正 ========== */
+/* 对话框在移动端宽度自适应 */
+@media (max-width: 540px) {
+  .el-dialog {
+    --el-dialog-margin-top: 8vh;
+    width: calc(100vw - 24px) !important;
+    max-width: 100%;
+    border-radius: 16px;
+  }
+
+  .el-dialog__body {
+    padding: 16px 16px 8px;
+  }
+
+  .el-dialog__footer {
+    padding: 8px 16px 16px;
+  }
+}
+
+/* 下拉菜单 / select 弹出层在小屏保持可见 */
+@media (max-width: 480px) {
+  .el-select-dropdown {
+    max-width: calc(100vw - 24px);
+  }
+
+  /* 面包屑在小屏适度缩小 */
+  .el-breadcrumb {
+    font-size: 13px;
+    margin-bottom: 14px !important;
+  }
+}

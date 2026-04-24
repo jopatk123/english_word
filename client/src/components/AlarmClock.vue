@@ -171,9 +171,6 @@
   }
 
   @media (max-width: 768px) {
-    .alarm-panel-wrapper {
-      right: -60px;
-    }
     .alarm-badge {
       display: none;
     }

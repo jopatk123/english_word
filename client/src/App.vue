@@ -3,17 +3,20 @@
   <div v-else class="app-container">
     <el-header class="app-header">
       <div class="header-shell">
-        <div class="header-clock">{{ formattedTime }}</div>
+        <div class="header-clock">
+          <span class="clock-full">{{ formattedTime }}</span>
+          <span class="clock-short">{{ formattedTimeShort }}</span>
+        </div>
         <div v-if="user" class="header-nav">
           <el-button class="nav-btn" link @click="$router.push('/search')">🔍 搜索</el-button>
           <el-button class="nav-btn" link @click="$router.push('/')">📚 学单词</el-button>
           <el-button class="nav-btn" link @click="$router.push('/study')">📝 背单词</el-button>
           <el-button class="nav-btn" link @click="$router.push('/ai/settings')">🤖 AI 配置</el-button>
           <AlarmClock class="header-alarm" />
-        </div>
-        <div v-if="user" class="header-user">
-          <span class="username">{{ user.username }}</span>
-          <el-button link @click="handleLogout">退出</el-button>
+          <div class="header-user">
+            <span class="username">{{ user.username }}</span>
+            <el-button link @click="handleLogout">退出</el-button>
+          </div>
         </div>
       </div>
     </el-header>
@@ -65,6 +68,16 @@
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
+      hour12: false,
+    })
+  );
+
+  const formattedTimeShort = computed(() =>
+    now.value.toLocaleString('zh-CN', {
+      month: 'numeric',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
       hour12: false,
     })
   );
