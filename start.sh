@@ -7,6 +7,7 @@ CLIENT_DIR="$ROOT_DIR/client"
 SERVER_DIR="$ROOT_DIR/server"
 PID_FILE="$ROOT_DIR/.start-server.pid"
 PORT="${PORT:-3010}"
+CLIENT_PORT="${CLIENT_PORT:-5173}"
 HOST="${HOST:-127.0.0.1}"
 
 require_command() {
@@ -27,6 +28,44 @@ ensure_dependencies() {
   fi
 }
 
+wait_for_port_close() {
+  local port="$1"
+  local retries=5
+  local count=0
+
+  while [ "$count" -lt "$retries" ] && lsof -ti tcp:"$port" -sTCP:LISTEN >/dev/null 2>&1; do
+    sleep 1
+    count=$((count + 1))
+  done
+}
+
+clear_port() {
+  local port="$1"
+  local pids
+  pids="$(lsof -ti tcp:"$port" -sTCP:LISTEN 2>/dev/null || true)"
+
+  if [ -n "$pids" ]; then
+    echo "端口 $port 已被占用，尝试清理进程: $pids"
+    if kill $pids >/dev/null 2>&1; then
+      echo "已发送终止信号，等待端口 $port 释放..."
+      wait_for_port_close "$port"
+    fi
+
+    if lsof -ti tcp:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+      echo "端口 $port 仍被占用，尝试强制终止进程: $pids"
+      kill -9 $pids >/dev/null 2>&1 || true
+      wait_for_port_close "$port"
+    fi
+
+    if lsof -ti tcp:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+      echo "端口 $port 仍然被占用，无法启动。请手动释放端口后重试。"
+      exit 1
+    fi
+
+    echo "端口 $port 已经清理完成。"
+  fi
+}
+
 stop_existing_process() {
   if [ -f "$PID_FILE" ]; then
     local existing_pids
@@ -43,30 +82,8 @@ stop_existing_process() {
     rm -f "$PID_FILE"
   fi
 
-  local port_pid
-  port_pid="$(lsof -ti tcp:"$PORT" -sTCP:LISTEN 2>/dev/null || true)"
-  if [ -n "$port_pid" ]; then
-    echo "端口 $PORT 已被占用，尝试清理进程 $port_pid..."
-    # 尝试终止监听该端口的进程
-    if kill "$port_pid" >/dev/null 2>&1; then
-      echo "已发送终止信号给进程 $port_pid，等待端口释放..."
-      # 等待端口关闭，最多 5 秒
-      for i in {1..5}; do
-        sleep 1
-        if ! lsof -ti tcp:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
-          break
-        fi
-      done
-    else
-      echo "无法终止进程 $port_pid，请手动释放端口 $PORT 并重试。"
-      exit 1
-    fi
-    # 如果在尝试后端口仍然被占用，则直接报错
-    if lsof -ti tcp:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
-      echo "端口 $PORT 仍被占用，无法启动。请手动处理。"
-      exit 1
-    fi
-  fi
+  clear_port "$PORT"
+  clear_port "$CLIENT_PORT"
 }
 
 require_command node
@@ -90,7 +107,7 @@ server_pid=$!
 echo "启动前端服务（Vite dev server）..."
 (
   cd "$CLIENT_DIR"
-  npm run dev
+  PORT="$CLIENT_PORT" npm run dev
 ) &
 
 client_pid=$!
@@ -121,7 +138,7 @@ while ! curl -fsS "http://$HOST:$PORT/api/roots" >/dev/null 2>&1; do
 done
 
 echo "后端已启动: http://$HOST:$PORT"
-echo "前端已启动 (Vite dev server)，默认地址: http://localhost:5173"
+echo "前端已启动 (Vite dev server): http://localhost:$CLIENT_PORT"
 
 wait "$server_pid" "$client_pid"
 exit 0

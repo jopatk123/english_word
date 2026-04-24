@@ -89,7 +89,7 @@ describe('App', () => {
     vi.unstubAllGlobals();
   });
 
-  it('shows the branded header on normal routes', async () => {
+  it('shows the compact header on normal routes', async () => {
     const wrapper = mount(App, {
       global: {
         stubs: globalStubs,
@@ -99,8 +99,9 @@ describe('App', () => {
     await flush();
     await nextTick();
 
-    expect(wrapper.find('.header-brand').exists()).toBe(true);
-    expect(wrapper.text()).toContain('词根背单词工具');
+    expect(wrapper.find('.header-brand').exists()).toBe(false);
+    expect(wrapper.find('.header-clock').exists()).toBe(true);
+    expect(wrapper.find('.header-nav').exists()).toBe(true);
     expect(wrapper.find('.header-user').text()).toContain('Alice');
 
     wrapper.unmount();

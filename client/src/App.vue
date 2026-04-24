@@ -3,13 +3,6 @@
   <div v-else class="app-container">
     <el-header class="app-header">
       <div class="header-shell">
-        <button class="header-brand" type="button" aria-label="返回首页" @click="router.push('/')">
-          <span class="brand-mark" aria-hidden="true">📖</span>
-          <span class="brand-copy">
-            <span class="brand-title">词根背单词工具</span>
-            <span class="brand-subtitle">词根记忆法 · 学习与复习一体化</span>
-          </span>
-        </button>
         <div class="header-clock">{{ formattedTime }}</div>
         <div v-if="user" class="header-nav">
           <el-button class="nav-btn" link @click="$router.push('/search')">🔍 搜索</el-button>
