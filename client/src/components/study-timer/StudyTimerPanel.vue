@@ -113,14 +113,16 @@
 <style scoped>
   .st-panel {
     width: min(300px, calc(100vw - 16px));
+    max-height: calc(100vh - 24px);
     background: #fff;
     border-radius: 14px;
     box-shadow:
       0 10px 40px rgba(0, 0, 0, 0.18),
       0 2px 10px rgba(0, 0, 0, 0.1);
     color: #333;
-    overflow: hidden;
+    overflow: auto;
     box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* 标题栏 */
@@ -302,6 +304,11 @@
   }
 
   @media (max-width: 768px) {
+    .st-panel {
+      width: min(320px, calc(100vw - 24px));
+      max-height: calc(100vh - 24px);
+    }
+
     .stp-elapsed {
       font-size: 44px;
     }

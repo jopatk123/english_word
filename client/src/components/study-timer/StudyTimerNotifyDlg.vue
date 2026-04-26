@@ -3,7 +3,7 @@
     v-model="visibleModel"
     :close-on-click-modal="false"
     :show-close="false"
-    width="360px"
+    width="min(360px, calc(100vw - 24px))"
     align-center
     class="rest-notify-dlg"
   >
@@ -63,8 +63,45 @@
     display: flex;
     gap: 10px;
     justify-content: center;
+    flex-wrap: wrap;
+  }
+  :deep(.rest-notify-dlg .el-dialog) {
+    width: min(360px, calc(100vw - 24px)) !important;
+    max-width: calc(100vw - 24px);
+    margin: 0;
+  }
+  :deep(.rest-notify-dlg .el-dialog__body) {
+    padding: 20px 24px 8px;
   }
   :deep(.rest-notify-dlg .el-dialog__footer) {
     padding: 0 24px 20px;
+  }
+
+  @media (max-width: 480px) {
+    .rest-title {
+      font-size: 18px;
+    }
+
+    .rest-msg {
+      font-size: 13px;
+    }
+
+    .rest-footer {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+
+    .rest-footer :deep(.el-button) {
+      width: 100%;
+      margin-left: 0;
+    }
+
+    :deep(.rest-notify-dlg .el-dialog__body) {
+      padding: 18px 16px 6px;
+    }
+
+    :deep(.rest-notify-dlg .el-dialog__footer) {
+      padding: 0 16px 16px;
+    }
   }
 </style>

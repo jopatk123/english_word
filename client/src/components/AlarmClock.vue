@@ -1,5 +1,5 @@
 <template>
-  <div class="alarm-wrapper" ref="wrapperRef">
+  <div class="alarm-wrapper">
     <!-- 铃铛按钮 -->
     <button
       class="alarm-btn"
@@ -13,25 +13,27 @@
 
     <!-- 下拉面板 -->
     <transition name="alarm-panel-fade">
-      <div v-if="panelVisible" class="alarm-panel-wrapper">
-        <StudyTimerPanel
-          :is-running="isRunning"
-          :elapsed-display="elapsedDisplay"
-          :alarm-enabled="alarmEnabled"
-          :alarm-minutes="alarmMinutes"
-          :alarm-remaining-seconds="alarmRemainingSeconds"
-          :alarm-remaining-display="alarmRemainingDisplay"
-          :alarm-progress-pct="alarmProgressPct"
-          :today-seconds="todaySeconds"
-          :total-seconds="totalSeconds"
-          :saved-total-seconds="savedTotalSeconds"
-          :action-pending="actionPending"
-          @start="handleStart"
-          @stop="handleStop"
-          @close="panelVisible = false"
-          @update:alarm-enabled="alarmEnabled = $event"
-          @update:alarm-minutes="alarmMinutes = $event"
-        />
+      <div v-if="panelVisible" class="alarm-panel-overlay" @click.self="panelVisible = false">
+        <div class="alarm-panel-wrapper">
+          <StudyTimerPanel
+            :is-running="isRunning"
+            :elapsed-display="elapsedDisplay"
+            :alarm-enabled="alarmEnabled"
+            :alarm-minutes="alarmMinutes"
+            :alarm-remaining-seconds="alarmRemainingSeconds"
+            :alarm-remaining-display="alarmRemainingDisplay"
+            :alarm-progress-pct="alarmProgressPct"
+            :today-seconds="todaySeconds"
+            :total-seconds="totalSeconds"
+            :saved-total-seconds="savedTotalSeconds"
+            :action-pending="actionPending"
+            @start="handleStart"
+            @stop="handleStop"
+            @close="panelVisible = false"
+            @update:alarm-enabled="alarmEnabled = $event"
+            @update:alarm-minutes="alarmMinutes = $event"
+          />
+        </div>
       </div>
     </transition>
 
@@ -46,12 +48,11 @@
 </template>
 
 <script setup>
-  import { ref, onMounted, onUnmounted } from 'vue';
+  import { ref } from 'vue';
   import { useStudyTimer } from '../composables/useStudyTimer.js';
   import StudyTimerPanel from './study-timer/StudyTimerPanel.vue';
   import StudyTimerNotifyDlg from './study-timer/StudyTimerNotifyDlg.vue';
 
-  const wrapperRef = ref(null);
   const panelVisible = ref(false);
 
   const {
@@ -89,15 +90,6 @@
     restNotifyVisible.value = false;
     await stopTimer();
   }
-
-  function handleOutsideClick(e) {
-    if (wrapperRef.value && !wrapperRef.value.contains(e.target)) {
-      panelVisible.value = false;
-    }
-  }
-
-  onMounted(() => document.addEventListener('click', handleOutsideClick));
-  onUnmounted(() => document.removeEventListener('click', handleOutsideClick));
 </script>
 
 <style scoped>
@@ -152,11 +144,23 @@
     font-variant-numeric: tabular-nums;
   }
 
+  .alarm-panel-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.22);
+    backdrop-filter: blur(4px);
+    overflow-y: auto;
+  }
+
   .alarm-panel-wrapper {
-    position: absolute;
-    top: calc(100% + 10px);
-    right: 0;
+    position: relative;
     z-index: 9999;
+    margin: auto;
   }
 
   .alarm-panel-fade-enter-active,
@@ -167,10 +171,15 @@
   .alarm-panel-fade-enter-from,
   .alarm-panel-fade-leave-to {
     opacity: 0;
-    transform: translateY(-10px) scale(0.97);
+    transform: scale(0.97);
   }
 
   @media (max-width: 768px) {
+    .alarm-panel-overlay {
+      padding: 12px;
+      align-items: center;
+    }
+
     .alarm-badge {
       display: none;
     }
