@@ -12,30 +12,32 @@
     </button>
 
     <!-- 下拉面板 -->
-    <transition name="alarm-panel-fade">
-      <div v-if="panelVisible" class="alarm-panel-overlay" @click.self="panelVisible = false">
-        <div class="alarm-panel-wrapper">
-          <StudyTimerPanel
-            :is-running="isRunning"
-            :elapsed-display="elapsedDisplay"
-            :alarm-enabled="alarmEnabled"
-            :alarm-minutes="alarmMinutes"
-            :alarm-remaining-seconds="alarmRemainingSeconds"
-            :alarm-remaining-display="alarmRemainingDisplay"
-            :alarm-progress-pct="alarmProgressPct"
-            :today-seconds="todaySeconds"
-            :total-seconds="totalSeconds"
-            :saved-total-seconds="savedTotalSeconds"
-            :action-pending="actionPending"
-            @start="handleStart"
-            @stop="handleStop"
-            @close="panelVisible = false"
-            @update:alarm-enabled="alarmEnabled = $event"
-            @update:alarm-minutes="alarmMinutes = $event"
-          />
+    <Teleport to="body">
+      <transition name="alarm-panel-fade">
+        <div v-if="panelVisible" class="alarm-panel-overlay" @click.self="panelVisible = false">
+          <div class="alarm-panel-wrapper">
+            <StudyTimerPanel
+              :is-running="isRunning"
+              :elapsed-display="elapsedDisplay"
+              :alarm-enabled="alarmEnabled"
+              :alarm-minutes="alarmMinutes"
+              :alarm-remaining-seconds="alarmRemainingSeconds"
+              :alarm-remaining-display="alarmRemainingDisplay"
+              :alarm-progress-pct="alarmProgressPct"
+              :today-seconds="todaySeconds"
+              :total-seconds="totalSeconds"
+              :saved-total-seconds="savedTotalSeconds"
+              :action-pending="actionPending"
+              @start="handleStart"
+              @stop="handleStop"
+              @close="panelVisible = false"
+              @update:alarm-enabled="alarmEnabled = $event"
+              @update:alarm-minutes="alarmMinutes = $event"
+            />
+          </div>
         </div>
-      </div>
-    </transition>
+      </transition>
+    </Teleport>
 
     <!-- 休息提醒弹窗 -->
     <StudyTimerNotifyDlg
@@ -155,12 +157,14 @@
     background: rgba(15, 23, 42, 0.22);
     backdrop-filter: blur(4px);
     overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .alarm-panel-wrapper {
     position: relative;
     z-index: 9999;
     margin: auto;
+    max-width: 100%;
   }
 
   .alarm-panel-fade-enter-active,

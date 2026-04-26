@@ -3,6 +3,7 @@
     v-model="visibleModel"
     :close-on-click-modal="false"
     :show-close="false"
+    append-to-body
     width="min(360px, calc(100vw - 24px))"
     align-center
     class="rest-notify-dlg"
@@ -68,7 +69,19 @@
   :deep(.rest-notify-dlg .el-dialog) {
     width: min(360px, calc(100vw - 24px)) !important;
     max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
     margin: 0;
+    overflow: auto;
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
+  }
+  :deep(.rest-notify-dlg .el-overlay-dialog) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   :deep(.rest-notify-dlg .el-dialog__body) {
     padding: 20px 24px 8px;
@@ -78,6 +91,14 @@
   }
 
   @media (max-width: 480px) {
+    :deep(.rest-notify-dlg .el-dialog) {
+      max-height: calc(100vh - 16px);
+    }
+
+    :deep(.rest-notify-dlg .el-overlay-dialog) {
+      padding: 8px;
+    }
+
     .rest-title {
       font-size: 18px;
     }
