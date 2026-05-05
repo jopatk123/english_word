@@ -69,12 +69,16 @@ import { describe, it, expect, vi } from 'vitest';
 import { seekToStudyCard, useStudySession } from '../useStudySession.js';
 import { FOLLOW_UP_OFFSETS, insertFollowUpCard } from '../studyQueue.js';
 
+const getReviewDueMock = vi.fn().mockResolvedValue({ data: [] });
+const submitReviewResultMock = vi.fn().mockResolvedValue({});
+const getQuizChoicesMock = vi.fn().mockResolvedValue({
+  data: { correct: { id: 1, meaning: 'meaning1' }, distractors: [] },
+});
+
 vi.mock('../../api/index.js', () => ({
-  getReviewDue: vi.fn().mockResolvedValue({ data: [] }),
-  submitReviewResult: vi.fn().mockResolvedValue({}),
-  getQuizChoices: vi.fn().mockResolvedValue({
-    data: { correct: { id: 1, meaning: 'meaning1' }, distractors: [] },
-  }),
+  getReviewDue: (...args) => getReviewDueMock(...args),
+  submitReviewResult: (...args) => submitReviewResultMock(...args),
+  getQuizChoices: (...args) => getQuizChoicesMock(...args),
 }));
 
 vi.mock('../../utils/speech.js', () => ({
@@ -231,8 +235,8 @@ describe('insertFollowUpCard 队列插入策略', () => {
 
     const result = insertFollowUpCard(queue, currentCard, 0, FOLLOW_UP_OFFSETS.HARD);
 
-    expect(result.map((item) => item.wordId)).toEqual([1, 2, 1, 3, 4]);
-    expect(result[2]).not.toBe(currentCard);
+    expect(result.map((item) => item.wordId)).toEqual([1, 2, 3, 1, 4]);
+    expect(result[3]).not.toBe(currentCard);
   });
 
   it('靠近队尾时会安全追加到末尾', () => {
@@ -260,10 +264,59 @@ describe('useStudySession 的 hard 回插', () => {
 
     await wrapper.vm.submitRating(2);
 
-    expect(wrapper.vm.queue.map((item) => item.wordId)).toEqual([1, 2, 1, 3]);
+  expect(wrapper.vm.queue.map((item) => item.wordId)).toEqual([1, 2, 3, 1]);
     expect(wrapper.vm.currentIndex).toBe(1);
     expect(wrapper.vm.sessionStats.hard).toBe(1);
 
+    wrapper.unmount();
+  });
+});
+
+describe('useStudySession 完成页后续复习会正常提交到服务端', () => {
+  const mountSession = async (items) => {
+    const wrapper = mount({
+      template: '<div />',
+      setup() {
+        return useStudySession();
+      },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    wrapper.vm.queue = [...items];
+    wrapper.vm.originalQueue = [...items];
+    submitReviewResultMock.mockClear();
+    return wrapper;
+  };
+
+  it('continueReview 后再次评分会提交服务端', async () => {
+    const wrapper = await mountSession([makeItem(1), makeItem(2), makeItem(3)]);
+    wrapper.vm.againCountMap = { 2: 1 };
+
+    wrapper.vm.continueReview();
+    await wrapper.vm.submitRating(3);
+
+    expect(submitReviewResultMock).toHaveBeenCalledWith(2, 3);
+    wrapper.unmount();
+  });
+
+  it('replayWithNewMode 后再次评分会提交服务端', async () => {
+    const wrapper = await mountSession([makeItem(1), makeItem(2)]);
+
+    wrapper.vm.replayWithNewMode();
+    await wrapper.vm.submitRating(4);
+
+    expect(submitReviewResultMock).toHaveBeenCalledWith(1, 4);
+    wrapper.unmount();
+  });
+
+  it('replayAgainWords 后再次评分会提交服务端', async () => {
+    const wrapper = await mountSession([makeItem(1), makeItem(2), makeItem(3)]);
+    wrapper.vm.againCountMap = { 3: 2 };
+
+    wrapper.vm.replayAgainWords();
+    await wrapper.vm.submitRating(1);
+
+    expect(submitReviewResultMock).toHaveBeenCalledWith(3, 1);
     wrapper.unmount();
   });
 });

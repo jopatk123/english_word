@@ -102,17 +102,7 @@
     <!-- 词根列表（管理学习队列） -->
     <div class="root-section">
       <div class="section-header">
-        <h3>按词根管理学习队列</h3>
-        <el-button
-          size="small"
-          type="primary"
-          plain
-          :loading="enqueuingAll"
-          :disabled="!hasUnenrolledRoots"
-          @click="handleEnqueueAll"
-        >
-          全部加入学习
-        </el-button>
+        <h3>按词根查看复习进度</h3>
       </div>
 
       <el-table
@@ -157,7 +147,7 @@
               @click="handleEnqueue(row)"
               :loading="enqueuingId === row.id"
             >
-              加入学习
+              加入复习
             </el-button>
             <el-tag v-else size="small" type="success">已全部加入</el-tag>
           </template>
@@ -196,7 +186,6 @@
   const rootsProgress = ref([]);
   const rootsLoading = ref(false);
   const enqueuingId = ref(null);
-  const enqueuingAll = ref(false);
   const importing = ref(false);
   const exporting = ref(false);
   const importFileInput = ref(null);
@@ -204,10 +193,6 @@
   const totalReviews30d = ref(0);
   let statsRefreshTimer = null;
   let lastStatsDate = '';
-
-  const hasUnenrolledRoots = computed(() =>
-    rootsProgress.value.some((r) => r.wordCount > 0 && r.enrolled < r.wordCount)
-  );
 
   const studyReminder = computed(() => {
     const total = stats.value.total || 0;
@@ -314,7 +299,7 @@
       fetchStats();
       fetchRootsProgress();
     } catch {
-      ElMessage.error('加入学习队列失败');
+      ElMessage.error('加入复习队列失败');
     } finally {
       enqueuingId.value = null;
     }
@@ -341,26 +326,6 @@
   const openSessionFor = (scope, count) => {
     if (!count) return;
     router.push({ path: '/study/session', query: { scope } });
-  };
-
-  const handleEnqueueAll = async () => {
-    const unenrolled = rootsProgress.value.filter(
-      (r) => r.wordCount > 0 && r.enrolled < r.wordCount
-    );
-    if (unenrolled.length === 0) return;
-    enqueuingAll.value = true;
-    try {
-      for (const root of unenrolled) {
-        await enqueueRoot(root.id);
-      }
-      ElMessage.success(`已将全部 ${unenrolled.length} 个词根的单词加入学习队列`);
-      fetchStats();
-      fetchRootsProgress();
-    } catch {
-      ElMessage.error('加入学习队列失败');
-    } finally {
-      enqueuingAll.value = false;
-    }
   };
 
   const handleExport = async () => {

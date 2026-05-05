@@ -11,7 +11,7 @@ export function insertFollowUpCard(queue, card, currentIndex, offset) {
   }
 
   const nextQueue = [...queue];
-  const insertAt = Math.min(Math.max(Math.trunc(currentIndex) + offset, 0), nextQueue.length);
+  const insertAt = Math.min(Math.max(Math.trunc(currentIndex) + offset + 1, 0), nextQueue.length);
   nextQueue.splice(insertAt, 0, { ...card });
   return nextQueue;
 }

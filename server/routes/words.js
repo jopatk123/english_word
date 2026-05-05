@@ -1,10 +1,31 @@
 import { Router } from 'express';
-import { Word, Root, WordRoot, Example } from '../models/index.js';
+import { Word, Root, WordRoot, Example, WordReview } from '../models/index.js';
 import { success, successList, error } from '../utils/response.js';
 import { ensureDefaultRoot } from '../utils/defaultRoot.js';
 import { buildKeywordSearch } from '../utils/search.js';
+import { buildDueSchedule } from '../utils/srs.js';
 
 const router = Router();
+
+async function ensureWordReview(userId, wordId, timezone) {
+  const { dueAt, dueDate } = buildDueSchedule(0, timezone);
+
+  await WordReview.findOrCreate({
+    where: { userId, wordId },
+    defaults: {
+      userId,
+      wordId,
+      status: 'new',
+      interval: 0,
+      easeFactor: 2.5,
+      dueDate,
+      dueAt,
+      reviewCount: 0,
+      successCount: 0,
+      perfectStreakCount: 0,
+    },
+  });
+}
 
 // 获取单词列表（可按词根筛选，支持关键字搜索，支持 limit/offset 分页）
 router.get('/', async (req, res) => {
@@ -188,6 +209,8 @@ router.post('/', async (req, res) => {
       for (const rid of newRootIds) {
         await WordRoot.findOrCreate({ where: { wordId: existingWord.id, rootId: rid } });
       }
+      await ensureWordReview(req.userId, existingWord.id, req.body.tz);
+
       const updatedWord = await Word.findByPk(existingWord.id, {
         include: [
           {
@@ -216,6 +239,8 @@ router.post('/', async (req, res) => {
     for (const rid of rootIds) {
       await WordRoot.create({ wordId: word.id, rootId: rid });
     }
+
+    await ensureWordReview(req.userId, word.id, req.body.tz);
 
     const fullWord = await Word.findByPk(word.id, {
       include: [

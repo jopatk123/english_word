@@ -348,19 +348,18 @@ export function useStudySession() {
 
   const replayWithNewMode = () => {
     queue.value = [...originalQueue.value];
-    resetSession(true);
+    resetSession();
   };
 
   const replayAgainWords = () => {
     const ids = new Set(againWordIds.value);
     queue.value = originalQueue.value.filter((item) => ids.has(item.wordId));
     originalQueue.value = [...queue.value];
-    resetSession(true);
+    resetSession();
   };
 
   /**
-   * 继续复习：将未掌握词（again）排在最前，后跟全部原始词，进入重播模式。
-   * 不管本轮是否全部掌握，都可以无限继续。
+   * 继续复习：将未掌握词（again）排在最前，后跟全部原始词，开始新一轮正常复习。
    */
   const continueReview = () => {
     const ids = new Set(againWordIds.value);
@@ -368,7 +367,7 @@ export function useStudySession() {
     const otherWords = originalQueue.value.filter((item) => !ids.has(item.wordId));
     queue.value = [...againWords, ...otherWords];
     originalQueue.value = [...queue.value];
-    resetSession(true);
+    resetSession();
   };
 
   // 保存进度
@@ -468,7 +467,6 @@ export function useStudySession() {
     const wordId = currentCard.value.wordId;
     const revision = sessionRevision.value;
     const qualityMap = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy' };
-    // 重播模式：只统计，不提交到服务器
     try {
       if (!isReplay.value) {
         await submitReviewResult(wordId, quality);
@@ -527,6 +525,7 @@ export function useStudySession() {
     // 状态
     loading,
     queue,
+    originalQueue,
     currentIndex,
     showAnswer,
     submitting,

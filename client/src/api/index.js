@@ -77,7 +77,7 @@ export const deleteRoot = (id) => api.delete(`/roots/${id}`);
 // ========== 单词 API ==========
 export const getWords = (params) => api.get('/words', { params });
 export const getWord = (id) => api.get(`/words/${id}`);
-export const createWord = (data) => api.post('/words', data);
+export const createWord = (data) => api.post('/words', { ...data, tz: getUserTz() });
 export const updateWord = (id, data) => api.put(`/words/${id}`, data);
 export const deleteWord = (id) => api.delete(`/words/${id}`);
 export const moveWord = (id, fromRootId, toRootId) =>

@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { initDB, User, Root, Word, WordRoot } from '../models/index.js';
+import { initDB, User, Root, Word, WordRoot, WordReview } from '../models/index.js';
 import wordsRouter from '../routes/words.js';
 import { ensureDefaultRoot } from '../utils/defaultRoot.js';
 
@@ -50,12 +50,18 @@ const createWord = (wordSuf = suf()) =>
 
 // ─── POST /words/ ─────────────────────────────────────────
 describe('POST /words/', () => {
-  it('成功创建单词并关联词根', async () => {
+  it('成功创建单词并关联词根，同时自动加入复习', async () => {
     const res = await createWord();
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveProperty('id');
     expect(Array.isArray(res.body.data.roots)).toBe(true);
     expect(res.body.data.roots.length).toBeGreaterThan(0);
+
+    const review = await WordReview.findOne({ where: { userId, wordId: res.body.data.id } });
+    expect(review).toBeTruthy();
+    expect(review.status).toBe('new');
+    expect(review.interval).toBe(0);
+    expect(review.dueAt).toBeTruthy();
   });
 
   it('缺少必填字段（name/meaning）返回 400+', async () => {
@@ -90,6 +96,23 @@ describe('POST /words/', () => {
       .send({ name, meaning: '含义', rootIds: [rootId] });
     expect(res.status).toBe(400);
     expect(res.body.msg).toMatch(/已存在/);
+  });
+
+  it('同名单词追加新词根时，若尚未入复习也会自动入队', async () => {
+    const name = `enroll_existing_${suf()}`;
+    const secondRoot = await Root.create({ name: `wroot_${suf()}`, meaning: '第二词根', userId });
+    const word = await Word.create({ name, meaning: '测试含义', userId });
+    await WordRoot.create({ wordId: word.id, rootId });
+
+    const res = await request(app)
+      .post('/words/')
+      .send({ name, meaning: '测试含义', rootIds: [secondRoot.id] });
+
+    expect(res.status).toBe(200);
+
+    const review = await WordReview.findOne({ where: { userId, wordId: word.id } });
+    expect(review).toBeTruthy();
+    expect(review.status).toBe('new');
   });
 });
 

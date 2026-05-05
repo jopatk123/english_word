@@ -113,6 +113,11 @@ describe('StudyDashboardView', () => {
     expect(wrapper.text()).toContain('节奏稳定');
   });
 
+  it('不再显示全部加入学习按钮', async () => {
+    const wrapper = await createWrapper({ total: 8 });
+    expect(wrapper.text()).not.toContain('全部加入学习');
+  });
+
   it('有超期词时，提醒卡突出优先处理超期词', async () => {
     const wrapper = await createWrapper({ due: 6, todayDue: 2, overdue: 4 });
     expect(wrapper.text()).toContain('优先处理');
