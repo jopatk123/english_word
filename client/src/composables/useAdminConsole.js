@@ -2,6 +2,7 @@ import { computed, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import {
   adminLogin,
+  deleteAdminUser,
   getAdminUsers,
   setAdminUserDisabled,
   updateAdminUserPassword,
@@ -34,6 +35,7 @@ export const useAdminConsole = () => {
   const page = ref(1);
   const pageSize = ref(10);
   const keyword = ref('');
+  const deletingUserId = ref(null);
 
   const disabledCount = computed(() => users.value.filter((user) => user.isDisabled).length);
 
@@ -53,8 +55,8 @@ export const useAdminConsole = () => {
     adminToken.value = localStorage.getItem('adminToken') || '';
   };
 
-  const fetchUsers = async () => {
-    if (!isAuthed.value) return;
+  const fetchUsers = async ({ silent = false } = {}) => {
+    if (!isAuthed.value) return false;
     loading.value = true;
     try {
       const res = await getAdminUsers({
@@ -64,8 +66,12 @@ export const useAdminConsole = () => {
       });
       users.value = Array.isArray(res.data) ? res.data : [];
       total.value = Number.isFinite(res.total) ? res.total : 0;
+      return true;
     } catch (e) {
-      ElMessage.error(e?.response?.data?.msg || '获取用户列表失败');
+      if (!silent) {
+        ElMessage.error(e?.response?.data?.msg || '获取用户列表失败');
+      }
+      return false;
     } finally {
       loading.value = false;
     }
@@ -169,6 +175,38 @@ export const useAdminConsole = () => {
     }
   };
 
+  const handleDeleteUser = async (user) => {
+    try {
+      await ElMessageBox.confirm(
+        `确定删除用户「${user.username}」吗？删除后会同时清空该用户的词根、单词、例句、复习记录和学习记录，且无法恢复。`,
+        '删除确认',
+        {
+          type: 'warning',
+          confirmButtonText: '确认删除',
+          cancelButtonText: '取消',
+        }
+      );
+    } catch {
+      return;
+    }
+
+    deletingUserId.value = user.id;
+    try {
+      await deleteAdminUser(user.id);
+      users.value = users.value.filter((item) => item.id !== user.id);
+      total.value = Math.max(0, total.value - 1);
+      if (users.value.length === 0 && page.value > 1) {
+        page.value -= 1;
+      }
+      await fetchUsers({ silent: true });
+      ElMessage.success('用户及关联数据已删除');
+    } catch (e) {
+      ElMessage.error(e?.response?.data?.msg || '删除用户失败');
+    } finally {
+      deletingUserId.value = null;
+    }
+  };
+
   return {
     adminToken,
     isAuthed,
@@ -180,6 +218,7 @@ export const useAdminConsole = () => {
     page,
     pageSize,
     keyword,
+    deletingUserId,
     disabledCount,
     passwordDialogVisible,
     selectedUser,
@@ -195,5 +234,6 @@ export const useAdminConsole = () => {
     openPasswordDialog,
     handleSavePassword,
     toggleDisabled,
+    handleDeleteUser,
   };
 };

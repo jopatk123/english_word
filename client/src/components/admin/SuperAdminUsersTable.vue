@@ -36,14 +36,22 @@
       <el-table-column label="最近更新" min-width="172">
         <template #default="{ row }">{{ formatDate(row.update_time) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="200" align="center" fixed="right">
+      <el-table-column label="操作" width="260" align="center" fixed="right">
         <template #default="{ row }">
-          <button class="sa-action-btn" @click="$emit('open-password', row)">改密码</button>
+          <button class="sa-action-btn" :disabled="deletingUserId === row.id" @click="$emit('open-password', row)">改密码</button>
           <button
             :class="['sa-action-btn', row.isDisabled ? 'sa-action-enable' : 'sa-action-disable']"
+            :disabled="deletingUserId === row.id"
             @click="$emit('toggle-disabled', row)"
           >
             {{ row.isDisabled ? '启用' : '禁用' }}
+          </button>
+          <button
+            class="sa-action-btn sa-action-delete"
+            :disabled="deletingUserId === row.id"
+            @click="$emit('delete-user', row)"
+          >
+            删除
           </button>
         </template>
       </el-table-column>
@@ -92,6 +100,10 @@
       type: Number,
       default: 10,
     },
+    deletingUserId: {
+      type: [Number, null],
+      default: null,
+    },
     formatDate: {
       type: Function,
       required: true,
@@ -107,6 +119,7 @@
     'page-size-change',
     'open-password',
     'toggle-disabled',
+    'delete-user',
   ]);
 </script>
 
@@ -164,10 +177,15 @@
     transition: background 0.15s, border-color 0.15s, color 0.15s;
   }
 
-  .sa-action-btn:hover {
+  .sa-action-btn:hover:not(:disabled) {
     background: #e0e7ff;
     border-color: #818cf8;
     color: #4338ca;
+  }
+
+  .sa-action-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
   }
 
   .sa-action-disable {
@@ -176,7 +194,7 @@
     background: #fff5f5;
   }
 
-  .sa-action-disable:hover {
+  .sa-action-disable:hover:not(:disabled) {
     background: #fee2e2;
     border-color: #f87171;
     color: #7f1d1d;
@@ -188,10 +206,22 @@
     background: #f0fdf4;
   }
 
-  .sa-action-enable:hover {
+  .sa-action-enable:hover:not(:disabled) {
     background: #dcfce7;
     border-color: #4ade80;
     color: #14532d;
+  }
+
+  .sa-action-delete {
+    border-color: #fecaca;
+    color: #b91c1c;
+    background: #fff5f5;
+  }
+
+  .sa-action-delete:hover:not(:disabled) {
+    background: #fee2e2;
+    border-color: #f87171;
+    color: #7f1d1d;
   }
 
   .sa-pagination {

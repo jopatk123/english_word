@@ -1,7 +1,17 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { Op } from 'sequelize';
-import { User } from '../models/index.js';
+import {
+  sequelize,
+  User,
+  Root,
+  Word,
+  WordRoot,
+  Example,
+  WordReview,
+  ReviewHistory,
+  StudySession,
+} from '../models/index.js';
 import { success, successList, error } from '../utils/response.js';
 import { getAdminPassword } from '../utils/env.js';
 import { adminAuthMiddleware, generateAdminToken } from '../middleware/admin.js';
@@ -84,6 +94,91 @@ router.put('/users/:id/status', adminAuthMiddleware, async (req, res) => {
 
     await user.update({ isDisabled: disabled });
     success(res, { id: user.id, isDisabled: user.isDisabled }, disabled ? '已禁用登录' : '已启用登录');
+  } catch (e) {
+    error(res, e.message);
+  }
+});
+
+router.delete('/users/:id', adminAuthMiddleware, async (req, res) => {
+  try {
+    const userId = Number(req.params.id);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return error(res, '用户 ID 无效', 400);
+    }
+
+    const deletedCounts = await sequelize.transaction(async (transaction) => {
+      const user = await User.findByPk(userId, { transaction });
+      if (!user) return null;
+
+      const rootRows = await Root.findAll({
+        where: { userId: user.id },
+        attributes: ['id'],
+        transaction,
+      });
+      const wordRows = await Word.findAll({
+        where: { userId: user.id },
+        attributes: ['id'],
+        transaction,
+      });
+
+      const rootIds = rootRows.map((row) => row.id);
+      const wordIds = wordRows.map((row) => row.id);
+
+      const counts = {
+        roots: 0,
+        words: 0,
+        wordRoots: 0,
+        examples: 0,
+        wordReviews: 0,
+        reviewHistories: 0,
+        studySessions: 0,
+      };
+
+      if (rootIds.length) {
+        counts.wordRoots += await WordRoot.destroy({
+          where: { rootId: { [Op.in]: rootIds } },
+          transaction,
+        });
+      }
+
+      if (wordIds.length) {
+        counts.wordRoots += await WordRoot.destroy({
+          where: { wordId: { [Op.in]: wordIds } },
+          transaction,
+        });
+        counts.examples += await Example.destroy({
+          where: { wordId: { [Op.in]: wordIds } },
+          transaction,
+        });
+      }
+
+      counts.wordReviews += await WordReview.destroy({ where: { userId: user.id }, transaction });
+      counts.reviewHistories += await ReviewHistory.destroy({ where: { userId: user.id }, transaction });
+      counts.studySessions += await StudySession.destroy({ where: { userId: user.id }, transaction });
+
+      if (wordIds.length) {
+        counts.words += await Word.destroy({
+          where: { id: { [Op.in]: wordIds } },
+          transaction,
+        });
+      }
+
+      if (rootIds.length) {
+        counts.roots += await Root.destroy({
+          where: { id: { [Op.in]: rootIds } },
+          transaction,
+        });
+      }
+
+      await user.destroy({ transaction });
+      return counts;
+    });
+
+    if (!deletedCounts) {
+      return error(res, '用户不存在', 404);
+    }
+
+    success(res, { id: userId, deletedCounts }, '用户及关联数据已删除');
   } catch (e) {
     error(res, e.message);
   }

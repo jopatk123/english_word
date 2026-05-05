@@ -4,12 +4,14 @@ const adminLoginMock = vi.fn();
 const getAdminUsersMock = vi.fn();
 const setAdminUserDisabledMock = vi.fn();
 const updateAdminUserPasswordMock = vi.fn();
+const deleteAdminUserMock = vi.fn();
 
 vi.mock('../../api/index.js', () => ({
   adminLogin: (...args) => adminLoginMock(...args),
   getAdminUsers: (...args) => getAdminUsersMock(...args),
   setAdminUserDisabled: (...args) => setAdminUserDisabledMock(...args),
   updateAdminUserPassword: (...args) => updateAdminUserPasswordMock(...args),
+  deleteAdminUser: (...args) => deleteAdminUserMock(...args),
 }));
 
 const elMessage = {
@@ -84,6 +86,27 @@ describe('useAdminConsole', () => {
     expect(localStorage.getItem('adminToken')).toBe('new-admin-token');
     expect(admin.loginForm.value.password).toBe('');
     expect(getAdminUsersMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('删除用户后会调用删除接口并回到可用页码', async () => {
+    localStorage.setItem('adminToken', 'admin-token');
+    confirmMock.mockResolvedValueOnce(undefined);
+    deleteAdminUserMock.mockResolvedValue({ data: null });
+    getAdminUsersMock.mockResolvedValue({ data: [], total: 0 });
+
+    const admin = useAdminConsole();
+    admin.users.value = [{ id: 1, username: 'alice', isDisabled: false }];
+    admin.total.value = 1;
+    admin.page.value = 2;
+
+    await admin.handleDeleteUser(admin.users.value[0]);
+
+    expect(confirmMock).toHaveBeenCalled();
+    expect(deleteAdminUserMock).toHaveBeenCalledWith(1);
+    expect(admin.users.value).toEqual([]);
+    expect(admin.total.value).toBe(0);
+    expect(admin.page.value).toBe(1);
+    expect(getAdminUsersMock).toHaveBeenCalledWith({ page: 1, pageSize: 10, keyword: '' });
   });
 
   it('退出管理时清空 token 和本地列表状态', () => {

@@ -3,6 +3,7 @@ import sequelize from '../../config/database.js';
 import { Root, Word, WordRoot, Example, WordReview } from '../../models/index.js';
 import { success, error } from '../../utils/response.js';
 import { ensureWordReview } from '../../utils/wordReview.js';
+import { ensureDefaultRoot } from '../../utils/defaultRoot.js';
 
 const router = Router();
 
@@ -112,10 +113,14 @@ router.post('/data/import', async (req, res) => {
       if (rootNameToId.has(rootData.name)) continue;
 
       // 导入数据携带 isDefault=true 时，绝不创建第二条默认词根；
-      // 将该名称映射到用户已有的默认词根（若存在），否则忽略。
+      // 将该名称映射到用户已有的默认词根；若不存在则补创建。
       if (rootData.isDefault) {
         if (existingDefaultRoot) {
           rootNameToId.set(rootData.name, existingDefaultRoot.id);
+        } else {
+          const defaultRoot = await ensureDefaultRoot(req.userId, { transaction: t });
+          rootNameToId.set(rootData.name, defaultRoot.id);
+          stats.rootsAdded++;
         }
         continue;
       }

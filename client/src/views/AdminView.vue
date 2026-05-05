@@ -20,6 +20,7 @@
       :keyword="keyword"
       :page="page"
       :page-size="pageSize"
+      :deleting-user-id="deletingUserId"
       :format-date="formatAdminDate"
       @update:keyword="keyword = $event"
       @update:page="page = $event"
@@ -29,6 +30,7 @@
       @page-size-change="handlePageSizeChange"
       @open-password="openPasswordDialog"
       @toggle-disabled="toggleDisabled"
+      @delete-user="handleDeleteUser"
     />
   </SuperAdminConsoleLayout>
 
@@ -63,6 +65,7 @@
     page,
     pageSize,
     keyword,
+    deletingUserId,
     disabledCount,
     passwordDialogVisible,
     selectedUser,
@@ -78,6 +81,7 @@
     openPasswordDialog,
     handleSavePassword,
     toggleDisabled,
+    handleDeleteUser,
   } = useAdminConsole();
 
   let stopAdminSessionSync = () => {};

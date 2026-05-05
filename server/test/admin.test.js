@@ -4,11 +4,12 @@
  *   - GET  /api/admin/users
  *   - PUT  /api/admin/users/:id/password
  *   - PUT  /api/admin/users/:id/status
+ *   - DELETE /api/admin/users/:id
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { initDB, User } from '../models/index.js';
+import { initDB, User, Root, Word, WordRoot, Example, WordReview, ReviewHistory, StudySession } from '../models/index.js';
 import authRouter from '../routes/auth.js';
 import adminRouter from '../routes/admin.js';
 
@@ -126,6 +127,110 @@ describe('PUT /api/admin/users/:id/status', () => {
       .post('/api/auth/login')
       .send({ username: targetUser.username, password: 'newpass123' });
     expect(restoredLogin.status).toBe(200);
+  });
+});
+
+describe('DELETE /api/admin/users/:id', () => {
+  let deleteTargetUser;
+  let deleteTargetRoot;
+  let deleteTargetWord;
+  let survivorUser;
+
+  beforeAll(async () => {
+    deleteTargetUser = await User.create({ username: `admin_delete_${suffix()}`, password: 'deletepass123' });
+    deleteTargetRoot = await Root.create({
+      name: `admin_delete_root_${suffix()}`,
+      meaning: '待删除词根',
+      userId: deleteTargetUser.id,
+    });
+    deleteTargetWord = await Word.create({
+      name: `admin_delete_word_${suffix()}`,
+      meaning: '待删除单词',
+      userId: deleteTargetUser.id,
+    });
+    await WordRoot.create({ wordId: deleteTargetWord.id, rootId: deleteTargetRoot.id });
+    await Example.create({
+      wordId: deleteTargetWord.id,
+      sentence: 'Delete this example.',
+      translation: '删除这条例句。',
+    });
+    await WordReview.create({
+      userId: deleteTargetUser.id,
+      wordId: deleteTargetWord.id,
+      status: 'learning',
+      interval: 2,
+      easeFactor: 2.5,
+      dueDate: '2099-12-31',
+      reviewCount: 1,
+      successCount: 1,
+      perfectStreakCount: 0,
+    });
+    await ReviewHistory.create({
+      userId: deleteTargetUser.id,
+      wordId: deleteTargetWord.id,
+      quality: 3,
+      intervalBefore: 0,
+      intervalAfter: 2,
+      easeFactorBefore: 2.5,
+      easeFactorAfter: 2.5,
+      reviewedAt: new Date(),
+    });
+    await StudySession.create({
+      userId: deleteTargetUser.id,
+      startedAt: new Date('2026-05-05T10:00:00Z'),
+      endedAt: new Date('2026-05-05T10:25:00Z'),
+      durationSeconds: 1500,
+      note: 'delete-target',
+    });
+
+    survivorUser = await User.create({ username: `admin_survivor_${suffix()}`, password: 'survivorpass123' });
+    const survivorRoot = await Root.create({
+      name: `admin_survivor_root_${suffix()}`,
+      meaning: '幸存词根',
+      userId: survivorUser.id,
+    });
+    const survivorWord = await Word.create({
+      name: `admin_survivor_word_${suffix()}`,
+      meaning: '幸存单词',
+      userId: survivorUser.id,
+    });
+    await WordRoot.create({ wordId: survivorWord.id, rootId: survivorRoot.id });
+  });
+
+  it('删除用户时会清理所有关联数据且不影响其他用户', async () => {
+    const res = await request(app)
+      .delete(`/api/admin/users/${deleteTargetUser.id}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({ id: deleteTargetUser.id });
+    expect(res.body.data.deletedCounts).toMatchObject({
+      roots: 1,
+      words: 1,
+      wordRoots: 1,
+      examples: 1,
+      wordReviews: 1,
+      reviewHistories: 1,
+      studySessions: 1,
+    });
+
+    expect(await User.findByPk(deleteTargetUser.id)).toBeNull();
+    expect(await Root.count({ where: { userId: deleteTargetUser.id } })).toBe(0);
+    expect(await Word.count({ where: { userId: deleteTargetUser.id } })).toBe(0);
+    expect(await WordReview.count({ where: { userId: deleteTargetUser.id } })).toBe(0);
+    expect(await ReviewHistory.count({ where: { userId: deleteTargetUser.id } })).toBe(0);
+    expect(await StudySession.count({ where: { userId: deleteTargetUser.id } })).toBe(0);
+    expect(await WordRoot.count({ where: { rootId: deleteTargetRoot.id } })).toBe(0);
+    expect(await WordRoot.count({ where: { wordId: deleteTargetWord.id } })).toBe(0);
+    expect(await Example.count({ where: { wordId: deleteTargetWord.id } })).toBe(0);
+
+    expect(await Root.count({ where: { userId: survivorUser.id } })).toBe(1);
+    expect(await Word.count({ where: { userId: survivorUser.id } })).toBe(1);
+
+    const deletedLogin = await request(app)
+      .post('/api/auth/login')
+      .send({ username: deleteTargetUser.username, password: 'deletepass123' });
+    expect(deletedLogin.status).toBe(401);
   });
 });
 

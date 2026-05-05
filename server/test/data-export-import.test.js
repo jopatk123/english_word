@@ -147,6 +147,22 @@ describe('POST /review/data/import', () => {
     ],
   };
 
+  const uncategorizedSampleData = {
+    version: '1.0',
+    exportedAt: '2026-01-01T00:00:00Z',
+    roots: [{ name: '未分类', meaning: '无明确词根来源的单词', remark: null, isDefault: true }],
+    words: [
+      {
+        name: 'uncategorizedword',
+        meaning: '无词根单词',
+        phonetic: '/uŋ/',
+        remark: null,
+        rootNames: ['未分类'],
+        examples: [],
+      },
+    ],
+  };
+
   it('成功导入新词根和单词', async () => {
     const res = await request(app).post('/review/data/import').send(sampleData);
     expect(res.status).toBe(200);
@@ -233,6 +249,27 @@ describe('POST /review/data/import', () => {
     ]);
     expect(currentReview).toBeTruthy();
     expect(otherReview).toBeTruthy();
+  });
+
+  it('导入未分类词根时会为目标用户自动创建默认词根并保持关联', async () => {
+    const otherUser = await User.create({
+      username: 'data_import_uncategorized_' + Date.now(),
+      password: 'x',
+    });
+    const otherApp = buildApp(otherUser.id);
+
+    const res = await request(otherApp).post('/review/data/import').send(uncategorizedSampleData);
+    expect(res.status).toBe(200);
+    expect(res.body.data.rootsAdded).toBe(1);
+    expect(res.body.data.wordsAdded).toBe(1);
+
+    const defaultRoot = await Root.findOne({ where: { userId: otherUser.id, isDefault: true } });
+    const word = await Word.findOne({ where: { name: 'uncategorizedword', userId: otherUser.id } });
+    const link = await WordRoot.findOne({ where: { wordId: word.id, rootId: defaultRoot.id } });
+
+    expect(defaultRoot).toBeTruthy();
+    expect(word).toBeTruthy();
+    expect(link).toBeTruthy();
   });
 
   it('格式无效时返回 400', async () => {

@@ -65,6 +65,7 @@ export const updateAdminUserPassword = (id, data) =>
   adminApi.put(`/admin/users/${id}/password`, data);
 export const setAdminUserDisabled = (id, disabled) =>
   adminApi.put(`/admin/users/${id}/status`, { disabled });
+export const deleteAdminUser = (id) => adminApi.delete(`/admin/users/${id}`);
 
 // ========== 词根 API ==========
 export const getRoots = (keyword) => api.get('/roots', { params: { keyword } });

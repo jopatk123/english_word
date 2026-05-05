@@ -7,9 +7,10 @@ export const DEFAULT_ROOT_MEANING = '无明确词根来源的单词';
  * 为指定用户找到或自动创建「未分类」默认词根。
  * 幂等操作：多次调用只会创建一次。
  * @param {number} userId
+ * @param {object} [options]
  * @returns {Promise<Root>}
  */
-export async function ensureDefaultRoot(userId) {
+export async function ensureDefaultRoot(userId, options = {}) {
   const [root] = await Root.findOrCreate({
     where: { userId, isDefault: true },
     defaults: {
@@ -18,6 +19,7 @@ export async function ensureDefaultRoot(userId) {
       isDefault: true,
       userId,
     },
+    ...options,
   });
   return root;
 }
