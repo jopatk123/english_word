@@ -8,8 +8,7 @@ export const REVIEW_STATUS = Object.freeze({
   KNOWN: 'known',
 });
 
-export const KNOWN_STATUS_THRESHOLD = 21;
-export const KNOWN_REVIEW_COUNT_THRESHOLD = 3;
+export const KNOWN_PERFECT_STREAK_THRESHOLD = 3;
 
 const SHORT_LEARNING_STEPS = Object.freeze({
   NEW_HARD: 10,
@@ -26,29 +25,70 @@ export function getNextReview(
   easeFactor,
   currentStatus,
   reviewCount = 0,
-  successCount = reviewCount
+  _successCount = reviewCount,
+  perfectStreakCount = 0
 ) {
   const isNew =
     currentStatus === REVIEW_STATUS.NEW ||
     (currentStatus === undefined && currentInterval < 1);
   const isLearning = currentStatus === REVIEW_STATUS.LEARNING;
+  const nextPerfectStreakCount =
+    quality === 4
+      ? Math.max(0, Math.trunc(Number(perfectStreakCount) || 0)) + 1
+      : 0;
+
+  const buildReviewStageResult = (status) => {
+    let newInterval;
+    let newEase;
+
+    if (quality === 2) {
+      newInterval = Math.max(1, Math.ceil(currentInterval * 1.2));
+      newEase = Math.max(1.3, easeFactor - 0.15);
+    } else if (quality === 3) {
+      newInterval = Math.ceil(currentInterval * easeFactor);
+      newEase = easeFactor;
+    } else {
+      newInterval = Math.ceil(currentInterval * easeFactor * 1.3);
+      newEase = easeFactor + 0.15;
+    }
+
+    newInterval = Math.min(newInterval, MAX_INTERVAL);
+    return {
+      interval: newInterval,
+      delayMinutes: newInterval * MINUTES_PER_DAY,
+      easeFactor: newEase,
+      status,
+    };
+  };
+
+  if (quality === 1) {
+    return {
+      interval: 0,
+      delayMinutes: 0,
+      easeFactor: Math.max(1.3, easeFactor - 0.2),
+      status: REVIEW_STATUS.LEARNING,
+      perfectStreakCount: 0,
+    };
+  }
+
+  // 连续三次 quality=4 才能升为已掌握。
+  if (
+    quality === 4 &&
+    (currentStatus === REVIEW_STATUS.KNOWN || nextPerfectStreakCount >= KNOWN_PERFECT_STREAK_THRESHOLD)
+  ) {
+    const result = buildReviewStageResult(REVIEW_STATUS.KNOWN);
+    return { ...result, perfectStreakCount: nextPerfectStreakCount };
+  }
 
   if (isNew) {
     // 新词：首次见面先走短间隔台阶，避免答一次就消失到明天。
-    if (quality === 1) {
-      return {
-        interval: 0,
-        delayMinutes: 0,
-        easeFactor: Math.max(1.3, easeFactor - 0.2),
-        status: REVIEW_STATUS.LEARNING,
-      };
-    }
     if (quality === 2) {
       return {
         interval: 0,
         delayMinutes: SHORT_LEARNING_STEPS.NEW_HARD,
         easeFactor: Math.max(1.3, easeFactor - 0.15),
         status: REVIEW_STATUS.LEARNING,
+        perfectStreakCount: nextPerfectStreakCount,
       };
     }
     if (quality === 3) {
@@ -57,6 +97,7 @@ export function getNextReview(
         delayMinutes: SHORT_LEARNING_STEPS.NEW_GOOD,
         easeFactor,
         status: REVIEW_STATUS.LEARNING,
+        perfectStreakCount: nextPerfectStreakCount,
       };
     }
     return {
@@ -64,25 +105,19 @@ export function getNextReview(
       delayMinutes: SHORT_LEARNING_STEPS.NEW_EASY,
       easeFactor: easeFactor + 0.15,
       status: REVIEW_STATUS.LEARNING,
+      perfectStreakCount: nextPerfectStreakCount,
     };
   }
 
   if (isLearning) {
     // 学习中：完成第二个台阶后再毕业到正式复习阶段。
-    if (quality === 1) {
-      return {
-        interval: 0,
-        delayMinutes: 0,
-        easeFactor: Math.max(1.3, easeFactor - 0.2),
-        status: REVIEW_STATUS.LEARNING,
-      };
-    }
     if (quality === 2) {
       return {
         interval: 1,
         delayMinutes: SHORT_LEARNING_STEPS.LEARNING_HARD,
         easeFactor: Math.max(1.3, easeFactor - 0.15),
         status: REVIEW_STATUS.LEARNING,
+        perfectStreakCount: nextPerfectStreakCount,
       };
     }
     if (quality === 3) {
@@ -91,6 +126,7 @@ export function getNextReview(
         delayMinutes: SHORT_LEARNING_STEPS.LEARNING_GOOD,
         easeFactor,
         status: REVIEW_STATUS.REVIEW,
+        perfectStreakCount: nextPerfectStreakCount,
       };
     }
     return {
@@ -98,47 +134,15 @@ export function getNextReview(
       delayMinutes: SHORT_LEARNING_STEPS.LEARNING_EASY,
       easeFactor: easeFactor + 0.15,
       status: REVIEW_STATUS.REVIEW,
+      perfectStreakCount: nextPerfectStreakCount,
     };
   }
 
   // review / known 阶段 —— 正式间隔复习
-  let newInterval;
-  let newEase;
-  const completedSuccesses = Math.max(0, Math.trunc(Number(successCount) || 0)) + 1;
-
-  if (quality === 1) {
-    // 忘了，打回学习阶段
-    return {
-      interval: 0,
-      delayMinutes: 0,
-      easeFactor: Math.max(1.3, easeFactor - 0.2),
-      status: REVIEW_STATUS.LEARNING,
-    };
-  } else if (quality === 2) {
-    newInterval = Math.max(1, Math.ceil(currentInterval * 1.2));
-    newEase = Math.max(1.3, easeFactor - 0.15);
-  } else if (quality === 3) {
-    newInterval = Math.ceil(currentInterval * easeFactor);
-    newEase = easeFactor;
-  } else {
-    newInterval = Math.ceil(currentInterval * easeFactor * 1.3);
-    newEase = easeFactor + 0.15;
-  }
-
-  newInterval = Math.min(newInterval, MAX_INTERVAL);
-  // 已掌握需要“足够多次成功复习 + 足够长的间隔”，避免单次长间隔误判。
-  const status =
-    quality === 4 &&
-    completedSuccesses >= KNOWN_REVIEW_COUNT_THRESHOLD &&
-    newInterval >= KNOWN_STATUS_THRESHOLD
-      ? REVIEW_STATUS.KNOWN
-      : REVIEW_STATUS.REVIEW;
-  return {
-    interval: newInterval,
-    delayMinutes: newInterval * MINUTES_PER_DAY,
-    easeFactor: newEase,
-    status,
-  };
+  const result = buildReviewStageResult(
+    currentStatus === REVIEW_STATUS.KNOWN ? REVIEW_STATUS.KNOWN : REVIEW_STATUS.REVIEW
+  );
+  return { ...result, perfectStreakCount: nextPerfectStreakCount };
 }
 
 export function todayStr(timezone) {
