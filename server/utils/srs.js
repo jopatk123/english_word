@@ -81,7 +81,9 @@ export function getNextReview(
   }
 
   if (currentStatus === REVIEW_STATUS.KNOWN) {
-    const result = buildReviewStageResult(REVIEW_STATUS.REVIEW);
+    const result = buildReviewStageResult(
+      quality >= 3 ? REVIEW_STATUS.KNOWN : REVIEW_STATUS.REVIEW
+    );
     return { ...result, perfectStreakCount: nextPerfectStreakCount };
   }
 

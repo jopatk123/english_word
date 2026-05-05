@@ -84,9 +84,9 @@ describe('srs.js 工具模块', () => {
       expect(r.perfectStreakCount).toBe(1);
     });
 
-    it('known + quality=3: 回退到 review', () => {
+    it('known + quality=3: 仍保持 known', () => {
       const r = getNextReview(3, 15, 2.5, 'known', 2, 2, 3);
-      expect(r.status).toBe('review');
+      expect(r.status).toBe('known');
       expect(r.interval).toBe(Math.ceil(15 * 2.5));
       expect(r.perfectStreakCount).toBe(0);
     });

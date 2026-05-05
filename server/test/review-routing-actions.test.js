@@ -113,7 +113,7 @@ describe('POST /review/:wordId/result', () => {
     expect(res.body.data.dueAt).toBeTruthy();
   });
 
-  it('已掌握单词答对但不是 easy 时会回到 review', async () => {
+  it('已掌握单词 quality=3 仍保持 known', async () => {
     const knownWord = await Word.create({
       name: `known_review_${createTestSuffix()}`,
       meaning: '已掌握回退到复习',
@@ -135,7 +135,7 @@ describe('POST /review/:wordId/result', () => {
     const res = await request(fixture.app).post(`/review/${knownWord.id}/result`).send({ quality: 3 });
 
     expect(res.status).toBe(200);
-    expect(res.body.data.status).toBe('review');
+    expect(res.body.data.status).toBe('known');
     expect(res.body.data.interval).toBe(Math.ceil(20 * 2.6));
     expect(res.body.data.successCount).toBe(7);
     expect(res.body.data.perfectStreakCount).toBe(0);

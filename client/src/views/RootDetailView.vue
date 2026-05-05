@@ -31,7 +31,24 @@
       </div>
     </div>
 
-    <el-table :data="words" stripe empty-text="暂无单词" v-loading="wordsLoading">
+    <div v-if="selectedWordCount" class="root-toolbar">
+      <span class="root-selection-hint">
+        已选 {{ selectedWordCount }} 个单词，点击批量删除可一次性移除选中项
+      </span>
+      <el-button type="danger" plain :loading="batchDeleting" @click="handleBatchDeleteWords"
+        >批量删除（{{ selectedWordCount }}）</el-button
+      >
+    </div>
+
+    <el-table
+      ref="wordTableRef"
+      :data="words"
+      stripe
+      empty-text="暂无单词"
+      v-loading="wordsLoading"
+      @selection-change="handleWordSelectionChange"
+    >
+      <el-table-column type="selection" width="55" />
       <el-table-column prop="name" label="单词" min-width="120">
         <template #default="{ row }">
           <div class="cell-with-speak">
@@ -115,7 +132,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted } from 'vue';
+  import { ref, computed, nextTick, onMounted } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { ElMessage, ElMessageBox } from 'element-plus';
   import {
@@ -136,6 +153,10 @@
   const words = ref([]);
   const loading = ref(false);
   const wordsLoading = ref(false);
+  const wordTableRef = ref(null);
+  const selectedWords = ref([]);
+  const batchDeleting = ref(false);
+  const selectedWordCount = computed(() => selectedWords.value.length);
 
   const wordDialogVisible = ref(false);
   const editingWord = ref(null);
@@ -154,6 +175,12 @@
   const allRootsLoading = ref(false);
 
   const otherRoots = computed(() => allRoots.value.filter((r) => r.id !== Number(rootId)));
+
+  const clearWordSelection = async () => {
+    selectedWords.value = [];
+    await nextTick();
+    wordTableRef.value?.clearSelection?.();
+  };
 
   const openMoveDialog = async (word) => {
     movingWord.value = word;
@@ -210,9 +237,67 @@
       const res = await getWords({ rootId });
       words.value = res.data;
     } catch {
+      words.value = [];
       ElMessage.error('获取单词列表失败');
     } finally {
+      await clearWordSelection();
       wordsLoading.value = false;
+    }
+  };
+
+  const handleWordSelectionChange = (rows) => {
+    selectedWords.value = rows;
+  };
+
+  const summarizeWords = (items) => {
+    const preview = items
+      .slice(0, 5)
+      .map((item) => `「${item.name}」`)
+      .join('、');
+    return items.length > 5 ? `${preview} 等 ${items.length} 个单词` : preview;
+  };
+
+  const handleBatchDeleteWords = async () => {
+    const targets = [...selectedWords.value];
+    if (!targets.length) {
+      return ElMessage.warning('请先选择要删除的单词');
+    }
+
+    try {
+      await ElMessageBox.confirm(
+        `确定删除选中的 ${targets.length} 个单词（${summarizeWords(targets)}）？关联的例句将一并删除。`,
+        '确认批量删除',
+        { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+      );
+    } catch {
+      return;
+    }
+
+    batchDeleting.value = true;
+    try {
+      const failures = [];
+
+      for (const word of targets) {
+        try {
+          await deleteWord(word.id);
+        } catch {
+          failures.push(word.name || `${word.id}`);
+        }
+      }
+
+      const successCount = targets.length - failures.length;
+
+      if (successCount && !failures.length) {
+        ElMessage.success(`已删除 ${successCount} 个单词`);
+      } else if (successCount) {
+        ElMessage.warning(`已删除 ${successCount} 个单词，${failures.length} 个删除失败`);
+      } else {
+        ElMessage.error('批量删除失败，请稍后重试');
+      }
+
+      await fetchWords();
+    } finally {
+      batchDeleting.value = false;
     }
   };
 
@@ -320,3 +405,19 @@
     fetchWords();
   });
 </script>
+
+<style scoped>
+  .root-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 16px 0 12px;
+  }
+
+  .root-selection-hint {
+    color: var(--el-text-color-secondary);
+    font-size: 14px;
+  }
+</style>

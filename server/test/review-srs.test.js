@@ -37,9 +37,9 @@ describe('SRS 算法 getNextReview（当前版本）', () => {
     expect(result.perfectStreakCount).toBe(1);
   });
 
-  it('quality=3 会重置连续 4 分计数', () => {
-    const result = getNextReview(3, 21, 2.5, 'review', 2, 2, 2);
-    expect(result.status).toBe('review');
+  it('known + quality=3 仍保持 known', () => {
+    const result = getNextReview(3, 21, 2.5, 'known', 2, 2, 2);
+    expect(result.status).toBe('known');
     expect(result.perfectStreakCount).toBe(0);
   });
 
