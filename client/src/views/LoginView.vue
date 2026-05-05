@@ -2,10 +2,8 @@
   <div class="login-view">
     <div class="login-card">
       <div class="login-hero">
-        <p class="login-kicker">词根记忆法</p>
-        <h2 class="login-title">词根背单词工具</h2>
+        <h2 class="login-title">背单词工具</h2>
         <p class="login-subtitle">
-          登录后继续管理词根、单词和例句，学习进度会保存在当前浏览器中。
         </p>
         <div class="login-badges">
           <span>词根管理</span>
