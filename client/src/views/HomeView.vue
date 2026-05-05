@@ -295,7 +295,7 @@
     }
     try {
       await ElMessageBox.confirm(
-        `确定删除词根「${root.name}」？关联的单词和例句将一并删除。`,
+        `确定删除词根「${root.name}」？关联的单词、例句以及孤立单词的复习记录将一并删除。`,
         '确认删除',
         { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
       );
@@ -323,7 +323,7 @@
 
     try {
       await ElMessageBox.confirm(
-        `确定删除选中的 ${targets.length} 个词根（${summarizeRoots(targets)}）？关联的单词和例句将一并删除。`,
+        `确定删除选中的 ${targets.length} 个词根（${summarizeRoots(targets)}）？关联的单词、例句以及孤立单词的复习记录将一并删除。`,
         '确认批量删除',
         { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
       );

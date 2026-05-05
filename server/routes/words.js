@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { Word, Root, WordRoot, Example } from '../models/index.js';
+import { sequelize, Word, Root, WordRoot, Example, WordReview, ReviewHistory } from '../models/index.js';
 import { success, successList, error } from '../utils/response.js';
 import { ensureDefaultRoot } from '../utils/defaultRoot.js';
 import { buildKeywordSearch } from '../utils/search.js';
@@ -186,10 +186,19 @@ router.post('/', async (req, res) => {
       if (newRootIds.length === 0) {
         return error(res, '该单词已存在且已关联相同词根，请勿重复添加', 400);
       }
-      for (const rid of newRootIds) {
-        await WordRoot.findOrCreate({ where: { wordId: existingWord.id, rootId: rid } });
-      }
-      await ensureWordReview(req.userId, existingWord.id, { timezone: req.body.tz });
+
+      await sequelize.transaction(async (transaction) => {
+        for (const rid of newRootIds) {
+          await WordRoot.findOrCreate({
+            where: { wordId: existingWord.id, rootId: rid },
+            transaction,
+          });
+        }
+        await ensureWordReview(req.userId, existingWord.id, {
+          timezone: req.body.tz,
+          transaction,
+        });
+      });
 
       const updatedWord = await Word.findByPk(existingWord.id, {
         include: [
@@ -207,20 +216,30 @@ router.post('/', async (req, res) => {
     }
 
     // 创建新单词
-    const word = await Word.create({
-      name: trimmedName,
-      meaning: meaning.trim(),
-      phonetic: phonetic?.trim(),
-      remark: remark?.trim(),
-      userId: req.userId,
+    const word = await sequelize.transaction(async (transaction) => {
+      const createdWord = await Word.create(
+        {
+          name: trimmedName,
+          meaning: meaning.trim(),
+          phonetic: phonetic?.trim(),
+          remark: remark?.trim(),
+          userId: req.userId,
+        },
+        { transaction }
+      );
+
+      // 创建词根关联
+      for (const rid of rootIds) {
+        await WordRoot.create({ wordId: createdWord.id, rootId: rid }, { transaction });
+      }
+
+      await ensureWordReview(req.userId, createdWord.id, {
+        timezone: req.body.tz,
+        transaction,
+      });
+
+      return createdWord;
     });
-
-    // 创建词根关联
-    for (const rid of rootIds) {
-      await WordRoot.create({ wordId: word.id, rootId: rid });
-    }
-
-    await ensureWordReview(req.userId, word.id, { timezone: req.body.tz });
 
     const fullWord = await Word.findByPk(word.id, {
       include: [
@@ -308,8 +327,16 @@ router.put('/:id/move', async (req, res) => {
     const toRoot = await Root.findOne({ where: { id: toRootId, userId: req.userId } });
     if (!toRoot) return error(res, '目标词根不存在');
 
-    await WordRoot.destroy({ where: { wordId: word.id, rootId: Number(fromRootId) } });
-    await WordRoot.findOrCreate({ where: { wordId: word.id, rootId: Number(toRootId) } });
+    await sequelize.transaction(async (transaction) => {
+      await WordRoot.destroy({
+        where: { wordId: word.id, rootId: Number(fromRootId) },
+        transaction,
+      });
+      await WordRoot.findOrCreate({
+        where: { wordId: word.id, rootId: Number(toRootId) },
+        transaction,
+      });
+    });
 
     success(res, null, '移动成功');
   } catch (e) {
@@ -323,9 +350,13 @@ router.delete('/:id', async (req, res) => {
     const word = await Word.findOne({ where: { id: req.params.id, userId: req.userId } });
     if (!word) return error(res, '单词不存在');
 
-    await Example.destroy({ where: { wordId: word.id } });
-    await WordRoot.destroy({ where: { wordId: word.id } });
-    await word.destroy();
+    await sequelize.transaction(async (transaction) => {
+      await Example.destroy({ where: { wordId: word.id }, transaction });
+      await WordRoot.destroy({ where: { wordId: word.id }, transaction });
+      await WordReview.destroy({ where: { wordId: word.id, userId: req.userId }, transaction });
+      await ReviewHistory.destroy({ where: { wordId: word.id, userId: req.userId }, transaction });
+      await word.destroy({ transaction });
+    });
 
     success(res, null, '删除成功');
   } catch (e) {

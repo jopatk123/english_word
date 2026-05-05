@@ -294,7 +294,7 @@ describe('WordDetailView', () => {
     expect(elMessage.success).toHaveBeenCalledWith('删除成功');
   });
 
-  it('删除最后一个词根时会同步删除单词和例句', async () => {
+  it('删除最后一个词根时会同步删除单词、例句和复习记录', async () => {
     const wrapper = await createWrapper();
     wrapper.vm.setWordForTest({
       ...baseWord,
@@ -307,6 +307,6 @@ describe('WordDetailView', () => {
     expect(deleteWordMock).toHaveBeenCalledWith('1');
     expect(updateWordMock).not.toHaveBeenCalled();
     expect(routerMock.push).toHaveBeenCalledWith('/');
-    expect(elMessage.success).toHaveBeenCalledWith('删除成功，单词和例句已同步删除');
+    expect(elMessage.success).toHaveBeenCalledWith('删除成功，单词、例句和复习记录已同步删除');
   });
 });

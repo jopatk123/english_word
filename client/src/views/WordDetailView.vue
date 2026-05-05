@@ -380,7 +380,7 @@
 
     const isLastRoot = associatedRoots.value.length === 1;
     const confirmText = isLastRoot
-      ? `删除词根「${targetRoot.name}」后，单词「${word.value.name}」和关联例句将一并删除，确定继续？`
+      ? `删除词根「${targetRoot.name}」后，单词「${word.value.name}」、关联例句和复习记录将一并删除，确定继续？`
       : `确定将单词「${word.value.name}」从词根「${targetRoot.name}」中移除？`;
 
     try {
@@ -398,7 +398,7 @@
       if (isLastRoot) {
         await deleteWord(wordId);
         deleteRootDialogVisible.value = false;
-        ElMessage.success('删除成功，单词和例句已同步删除');
+        ElMessage.success('删除成功，单词、例句和复习记录已同步删除');
         await router.push('/');
         return;
       }

@@ -265,7 +265,7 @@
 
     try {
       await ElMessageBox.confirm(
-        `确定删除选中的 ${targets.length} 个单词（${summarizeWords(targets)}）？关联的例句将一并删除。`,
+        `确定删除选中的 ${targets.length} 个单词（${summarizeWords(targets)}）？关联的例句和复习记录将一并删除。`,
         '确认批量删除',
         { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
       );
@@ -388,7 +388,7 @@
   const handleDeleteWord = async (word) => {
     try {
       await ElMessageBox.confirm(
-        `确定删除单词「${word.name}」？关联的例句将一并删除。`,
+        `确定删除单词「${word.name}」？关联的例句和复习记录将一并删除。`,
         '确认删除',
         { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
       );

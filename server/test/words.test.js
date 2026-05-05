@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { initDB, User, Root, Word, WordRoot, WordReview } from '../models/index.js';
+import { initDB, User, Root, Word, WordRoot, WordReview, ReviewHistory } from '../models/index.js';
 import wordsRouter from '../routes/words.js';
 import { ensureDefaultRoot } from '../utils/defaultRoot.js';
 
@@ -231,6 +231,38 @@ describe('DELETE /words/:id', () => {
     expect(delRes.status).toBe(200);
     const found = await Word.findByPk(wordId);
     expect(found).toBeNull();
+  });
+
+  it('删除单词时会同步清理复习记录和复习历史', async () => {
+    const res = await createWord();
+    const wordId = res.body.data.id;
+
+    await WordReview.update(
+      {
+        status: 'learning',
+        interval: 2,
+        dueDate: '2099-12-31',
+        reviewCount: 1,
+        successCount: 1,
+      },
+      { where: { userId, wordId } }
+    );
+    await ReviewHistory.create({
+      userId,
+      wordId,
+      quality: 3,
+      intervalBefore: 0,
+      intervalAfter: 2,
+      easeFactorBefore: 2.5,
+      easeFactorAfter: 2.5,
+      reviewedAt: new Date(),
+    });
+
+    const delRes = await request(app).delete(`/words/${wordId}`);
+    expect(delRes.status).toBe(200);
+    expect(await Word.findByPk(wordId)).toBeNull();
+    expect(await WordReview.count({ where: { userId, wordId } })).toBe(0);
+    expect(await ReviewHistory.count({ where: { userId, wordId } })).toBe(0);
   });
 
   it('删除其他用户的单词返回错误', async () => {

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { Root, Word, WordRoot, Example, WordReview, ReviewHistory } from '../models/index.js';
+import { sequelize, Root, Word, WordRoot, Example, WordReview, ReviewHistory } from '../models/index.js';
 import { success, error } from '../utils/response.js';
 import { ensureDefaultRoot } from '../utils/defaultRoot.js';
 import { buildKeywordSearch } from '../utils/search.js';
@@ -137,41 +137,54 @@ router.put('/:id', async (req, res) => {
 // 删除词根（清理关联，删除孤立单词）
 router.delete('/:id', async (req, res) => {
   try {
-    const root = await Root.findByPk(req.params.id);
-    if (!root || root.userId !== req.userId) return error(res, '词根不存在');
-    if (root.isDefault) return error(res, '「未分类」词根不能删除，它用于存放无词根的单词', 400);
-
-    // 获取该词根关联的所有单词 ID
-    const wordRoots = await WordRoot.findAll({
-      where: { rootId: root.id },
-      attributes: ['wordId'],
-    });
-    const wordIds = wordRoots.map((wr) => wr.wordId);
-
-    // 移除该词根的所有关联
-    await WordRoot.destroy({ where: { rootId: root.id } });
-
-    // 找出现在没有任何词根关联的孤立单词并删除
-    if (wordIds.length) {
-      const remainingAssocs = await WordRoot.findAll({
-        where: { wordId: wordIds },
-        attributes: ['wordId'],
-      });
-      const stillLinkedIds = new Set(remainingAssocs.map((wr) => wr.wordId));
-      const orphanedIds = wordIds.filter((id) => !stillLinkedIds.has(id));
-
-      if (orphanedIds.length) {
-        await Example.destroy({ where: { wordId: orphanedIds } });
-        await WordReview.destroy({ where: { wordId: orphanedIds } });
-        await ReviewHistory.destroy({ where: { wordId: orphanedIds } });
-        await Word.destroy({ where: { id: orphanedIds } });
+    await sequelize.transaction(async (transaction) => {
+      const root = await Root.findByPk(req.params.id, { transaction });
+      if (!root || root.userId !== req.userId) {
+        const notFoundError = new Error('词根不存在');
+        notFoundError.code = 404;
+        throw notFoundError;
       }
-    }
+      if (root.isDefault) {
+        const defaultRootError = new Error('「未分类」词根不能删除，它用于存放无词根的单词');
+        defaultRootError.code = 400;
+        throw defaultRootError;
+      }
 
-    await root.destroy();
+      // 获取该词根关联的所有单词 ID
+      const wordRoots = await WordRoot.findAll({
+        where: { rootId: root.id },
+        attributes: ['wordId'],
+        transaction,
+      });
+      const wordIds = wordRoots.map((wr) => wr.wordId);
+
+      // 移除该词根的所有关联
+      await WordRoot.destroy({ where: { rootId: root.id }, transaction });
+
+      // 找出现在没有任何词根关联的孤立单词并删除
+      if (wordIds.length) {
+        const remainingAssocs = await WordRoot.findAll({
+          where: { wordId: wordIds },
+          attributes: ['wordId'],
+          transaction,
+        });
+        const stillLinkedIds = new Set(remainingAssocs.map((wr) => wr.wordId));
+        const orphanedIds = wordIds.filter((id) => !stillLinkedIds.has(id));
+
+        if (orphanedIds.length) {
+          await Example.destroy({ where: { wordId: orphanedIds }, transaction });
+          await WordReview.destroy({ where: { wordId: orphanedIds }, transaction });
+          await ReviewHistory.destroy({ where: { wordId: orphanedIds }, transaction });
+          await Word.destroy({ where: { id: orphanedIds }, transaction });
+        }
+      }
+
+      await root.destroy({ transaction });
+    });
+
     success(res, null, '删除成功');
   } catch (e) {
-    error(res, e.message);
+    error(res, e.message, e.code || 500);
   }
 });
 
