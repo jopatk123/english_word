@@ -131,7 +131,7 @@ describe('PUT /api/admin/users/:id/status', () => {
 
 // ── getAdminPassword 环境变量行为 ──────────────────────────────
 
-import { getAdminPassword } from '../utils/env.js';
+import { getAdminPassword, getDbPath, getServerPort } from '../utils/env.js';
 
 describe('getAdminPassword', () => {
   it('ADMIN_PASSWORD 已配置时返回配置值', () => {
@@ -147,5 +147,44 @@ describe('getAdminPassword', () => {
     // vitest 运行时 NODE_ENV 为 "test"，应返回内置占位密码而非抛出
     expect(() => getAdminPassword()).not.toThrow();
     process.env.ADMIN_PASSWORD = original;
+  });
+});
+
+describe('getDbPath', () => {
+  it('DB_PATH 已配置时返回配置值', () => {
+    const original = process.env.DB_PATH;
+    process.env.DB_PATH = '/tmp/english-word-test.db';
+    expect(getDbPath()).toBe('/tmp/english-word-test.db');
+    process.env.DB_PATH = original;
+  });
+
+  it('DB_PATH 未配置时抛错', () => {
+    const original = process.env.DB_PATH;
+    delete process.env.DB_PATH;
+    expect(() => getDbPath()).toThrow(/DB_PATH/);
+    process.env.DB_PATH = original;
+  });
+});
+
+describe('getServerPort', () => {
+  it('PORT 已配置时返回数值端口', () => {
+    const original = process.env.PORT;
+    process.env.PORT = '3010';
+    expect(getServerPort()).toBe(3010);
+    process.env.PORT = original;
+  });
+
+  it('PORT 未配置时抛错', () => {
+    const original = process.env.PORT;
+    delete process.env.PORT;
+    expect(() => getServerPort()).toThrow(/PORT/);
+    process.env.PORT = original;
+  });
+
+  it('PORT 非法时抛错', () => {
+    const original = process.env.PORT;
+    process.env.PORT = 'abc';
+    expect(() => getServerPort()).toThrow(/1-65535/);
+    process.env.PORT = original;
   });
 });

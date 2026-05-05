@@ -26,8 +26,4 @@ COPY --from=frontend-build /app/client/dist ./client/dist
 # 创建数据目录
 RUN mkdir -p /app/data
 
-ENV PORT=3010
-ENV DB_PATH=/app/data/words.db
-EXPOSE 3010
-
 CMD ["node", "server/index.js"]

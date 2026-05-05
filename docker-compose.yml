@@ -4,13 +4,14 @@ services:
     image: english_word-english-word:latest
     container_name: english-word-app
     ports:
-      - '3010:3010'
+      - '${PORT:?PORT is required}:${PORT:?PORT is required}'
     volumes:
       - english-word-db:/app/data
     environment:
-      - PORT=3010
-      - DB_PATH=/app/data/words.db
-      - JWT_SECRET=${JWT_SECRET}
+      PORT: ${PORT:?PORT is required}
+      DB_PATH: ${DB_PATH:?DB_PATH is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
     restart: always
 
 volumes:

@@ -2,8 +2,9 @@ import http from 'http';
 import { initDB } from './models/index.js';
 import { createApp } from './app.js';
 import { createStudyTimerHub } from './realtime/study-timer-hub.js';
+import { getServerPort } from './utils/env.js';
 
-const PORT = process.env.PORT || 3010;
+const PORT = getServerPort();
 
 // 启动服务
 const start = async () => {
