@@ -15,7 +15,6 @@ describe('POST /review/:wordId/result', () => {
     vi.setSystemTime(new Date('2026-04-09T09:00:00Z'));
 
     try {
-      await request(fixture.app).post('/review/enqueue').send({ rootId: fixture.rootId });
       const res = await request(fixture.app).post(`/review/${fixture.wordId}/result`).send({ quality: 3 });
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveProperty('interval');
@@ -147,62 +146,26 @@ describe('POST /review/:wordId/result', () => {
     expect(res.status).toBe(400);
   });
 
-  it('未入队的单词返回 404', async () => {
+  it('缺失复习记录的单词会自动补齐后提交成功', async () => {
     const word2 = await Word.create({ name: `rword2_${createTestSuffix()}`, meaning: '含义2', userId: fixture.userId });
     await WordRoot.create({ wordId: word2.id, rootId: fixture.rootId });
     const res = await request(fixture.app).post(`/review/${word2.id}/result`).send({ quality: 3 });
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
+
+    const review = await WordReview.findOne({ where: { userId: fixture.userId, wordId: word2.id } });
+    expect(review).toBeTruthy();
+    expect(review.status).toBe('learning');
   });
 });
 
-describe('POST /review/:wordId/pause', () => {
-  it('切换暂停状态', async () => {
-    await request(fixture.app).post('/review/enqueue').send({ rootId: fixture.rootId });
-    const res = await request(fixture.app).post(`/review/${fixture.wordId}/pause`).send({});
-    expect(res.status).toBe(200);
-    const rw = await WordReview.findOne({ where: { userId: fixture.userId, wordId: fixture.wordId } });
-    expect(typeof rw.paused).toBe('boolean');
-  });
+describe('已移除的手动复习管理接口', () => {
+  it('pause/reset/remove 接口均返回 404', async () => {
+    const pauseRes = await request(fixture.app).post(`/review/${fixture.wordId}/pause`).send({});
+    const resetRes = await request(fixture.app).post(`/review/${fixture.wordId}/reset`).send({});
+    const removeRes = await request(fixture.app).delete(`/review/${fixture.wordId}`);
 
-  it('未入队的单词返回 404', async () => {
-    const word3 = await Word.create({ name: `rword3_${createTestSuffix()}`, meaning: 'x', userId: fixture.userId });
-    await WordRoot.create({ wordId: word3.id, rootId: fixture.rootId });
-    const res = await request(fixture.app).post(`/review/${word3.id}/pause`).send({});
-    expect(res.status).toBe(404);
-  });
-});
-
-describe('POST /review/:wordId/reset', () => {
-  it('重置后 status=new interval=0', async () => {
-    await request(fixture.app).post('/review/enqueue').send({ rootId: fixture.rootId });
-    await request(fixture.app).post(`/review/${fixture.wordId}/result`).send({ quality: 4 });
-    const res = await request(fixture.app).post(`/review/${fixture.wordId}/reset`).send({});
-    expect(res.status).toBe(200);
-    const rw = await WordReview.findOne({ where: { userId: fixture.userId, wordId: fixture.wordId } });
-    expect(rw.status).toBe('new');
-    expect(rw.interval).toBe(0);
-    expect(rw.successCount).toBe(0);
-    expect(rw.perfectStreakCount).toBe(0);
-    expect(rw.dueAt).toBeTruthy();
-  });
-});
-
-describe('DELETE /review/:wordId', () => {
-  it('成功从队列移除单词', async () => {
-    const word4 = await Word.create({ name: `rword4_${createTestSuffix()}`, meaning: 'x', userId: fixture.userId });
-    await WordRoot.create({ wordId: word4.id, rootId: fixture.rootId });
-    await request(fixture.app).post('/review/enqueue').send({ rootId: fixture.rootId });
-
-    const res = await request(fixture.app).delete(`/review/${word4.id}`);
-    expect(res.status).toBe(200);
-    const rw = await WordReview.findOne({ where: { userId: fixture.userId, wordId: word4.id } });
-    expect(rw).toBeNull();
-  });
-
-  it('未入队的单词返回 404', async () => {
-    const word5 = await Word.create({ name: `rword5_${createTestSuffix()}`, meaning: 'x', userId: fixture.userId });
-    await WordRoot.create({ wordId: word5.id, rootId: fixture.rootId });
-    const res = await request(fixture.app).delete(`/review/${word5.id}`);
-    expect(res.status).toBe(404);
+    expect(pauseRes.status).toBe(404);
+    expect(resetRes.status).toBe(404);
+    expect(removeRes.status).toBe(404);
   });
 });

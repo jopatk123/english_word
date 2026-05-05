@@ -53,29 +53,16 @@ describe('GET /review/quiz-choices/:wordId', () => {
   });
 });
 
-describe('POST /review/enqueue', () => {
-  it('成功将词根下单词加入队列', async () => {
-    const res = await request(fixture.app).post('/review/enqueue').send({ rootId: fixture.rootId });
-    expect(res.status).toBe(200);
-    expect(res.body.data).toHaveProperty('added');
-    expect(res.body.data.added).toBeGreaterThan(0);
+describe('自动加入复习', () => {
+  it('夹具中的单词默认已有复习记录', async () => {
+    const review = await WordReview.findOne({ where: { userId: fixture.userId, wordId: fixture.wordId } });
+    expect(review).toBeTruthy();
+    expect(review.status).toBe('new');
   });
 
-  it('重复加入同一词根时 added=0', async () => {
-    await request(fixture.app).post('/review/enqueue').send({ rootId: fixture.rootId });
+  it('手动加入复习接口已移除', async () => {
     const res = await request(fixture.app).post('/review/enqueue').send({ rootId: fixture.rootId });
-    expect(res.status).toBe(200);
-    expect(res.body.data.added).toBe(0);
-  });
-
-  it('不存在的词根返回 404', async () => {
-    const res = await request(fixture.app).post('/review/enqueue').send({ rootId: 99999999 });
     expect(res.status).toBe(404);
-  });
-
-  it('缺少 rootId 返回 400', async () => {
-    const res = await request(fixture.app).post('/review/enqueue').send({});
-    expect(res.status).toBe(400);
   });
 });
 
@@ -106,7 +93,6 @@ describe('GET /review/due', () => {
   });
 
   it('limit=1 只返回 1 条', async () => {
-    await request(fixture.app).post('/review/enqueue').send({ rootId: fixture.rootId });
     const res = await request(fixture.app).get('/review/due?limit=1');
     expect(res.status).toBe(200);
     expect(res.body.data.length).toBeLessThanOrEqual(1);
@@ -120,7 +106,6 @@ describe('GET /review/due', () => {
       const stepWord = await Word.create({ name: `step_${createTestSuffix()}`, meaning: '短间隔', userId: fixture.userId });
       await WordRoot.create({ wordId: stepWord.id, rootId: fixture.rootId });
 
-      await request(fixture.app).post('/review/enqueue').send({ rootId: fixture.rootId });
       const resultRes = await request(fixture.app).post(`/review/${stepWord.id}/result`).send({ quality: 3 });
       expect(resultRes.status).toBe(200);
       expect(resultRes.body.data.interval).toBe(0);

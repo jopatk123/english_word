@@ -136,7 +136,6 @@ router.get('/export', async (req, res) => {
         successCount: r.successCount,
         perfectStreakCount: r.perfectStreakCount,
         lastReviewedAt: r.lastReviewedAt,
-        paused: r.paused,
       }));
 
     if (format === 'csv') {
@@ -155,7 +154,6 @@ router.get('/export', async (req, res) => {
         'successCount',
         'perfectStreakCount',
         'lastReviewedAt',
-        'paused',
       ];
       const csvRows = [headers.join(',')];
       data.forEach((row) => {

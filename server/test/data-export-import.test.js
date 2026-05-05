@@ -176,6 +176,13 @@ describe('POST /review/data/import', () => {
     expect(link).toBeTruthy();
   });
 
+  it('导入后单词会自动补齐复习记录', async () => {
+    const word = await Word.findOne({ where: { name: 'importword1', userId } });
+    const review = await WordReview.findOne({ where: { userId, wordId: word.id } });
+    expect(review).toBeTruthy();
+    expect(review.status).toBe('new');
+  });
+
   it('多词根单词的所有关联均创建正确', async () => {
     const root1 = await Root.findOne({ where: { name: 'importroot1', userId } });
     const root2 = await Root.findOne({ where: { name: 'importroot2', userId } });
@@ -219,6 +226,13 @@ describe('POST /review/data/import', () => {
     expect(currentUserWord).toBeTruthy();
     expect(otherUserWord).toBeTruthy();
     expect(currentUserWord.id).not.toBe(otherUserWord.id);
+
+    const [currentReview, otherReview] = await Promise.all([
+      WordReview.findOne({ where: { userId, wordId: currentUserWord.id } }),
+      WordReview.findOne({ where: { userId: otherUser.id, wordId: otherUserWord.id } }),
+    ]);
+    expect(currentReview).toBeTruthy();
+    expect(otherReview).toBeTruthy();
   });
 
   it('格式无效时返回 400', async () => {

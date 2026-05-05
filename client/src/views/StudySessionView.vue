@@ -11,7 +11,7 @@
       v-if="loading"
       class="session-loading"
       v-loading="true"
-      element-loading-text="加载学习队列..."
+      element-loading-text="加载复习内容..."
     />
 
     <!-- 模式选择（学习开始前） -->

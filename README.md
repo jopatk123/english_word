@@ -23,7 +23,7 @@ cp .env.example .env
 ```
 
 - `JWT_SECRET`：必填，用于签发登录 token，必须替换为高强度随机字符串
-- `ADMIN_PASSWORD`：可选，超级管理员页面密码；不配置时默认 `asd123123123`
+- `ADMIN_PASSWORD`：可选，超级管理员页面密码；
 - `PORT`：可选，服务端监听端口，默认 `3010`
 - `DB_PATH`：可选，SQLite 数据文件路径；本地默认 `./data/words.db`
 

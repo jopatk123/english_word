@@ -5,6 +5,7 @@ import dueRouter from '../routes/review/due.js';
 import statsRouter from '../routes/review/stats.js';
 import manageRouter from '../routes/review/manage.js';
 import historyRouter from '../routes/review/history.js';
+import { ensureWordReview } from '../utils/wordReview.js';
 
 export const createTestSuffix = () => Date.now() + Math.random().toString(36).slice(2, 5);
 
@@ -33,6 +34,7 @@ export const createReviewFixture = async () => {
   const word = await Word.create({ name: `rword_${createTestSuffix()}`, meaning: '含义', userId: user.id });
 
   await WordRoot.create({ wordId: word.id, rootId: root.id });
+  await ensureWordReview(user.id, word.id);
 
   return {
     app,

@@ -51,7 +51,6 @@ router.get('/due', async (req, res) => {
       : 'due';
     const where = {
       userId: req.userId,
-      paused: false,
     };
     const dueNowForToday = {
       [Op.or]: [{ dueAt: null }, { dueAt: { [Op.lte]: now } }],

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import sequelize from '../../config/database.js';
 import { Root, Word, WordRoot, Example, WordReview } from '../../models/index.js';
 import { success, error } from '../../utils/response.js';
+import { ensureWordReview } from '../../utils/wordReview.js';
 
 const router = Router();
 
@@ -154,6 +155,8 @@ router.post('/data/import', async (req, res) => {
         transaction: t,
       });
       if (wordCreated) stats.wordsAdded++;
+
+      await ensureWordReview(req.userId, word.id, { transaction: t });
 
       // 步骤3：建立单词与该用户词根的关联
       const targetRootNames = (wordData.rootNames || []).filter((n) => rootNameToId.has(n));

@@ -71,7 +71,7 @@ describe('日期工具 addDays', () => {
 
 // ======================== WordReview 数据库操作测试 ========================
 
-describe('WordReview 学习队列数据库操作', () => {
+describe('WordReview 复习记录数据库操作', () => {
   let testUserId;
   let testWordId;
 
@@ -96,7 +96,7 @@ describe('WordReview 学习队列数据库操作', () => {
     await WordReview.destroy({ where: { userId: testUserId, wordId: testWordId } });
   });
 
-  it('加入学习队列后 status=new，dueDate=today，interval=0', async () => {
+  it('创建默认复习记录后 status=new，dueDate=today，interval=0', async () => {
     const today = new Date().toISOString().slice(0, 10);
     const review = await WordReview.create({
       userId: testUserId,
@@ -185,22 +185,12 @@ describe('WordReview 学习队列数据库操作', () => {
     expect(updated.dueAt).toBeTruthy();
   });
 
-  it('单词可以被暂停后不出现在学习队列', async () => {
+  it('旧 paused 状态不会影响复习记录的默认存在', async () => {
     const review = await WordReview.findOne({ where: { userId: testUserId, wordId: testWordId } });
     await review.update({ paused: true });
 
-    const activeReviews = await WordReview.findAll({
-      where: { userId: testUserId, paused: false },
-    });
-    const pausedWord = activeReviews.find((r) => r.wordId === testWordId);
-    expect(pausedWord).toBeUndefined();
-  });
-
-  it('恢复暂停后可以正常查到', async () => {
-    const review = await WordReview.findOne({ where: { userId: testUserId, wordId: testWordId } });
-    await review.update({ paused: false });
-
     const updated = await WordReview.findOne({ where: { userId: testUserId, wordId: testWordId } });
-    expect(updated.paused).toBe(false);
+    expect(updated).toBeTruthy();
+    expect(updated.status).toBeTruthy();
   });
 });

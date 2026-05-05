@@ -99,10 +99,10 @@
         @change="handleImportFile"
       />
     </div>
-    <!-- 词根列表（管理学习队列） -->
+    <!-- 词根列表（查看掌握进度） -->
     <div class="root-section">
       <div class="section-header">
-        <h3>按词根查看复习进度</h3>
+        <h3>按词根查看掌握进度</h3>
       </div>
 
       <el-table
@@ -126,30 +126,16 @@
           </template>
         </el-table-column>
         <el-table-column prop="meaning" label="含义" min-width="120" />
-        <el-table-column label="进度" min-width="180">
+        <el-table-column label="掌握进度" min-width="220">
           <template #default="{ row }">
             <div class="progress-info">
               <el-progress
-                :percentage="row.wordCount ? Math.round((row.enrolled / row.wordCount) * 100) : 0"
+                :percentage="row.wordCount ? Math.round((row.known / row.wordCount) * 100) : 0"
                 :stroke-width="14"
-                :format="() => `${row.enrolled}/${row.wordCount}`"
+                :format="() => `${row.known}/${row.wordCount}`"
               />
-              <span v-if="row.known > 0" class="known-badge"> 已掌握 {{ row.known }} </span>
+              <span v-if="row.learning > 0" class="known-badge"> 学习中 {{ row.learning }} </span>
             </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="160" align="center">
-          <template #default="{ row }">
-            <el-button
-              v-if="row.enrolled < row.wordCount"
-              link
-              type="primary"
-              @click="handleEnqueue(row)"
-              :loading="enqueuingId === row.id"
-            >
-              加入复习
-            </el-button>
-            <el-tag v-else size="small" type="success">已全部加入</el-tag>
           </template>
         </el-table-column>
       </el-table>
@@ -164,7 +150,6 @@
   import {
     getReviewStats,
     getRootsProgress,
-    enqueueRoot,
     getReviewHistorySummary,
     exportAllData,
     importAllData,
@@ -185,7 +170,6 @@
   const statsLoading = ref(false);
   const rootsProgress = ref([]);
   const rootsLoading = ref(false);
-  const enqueuingId = ref(null);
   const importing = ref(false);
   const exporting = ref(false);
   const importFileInput = ref(null);
@@ -289,20 +273,6 @@
 
   const handleWindowFocus = () => {
     refreshStatsForCurrentDay();
-  };
-
-  const handleEnqueue = async (root) => {
-    enqueuingId.value = root.id;
-    try {
-      const res = await enqueueRoot(root.id);
-      ElMessage.success(res.msg);
-      fetchStats();
-      fetchRootsProgress();
-    } catch {
-      ElMessage.error('加入复习队列失败');
-    } finally {
-      enqueuingId.value = null;
-    }
   };
 
   const startStudy = () => {

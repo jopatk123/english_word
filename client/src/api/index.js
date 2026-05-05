@@ -95,12 +95,9 @@ const getUserTz = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 export const getReviewDue = (params = {}) =>
   api.get('/review/due', { params: { tz: getUserTz(), ...params } });
 export const getReviewStats = () => api.get('/review/stats', { params: { tz: getUserTz() } });
-export const enqueueRoot = (rootId) => api.post('/review/enqueue', { rootId, tz: getUserTz() });
 export const submitReviewResult = (wordId, quality) =>
   api.post(`/review/${wordId}/result`, { quality, tz: getUserTz() });
 export const getRootsProgress = () => api.get('/review/roots-progress');
-export const resetWordReview = (wordId) => api.post(`/review/${wordId}/reset`, { tz: getUserTz() });
-export const removeWordReview = (wordId) => api.delete(`/review/${wordId}`);
 export const getQuizChoices = (wordId, count = 3) =>
   api.get(`/review/quiz-choices/${wordId}`, { params: { count } });
 export const getReviewHistory = (days = 30) =>
@@ -111,9 +108,6 @@ export const exportReviewData = (format = 'json') =>
   api.get('/review/export', { params: { format, tz: getUserTz() } });
 export const exportAllData = () => api.get('/review/data/export');
 export const importAllData = (data) => api.post('/review/data/import', data);
-export const pauseWordReview = (wordId) => api.post(`/review/${wordId}/pause`);
-export const pauseRootReview = (rootId, paused) =>
-  api.post(`/review/roots/${rootId}/pause`, { paused });
 
 // ========== AI API ==========
 export const testAiConnection = (config) => aiApi.post('/ai/test', { config });

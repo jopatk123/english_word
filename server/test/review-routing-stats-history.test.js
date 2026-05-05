@@ -119,13 +119,14 @@ describe('GET /review/roots-progress', () => {
     expect(Array.isArray(res.body.data)).toBe(true);
     const r = res.body.data.find((item) => item.id === fixture.rootId);
     expect(r).toBeTruthy();
-    expect(typeof r.enrolled).toBe('number');
+    expect(typeof r.known).toBe('number');
+    expect(typeof r.learning).toBe('number');
+    expect(r.learning + r.known).toBe(r.wordCount);
   });
 });
 
 describe('GET /review/history', () => {
   it('返回学习历史列表（默认 30 天）', async () => {
-    await request(fixture.app).post('/review/enqueue').send({ rootId: fixture.rootId });
     await request(fixture.app).post(`/review/${fixture.wordId}/result`).send({ quality: 3 });
     const res = await request(fixture.app).get('/review/history');
     expect(res.status).toBe(200);
@@ -142,7 +143,6 @@ describe('GET /review/history', () => {
 
 describe('GET /review/history/summary', () => {
   it('返回包含 daily 数组和 streak 的摘要对象', async () => {
-    await request(fixture.app).post('/review/enqueue').send({ rootId: fixture.rootId });
     await request(fixture.app).post(`/review/${fixture.wordId}/result`).send({ quality: 3 });
     const res = await request(fixture.app).get('/review/history/summary');
     expect(res.status).toBe(200);

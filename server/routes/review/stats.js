@@ -17,22 +17,21 @@ router.get('/stats', async (req, res) => {
     };
 
     const [totalCount, todayDueCount, knownCount, todayReviewed, overdueCount] = await Promise.all([
-      WordReview.count({ where: { userId: req.userId, paused: false } }),
+      WordReview.count({ where: { userId: req.userId } }),
       // 今日到期（仅 dueDate == today）
       WordReview.count({
-        where: { userId: req.userId, paused: false, dueDate: today, ...dueNowForToday },
+        where: { userId: req.userId, dueDate: today, ...dueNowForToday },
       }),
-      WordReview.count({ where: { userId: req.userId, paused: false, status: REVIEW_STATUS.KNOWN } }),
+      WordReview.count({ where: { userId: req.userId, status: REVIEW_STATUS.KNOWN } }),
       WordReview.count({
         where: {
           userId: req.userId,
-          paused: false,
           lastReviewedAt: { [Op.gte]: todayStartDate },
         },
       }),
       // 超期未复习（dueDate < today），与 todayDue 互斥
       WordReview.count({
-        where: { userId: req.userId, paused: false, dueDate: { [Op.lt]: today } },
+        where: { userId: req.userId, dueDate: { [Op.lt]: today } },
       }),
     ]);
 

@@ -1,55 +1,11 @@
 import { Router } from 'express';
 import { Op, literal } from 'sequelize';
-import { sequelize, Word, Root, WordReview, ReviewHistory } from '../../models/index.js';
+import { sequelize, Word, WordReview, ReviewHistory } from '../../models/index.js';
 import { success, error } from '../../utils/response.js';
-import { getNextReview, todayStr, buildDueSchedule } from '../../utils/srs.js';
+import { getNextReview, buildDueSchedule } from '../../utils/srs.js';
+import { ensureWordReview } from '../../utils/wordReview.js';
 
 const router = Router();
-
-// 将某词根下的单词加入学习队列
-router.post('/enqueue', async (req, res) => {
-  try {
-    const { rootId } = req.body;
-    if (!rootId) return error(res, '请提供词根ID', 400);
-
-    const root = await Root.findByPk(rootId);
-    if (!root || root.userId !== req.userId) return error(res, '词根不存在', 404);
-
-    const words = await root.getWords({ where: { userId: req.userId } });
-    if (words.length === 0) return error(res, '该词根下没有单词', 400);
-
-    const today = todayStr(req.body.tz);
-    const now = new Date();
-    let addedCount = 0;
-
-    for (const word of words) {
-      const [, created] = await WordReview.findOrCreate({
-        where: { userId: req.userId, wordId: word.id },
-        defaults: {
-          userId: req.userId,
-          wordId: word.id,
-          status: 'new',
-          interval: 0,
-          easeFactor: 2.5,
-          dueDate: today,
-          dueAt: now,
-          reviewCount: 0,
-          successCount: 0,
-          perfectStreakCount: 0,
-        },
-      });
-      if (created) addedCount++;
-    }
-
-    success(
-      res,
-      { added: addedCount, total: words.length },
-      `已添加 ${addedCount} 个新单词到学习队列`
-    );
-  } catch (e) {
-    error(res, e.message);
-  }
-});
 
 // 提交复习结果
 router.post('/:wordId/result', async (req, res) => {
@@ -62,15 +18,34 @@ router.post('/:wordId/result', async (req, res) => {
     }
 
     const updatedReview = await sequelize.transaction(async (transaction) => {
-      const review = await WordReview.findOne({
-        where: { userId: req.userId, wordId },
+      const normalizedWordId = parseInt(wordId, 10);
+
+      const word = await Word.findOne({
+        where: { id: normalizedWordId, userId: req.userId },
+        attributes: ['id'],
+        transaction,
+      });
+      if (!word) {
+        const notFoundError = new Error('单词不存在');
+        notFoundError.code = 404;
+        throw notFoundError;
+      }
+
+      let review = await WordReview.findOne({
+        where: { userId: req.userId, wordId: normalizedWordId },
         transaction,
         lock: transaction.LOCK.UPDATE,
       });
       if (!review) {
-        const notFoundError = new Error('该单词不在学习队列中');
-        notFoundError.code = 404;
-        throw notFoundError;
+        await ensureWordReview(req.userId, normalizedWordId, {
+          timezone: req.body.tz,
+          transaction,
+        });
+        review = await WordReview.findOne({
+          where: { userId: req.userId, wordId: normalizedWordId },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
       }
 
       const oldInterval = review.interval;
@@ -99,7 +74,7 @@ router.post('/:wordId/result', async (req, res) => {
       await ReviewHistory.create(
         {
           userId: req.userId,
-          wordId: parseInt(wordId),
+          wordId: normalizedWordId,
           quality,
           intervalBefore: oldInterval,
           intervalAfter: interval,

@@ -215,6 +215,77 @@ async function m013_word_reviews_add_perfect_streak_count() {
   console.log('[migration] M013: word_reviews.perfect_streak_count 已添加');
 }
 
+// M014：补齐历史单词的复习记录，并清理旧的暂停状态
+async function m014_word_reviews_backfill_all_words() {
+  const reviewInfo = await qi.describeTable('word_reviews').catch(() => ({}));
+  const wordInfo = await qi.describeTable('words').catch(() => ({}));
+  if (Object.keys(reviewInfo).length === 0 || Object.keys(wordInfo).length === 0) return;
+
+  const [missingRows] = await sequelize.query(`
+    SELECT COUNT(*) AS count
+    FROM words
+    LEFT JOIN word_reviews
+      ON word_reviews.user_id = words.user_id
+     AND word_reviews.word_id = words.id
+    WHERE words.user_id IS NOT NULL
+      AND word_reviews.id IS NULL
+  `);
+  const missingCount = Number(missingRows?.[0]?.count || 0);
+
+  const now = new Date().toISOString();
+  const today = now.slice(0, 10);
+
+  await sequelize.query(
+    `UPDATE word_reviews
+     SET paused = 0
+     WHERE paused != 0`
+  );
+
+  if (missingCount === 0) {
+    console.log('[migration] M014: word_reviews 已覆盖所有历史单词');
+    return;
+  }
+
+  await sequelize.query(
+    `INSERT OR IGNORE INTO word_reviews (
+      user_id,
+      word_id,
+      status,
+      interval,
+      ease_factor,
+      due_date,
+      due_at,
+      review_count,
+      success_count,
+      perfect_streak_count,
+      paused,
+      last_reviewed_at,
+      create_time,
+      update_time
+    )
+    SELECT
+      words.user_id,
+      words.id,
+      'new',
+      0,
+      2.5,
+      ?,
+      ?,
+      0,
+      0,
+      0,
+      0,
+      NULL,
+      ?,
+      ?
+    FROM words
+    WHERE words.user_id IS NOT NULL`,
+    { replacements: [today, now, now, now] }
+  );
+
+  console.log(`[migration] M014: 已为 ${missingCount} 个历史单词补齐复习记录`);
+}
+
 /**
  * 按顺序执行所有迁移。每个迁移函数都是幂等的，可以安全重复运行。
  */
@@ -232,4 +303,5 @@ export async function runMigrations() {
   await m011_study_sessions_unique_active();
   await m012_word_reviews_add_success_count();
   await m013_word_reviews_add_perfect_streak_count();
+  await m014_word_reviews_backfill_all_words();
 }

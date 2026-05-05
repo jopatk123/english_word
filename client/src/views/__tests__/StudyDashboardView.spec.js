@@ -11,7 +11,6 @@ vi.mock('vue-router', () => ({
 const getReviewStatsMock = vi.fn();
 const getRootsProgressMock = vi.fn();
 const getReviewHistorySummaryMock = vi.fn();
-const enqueueRootMock = vi.fn();
 const exportAllDataMock = vi.fn();
 const importAllDataMock = vi.fn();
 
@@ -19,7 +18,6 @@ vi.mock('../../api/index.js', () => ({
   getReviewStats: (...args) => getReviewStatsMock(...args),
   getRootsProgress: (...args) => getRootsProgressMock(...args),
   getReviewHistorySummary: (...args) => getReviewHistorySummaryMock(...args),
-  enqueueRoot: (...args) => enqueueRootMock(...args),
   exportAllData: (...args) => exportAllDataMock(...args),
   importAllData: (...args) => importAllDataMock(...args),
 }));
@@ -67,7 +65,6 @@ async function createWrapper(statsOverrides = {}) {
   });
   getReviewHistorySummaryMock.mockResolvedValue({ data: { streak: 1, totalReviews: 9 } });
   getRootsProgressMock.mockResolvedValue({ data: [] });
-  enqueueRootMock.mockResolvedValue({ msg: 'ok' });
   exportAllDataMock.mockResolvedValue({});
   importAllDataMock.mockResolvedValue({ msg: 'ok' });
 
@@ -113,9 +110,10 @@ describe('StudyDashboardView', () => {
     expect(wrapper.text()).toContain('节奏稳定');
   });
 
-  it('不再显示全部加入学习按钮', async () => {
+  it('词根区改为展示掌握进度而非手动加队列', async () => {
     const wrapper = await createWrapper({ total: 8 });
-    expect(wrapper.text()).not.toContain('全部加入学习');
+    expect(wrapper.text()).toContain('按词根查看掌握进度');
+    expect(wrapper.text()).not.toContain('管理学习队列');
   });
 
   it('有超期词时，提醒卡突出优先处理超期词', async () => {

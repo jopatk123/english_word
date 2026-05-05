@@ -272,8 +272,17 @@ describe('subscribeAiSettingsChanges', () => {
       })
     );
 
-    expect(handler).toHaveBeenCalledTimes(1);
-    expect(handler).toHaveBeenCalledWith(
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(handler).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        providerId: 'openai',
+        model: 'gpt-4o',
+        apiKey: 'sk-test-key-12345',
+      })
+    );
+    expect(handler).toHaveBeenNthCalledWith(
+      2,
       expect.objectContaining({
         providerId: 'openai',
         model: 'gpt-4o',
