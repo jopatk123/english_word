@@ -77,6 +77,7 @@ router.post('/:wordId/reset', async (req, res) => {
       dueAt: new Date(),
       reviewCount: 0,
       successCount: 0,
+      perfectStreakCount: 0,
       lastReviewedAt: null,
     });
 

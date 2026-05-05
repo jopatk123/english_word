@@ -28,7 +28,7 @@ router.get('/data/export', async (req, res) => {
               as: 'reviews',
               where: { userId: req.userId },
               required: false,
-              attributes: ['interval'],
+              attributes: ['interval', 'perfectStreakCount'],
             },
           ],
         },
@@ -54,6 +54,7 @@ router.get('/data/export', async (req, res) => {
             phonetic: word.phonetic || null,
             remark: word.remark || null,
             interval: word.reviews?.[0]?.interval ?? 0,
+            perfectStreakCount: word.reviews?.[0]?.perfectStreakCount ?? 0,
             rootNames: [],
             examples: (word.examples || []).map((e) => ({
               sentence: e.sentence,

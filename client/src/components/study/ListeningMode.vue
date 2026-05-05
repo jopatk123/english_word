@@ -6,6 +6,25 @@
       <div class="listening-prompt">听发音，拼写单词</div>
       <SpeakButton :text="card.word.name" size="large" />
 
+      <div class="listening-audio-tools">
+        <div v-if="revealedSentenceTranslation" class="listening-audio-translation">
+          {{ revealedSentenceTranslation }}
+        </div>
+        <div v-if="sentenceExamples.length > 0" class="listening-audio-actions">
+          <el-button class="listening-audio-button" @click="playSentenceAudio">
+            {{ sentenceButtonLabel }}
+          </el-button>
+          <el-button
+            v-if="sentenceExamples.length > 1"
+            class="listening-audio-button listening-audio-button-secondary"
+            @click="cycleSentenceAudio"
+          >
+            换一句
+          </el-button>
+        </div>
+        <div v-else class="listening-audio-empty">当前单词暂无例句音频，可先听单词发音后再输入。</div>
+      </div>
+
       <!-- 渐进式字母提示（仅在点击提示后显示） -->
       <div v-if="hintLevel > 0 && !answered" class="listening-hint">
         提示：{{ hint }}
@@ -60,6 +79,7 @@
   import { ref, computed, onMounted, watch, nextTick } from 'vue';
   import SpeakButton from '../SpeakButton.vue';
   import SessionProgress from './SessionProgress.vue';
+  import { useSpeech } from '../../utils/speech.js';
 
   const props = defineProps({
     card: { type: Object, required: true },
@@ -79,12 +99,46 @@
 
   const emit = defineEmits(['check', 'hint', 'next', 'seek', 'update:inputValue']);
 
+  const { speak } = useSpeech();
+
   const localInput = computed({
     get: () => props.inputValue,
     set: (val) => emit('update:inputValue', val),
   });
 
   const inputRef = ref(null);
+  const sentenceIndex = ref(0);
+  const revealedSentenceTranslation = ref('');
+
+  const sentenceExamples = computed(() =>
+    (props.card?.word?.examples || [])
+      .map((example) => ({
+        sentence: example?.sentence?.trim() || '',
+        translation: example?.translation?.trim() || '',
+      }))
+      .filter((example) => example.sentence)
+  );
+
+  const currentSentence = computed(() => sentenceExamples.value[sentenceIndex.value] || null);
+  const currentSentenceLabel = computed(() => {
+    if (sentenceExamples.value.length <= 1) return '';
+    return `${sentenceIndex.value + 1}/${sentenceExamples.value.length}`;
+  });
+  const sentenceButtonLabel = computed(() =>
+    currentSentenceLabel.value ? `播放例句 ${currentSentenceLabel.value}` : '播放例句'
+  );
+
+  const playSentenceAudio = () => {
+    if (!currentSentence.value) return;
+    revealedSentenceTranslation.value = currentSentence.value.translation;
+    speak(currentSentence.value.sentence);
+  };
+
+  const cycleSentenceAudio = () => {
+    if (sentenceExamples.value.length <= 1) return;
+    sentenceIndex.value = (sentenceIndex.value + 1) % sentenceExamples.value.length;
+    playSentenceAudio();
+  };
 
   const focus = () => {
     nextTick(() => inputRef.value?.focus());
@@ -92,6 +146,59 @@
 
   onMounted(focus);
   watch(() => props.currentIndex, focus);
+  watch(
+    () => props.card?.wordId,
+    () => {
+      sentenceIndex.value = 0;
+      revealedSentenceTranslation.value = '';
+    }
+  );
 
   defineExpose({ focus });
 </script>
+
+<style scoped>
+  .listening-audio-tools {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .listening-audio-translation,
+  .listening-audio-empty {
+    max-width: 520px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #7d8ca3;
+    text-align: center;
+  }
+
+  .listening-audio-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .listening-audio-button {
+    min-width: 128px;
+  }
+
+  .listening-audio-button-secondary {
+    color: #5f6f89;
+  }
+  
+  @media (max-width: 640px) {
+    .listening-audio-actions {
+      width: 100%;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .listening-audio-button {
+      width: 100%;
+    }
+  }
+</style>

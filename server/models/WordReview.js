@@ -64,7 +64,14 @@ const WordReview = sequelize.define(
       allowNull: false,
       defaultValue: 0,
       field: 'success_count',
-      comment: '成功复习次数（quality >= 3）',
+      comment: '累计成功复习次数（quality >= 3）',
+    },
+    perfectStreakCount: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: 'perfect_streak_count',
+      comment: '连续 quality=4 次数',
     },
     lastReviewedAt: {
       type: DataTypes.DATE,

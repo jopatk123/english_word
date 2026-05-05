@@ -19,6 +19,7 @@ describe('srs.js 工具模块', () => {
       expect(r.interval).toBe(0);
       expect(r.status).toBe('learning');
       expect(r.easeFactor).toBeCloseTo(2.3);
+      expect(r.perfectStreakCount).toBe(0);
     });
 
     it('quality=1 easeFactor 不低于 1.3', () => {
@@ -63,6 +64,7 @@ describe('srs.js 工具模块', () => {
     it('quality=4 (easy): 老词大幅增加间隔', () => {
       const r = getNextReview(4, 10, 2.5);
       expect(r.interval).toBe(Math.ceil(10 * 2.5 * 1.3));
+      expect(r.perfectStreakCount).toBe(1);
     });
 
     it('interval 不超过 MAX_INTERVAL', () => {
@@ -70,27 +72,35 @@ describe('srs.js 工具模块', () => {
       expect(r.interval).toBe(MAX_INTERVAL);
     });
 
-    it('quality=4 且复习次数足够、间隔 >= 21 天时 status=known', () => {
-      const r = getNextReview(4, 15, 2.5, 'review', 2);
-      expect(r.interval).toBeGreaterThanOrEqual(21);
+    it('quality=4 连续第 3 次时 status=known', () => {
+      const r = getNextReview(4, 15, 2.5, 'review', 2, 2, 2);
+      expect(r.perfectStreakCount).toBe(3);
       expect(r.status).toBe('known');
     });
 
-    it('quality=3 即使成功次数和间隔达标也不会直接升 known', () => {
-      const r = getNextReview(3, 21, 2.5, 'review', 2);
-      expect(r.status).toBe('review');
+    it('known + quality=4 仍保持 known', () => {
+      const r = getNextReview(4, 15, 2.5, 'known', 2, 2, 0);
+      expect(r.status).toBe('known');
+      expect(r.perfectStreakCount).toBe(1);
     });
 
-    it('quality=2(hard) 即使间隔很长也不会直接升 known', () => {
-      const r = getNextReview(2, 30, 2.5, 'review', 10);
+    it('quality=3 会重置连续 4 分计数', () => {
+      const r = getNextReview(3, 21, 2.5, 'review', 2, 2, 2);
+      expect(r.status).toBe('review');
+      expect(r.perfectStreakCount).toBe(0);
+    });
+
+    it('quality=2(hard) 即使连续次数很高也不会直接升 known', () => {
+      const r = getNextReview(2, 30, 2.5, 'review', 10, 10, 2);
       expect(r.interval).toBe(Math.ceil(30 * 1.2));
       expect(r.status).toBe('review');
+      expect(r.perfectStreakCount).toBe(0);
     });
 
-    it('interval < 21 且 quality > 1 时 status=review', () => {
-      const r = getNextReview(3, 2, 2.5, 'review');
-      expect(r.interval).toBe(5);
+    it('quality=4 但连续次数不足 3 次时 status=review', () => {
+      const r = getNextReview(4, 2, 2.5, 'review', 0, 0, 1);
       expect(r.status).toBe('review');
+      expect(r.perfectStreakCount).toBe(2);
     });
 
     // 学习阶段测试
@@ -112,6 +122,7 @@ describe('srs.js 工具模块', () => {
       expect(r.interval).toBe(2);
       expect(r.delayMinutes).toBe(2 * 24 * 60);
       expect(r.status).toBe('review');
+      expect(r.perfectStreakCount).toBe(1);
     });
 
     it('new + quality=1: 保持 learning', () => {

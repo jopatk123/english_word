@@ -134,6 +134,7 @@ router.get('/export', async (req, res) => {
         dueAt: r.dueAt,
         reviewCount: r.reviewCount,
         successCount: r.successCount,
+        perfectStreakCount: r.perfectStreakCount,
         lastReviewedAt: r.lastReviewedAt,
         paused: r.paused,
       }));
@@ -152,6 +153,7 @@ router.get('/export', async (req, res) => {
         'dueAt',
         'reviewCount',
         'successCount',
+        'perfectStreakCount',
         'lastReviewedAt',
         'paused',
       ];

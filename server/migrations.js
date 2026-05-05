@@ -203,6 +203,18 @@ async function m012_word_reviews_add_success_count() {
   console.log('[migration] M012: word_reviews.success_count 已添加');
 }
 
+// M013：为 word_reviews 表添加 perfect_streak_count 列，用于记录连续 quality=4 次数
+async function m013_word_reviews_add_perfect_streak_count() {
+  const info = await qi.describeTable('word_reviews').catch(() => ({}));
+  if (info.perfect_streak_count !== undefined || Object.keys(info).length === 0) return;
+  await qi.addColumn('word_reviews', 'perfect_streak_count', {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  });
+  console.log('[migration] M013: word_reviews.perfect_streak_count 已添加');
+}
+
 /**
  * 按顺序执行所有迁移。每个迁移函数都是幂等的，可以安全重复运行。
  */
@@ -219,4 +231,5 @@ export async function runMigrations() {
   await m010_roots_unique_default_per_user();
   await m011_study_sessions_unique_active();
   await m012_word_reviews_add_success_count();
+  await m013_word_reviews_add_perfect_streak_count();
 }

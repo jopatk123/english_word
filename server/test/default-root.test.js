@@ -161,10 +161,13 @@ describe('SRS 算法 getNextReview', () => {
   /**
    * 与 server/routes/review.js 中的实际 SRS 算法保持同步
    */
-  function getNextReview(quality, currentInterval, easeFactor, reviewCount = 0) {
+  function getNextReview(quality, currentInterval, easeFactor, _reviewCount = 0, perfectStreakCount = 0) {
     let newInterval;
     let newEase;
     const isNew = currentInterval < 1;
+
+    const completedPerfectStreak =
+      quality === 4 ? Math.max(0, Math.trunc(Number(perfectStreakCount) || 0)) + 1 : 0;
 
     if (quality === 1) {
       newInterval = 0; // again ：当日内再复习
@@ -181,16 +184,9 @@ describe('SRS 算法 getNextReview', () => {
     }
 
     const MAX_INTERVAL = 365;
-    const KNOWN_REVIEW_COUNT_THRESHOLD = 3;
     newInterval = Math.min(newInterval, MAX_INTERVAL);
-    const completedReviews = Math.max(0, Math.trunc(Number(reviewCount) || 0)) + 1;
-    const status =
-      quality === 1
-        ? 'learning'
-        : quality === 4 && completedReviews >= KNOWN_REVIEW_COUNT_THRESHOLD && newInterval >= 21
-          ? 'known'
-          : 'review';
-    return { interval: newInterval, easeFactor: newEase, status };
+    const status = quality === 1 ? 'learning' : completedPerfectStreak >= 3 ? 'known' : 'review';
+    return { interval: newInterval, easeFactor: newEase, status, perfectStreakCount: completedPerfectStreak };
   }
 
   it('quality=1(again) interval=0 且降低 ease', () => {
@@ -206,8 +202,8 @@ describe('SRS 算法 getNextReview', () => {
     expect(result.easeFactor).toBeGreaterThan(2.5);
   });
 
-  it('复习次数足够且间隔 >= 21 天时状态变为 known', () => {
-    const result = getNextReview(4, 15, 2.5, 2);
+  it('连续 4 分第 3 次时状态变为 known', () => {
+    const result = getNextReview(4, 15, 2.5, 2, 2);
     expect(result.status).toBe('known');
   });
 

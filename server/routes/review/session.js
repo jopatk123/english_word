@@ -35,6 +35,7 @@ router.post('/enqueue', async (req, res) => {
           dueAt: now,
           reviewCount: 0,
           successCount: 0,
+          perfectStreakCount: 0,
         },
       });
       if (created) addedCount++;
@@ -75,14 +76,22 @@ router.post('/:wordId/result', async (req, res) => {
       const oldInterval = review.interval;
       const oldEase = review.easeFactor;
       const successCount = Math.max(0, Math.trunc(Number(review.successCount) || 0));
+      const perfectStreakCount = Math.max(0, Math.trunc(Number(review.perfectStreakCount) || 0));
       const nextSuccessCount = successCount + (quality >= 3 ? 1 : 0);
-      const { interval, delayMinutes, easeFactor, status } = getNextReview(
+      const {
+        interval,
+        delayMinutes,
+        easeFactor,
+        status,
+        perfectStreakCount: nextPerfectStreakCount,
+      } = getNextReview(
         quality,
         review.interval,
         review.easeFactor,
         review.status,
         review.reviewCount,
-        successCount
+        successCount,
+        perfectStreakCount
       );
       const { dueAt, dueDate } = buildDueSchedule(delayMinutes, req.body.tz);
       const reviewedAt = new Date();
@@ -110,6 +119,7 @@ router.post('/:wordId/result', async (req, res) => {
           dueAt,
           reviewCount: review.reviewCount + 1,
           successCount: nextSuccessCount,
+          perfectStreakCount: nextPerfectStreakCount,
           lastReviewedAt: reviewedAt,
         },
         { transaction }

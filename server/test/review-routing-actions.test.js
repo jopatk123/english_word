@@ -21,6 +21,7 @@ describe('POST /review/:wordId/result', () => {
       expect(res.body.data).toHaveProperty('interval');
       expect(res.body.data.interval).toBe(0);
       expect(res.body.data.status).toBe('learning');
+      expect(res.body.data.perfectStreakCount).toBe(0);
       expect(res.body.data.dueAt).toBeTruthy();
       expect(new Date(res.body.data.dueAt).toISOString()).toBe('2026-04-09T09:10:00.000Z');
     } finally {
@@ -28,10 +29,10 @@ describe('POST /review/:wordId/result', () => {
     }
   });
 
-  it('quality=4 但成功次数不足时不会直接升为 known', async () => {
+  it('连续 4 分不足 3 次时不会直接升为 known', async () => {
     const promotedWord = await Word.create({
       name: `promoted_${createTestSuffix()}`,
-      meaning: '长间隔但次数不足',
+      meaning: '连续 4 分不足',
       userId: fixture.userId,
     });
     await WordRoot.create({ wordId: promotedWord.id, rootId: fixture.rootId });
@@ -43,7 +44,8 @@ describe('POST /review/:wordId/result', () => {
       easeFactor: 2.5,
       dueDate: '2099-01-11',
       reviewCount: 10,
-      successCount: 1,
+      successCount: 10,
+      perfectStreakCount: 1,
     });
 
     const res = await request(fixture.app).post(`/review/${promotedWord.id}/result`).send({ quality: 4 });
@@ -51,13 +53,14 @@ describe('POST /review/:wordId/result', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe('review');
     expect(res.body.data.reviewCount).toBe(11);
-    expect(res.body.data.successCount).toBe(2);
+    expect(res.body.data.successCount).toBe(11);
+    expect(res.body.data.perfectStreakCount).toBe(2);
   });
 
-  it('成功次数达到阈值后可升为 known', async () => {
+  it('连续 4 分达到阈值后可升为 known', async () => {
     const maturedWord = await Word.create({
       name: `matured_${createTestSuffix()}`,
-      meaning: '成功次数达标',
+      meaning: '连续 4 分达标',
       userId: fixture.userId,
     });
     await WordRoot.create({ wordId: maturedWord.id, rootId: fixture.rootId });
@@ -70,6 +73,7 @@ describe('POST /review/:wordId/result', () => {
       dueDate: '2099-01-12',
       reviewCount: 5,
       successCount: 2,
+      perfectStreakCount: 2,
     });
 
     const res = await request(fixture.app).post(`/review/${maturedWord.id}/result`).send({ quality: 4 });
@@ -77,6 +81,7 @@ describe('POST /review/:wordId/result', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe('known');
     expect(res.body.data.successCount).toBe(3);
+    expect(res.body.data.perfectStreakCount).toBe(3);
   });
 
   it('已掌握单词再次答错后会回到 learning 且不增加成功次数', async () => {
@@ -95,6 +100,7 @@ describe('POST /review/:wordId/result', () => {
       dueDate: '2099-01-13',
       reviewCount: 6,
       successCount: 3,
+      perfectStreakCount: 3,
     });
 
     const res = await request(fixture.app).post(`/review/${knownWord.id}/result`).send({ quality: 1 });
@@ -104,6 +110,7 @@ describe('POST /review/:wordId/result', () => {
     expect(res.body.data.interval).toBe(0);
     expect(res.body.data.reviewCount).toBe(7);
     expect(res.body.data.successCount).toBe(3);
+    expect(res.body.data.perfectStreakCount).toBe(0);
     expect(res.body.data.dueAt).toBeTruthy();
   });
 
@@ -147,6 +154,7 @@ describe('POST /review/:wordId/reset', () => {
     expect(rw.status).toBe('new');
     expect(rw.interval).toBe(0);
     expect(rw.successCount).toBe(0);
+    expect(rw.perfectStreakCount).toBe(0);
     expect(rw.dueAt).toBeTruthy();
   });
 });
