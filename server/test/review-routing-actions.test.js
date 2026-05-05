@@ -10,7 +10,7 @@ beforeEach(async () => {
 });
 
 describe('POST /review/:wordId/result', () => {
-  it('quality=3 提交成功，并写入短间隔 dueAt', async () => {
+  it('quality=3 提交成功，并写入拉开的短间隔 dueAt', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-09T09:00:00Z'));
 
@@ -23,7 +23,7 @@ describe('POST /review/:wordId/result', () => {
       expect(res.body.data.status).toBe('learning');
       expect(res.body.data.perfectStreakCount).toBe(0);
       expect(res.body.data.dueAt).toBeTruthy();
-      expect(new Date(res.body.data.dueAt).toISOString()).toBe('2026-04-09T09:10:00.000Z');
+      expect(new Date(res.body.data.dueAt).toISOString()).toBe('2026-04-09T09:30:00.000Z');
     } finally {
       vi.useRealTimers();
     }
@@ -112,6 +112,34 @@ describe('POST /review/:wordId/result', () => {
     expect(res.body.data.successCount).toBe(3);
     expect(res.body.data.perfectStreakCount).toBe(0);
     expect(res.body.data.dueAt).toBeTruthy();
+  });
+
+  it('已掌握单词答对但不是 easy 时会回到 review', async () => {
+    const knownWord = await Word.create({
+      name: `known_review_${createTestSuffix()}`,
+      meaning: '已掌握回退到复习',
+      userId: fixture.userId,
+    });
+    await WordRoot.create({ wordId: knownWord.id, rootId: fixture.rootId });
+    await WordReview.create({
+      userId: fixture.userId,
+      wordId: knownWord.id,
+      status: 'known',
+      interval: 20,
+      easeFactor: 2.6,
+      dueDate: '2099-01-14',
+      reviewCount: 6,
+      successCount: 6,
+      perfectStreakCount: 3,
+    });
+
+    const res = await request(fixture.app).post(`/review/${knownWord.id}/result`).send({ quality: 3 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('review');
+    expect(res.body.data.interval).toBe(Math.ceil(20 * 2.6));
+    expect(res.body.data.successCount).toBe(7);
+    expect(res.body.data.perfectStreakCount).toBe(0);
   });
 
   it('quality 超出范围返回 400', async () => {

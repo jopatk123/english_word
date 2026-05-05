@@ -40,10 +40,10 @@ describe('srs.js 工具模块', () => {
       expect(r.interval).toBe(12);
     });
 
-    it('quality=3 (good): 新词 10 分钟后进入学习阶段验证', () => {
+    it('quality=3 (good): 新词 30 分钟后进入学习阶段验证', () => {
       const r = getNextReview(3, 0, 2.5, 'new');
       expect(r.interval).toBe(0);
-      expect(r.delayMinutes).toBe(10);
+      expect(r.delayMinutes).toBe(30);
       expect(r.easeFactor).toBe(2.5);
       expect(r.status).toBe('learning');
     });
@@ -84,6 +84,20 @@ describe('srs.js 工具模块', () => {
       expect(r.perfectStreakCount).toBe(1);
     });
 
+    it('known + quality=3: 回退到 review', () => {
+      const r = getNextReview(3, 15, 2.5, 'known', 2, 2, 3);
+      expect(r.status).toBe('review');
+      expect(r.interval).toBe(Math.ceil(15 * 2.5));
+      expect(r.perfectStreakCount).toBe(0);
+    });
+
+    it('known + quality=2: 回退到 review', () => {
+      const r = getNextReview(2, 15, 2.5, 'known', 2, 2, 3);
+      expect(r.status).toBe('review');
+      expect(r.interval).toBe(Math.ceil(15 * 1.2));
+      expect(r.perfectStreakCount).toBe(0);
+    });
+
     it('quality=3 会重置连续 4 分计数', () => {
       const r = getNextReview(3, 21, 2.5, 'review', 2, 2, 2);
       expect(r.status).toBe('review');
@@ -109,6 +123,13 @@ describe('srs.js 工具模块', () => {
       expect(r.interval).toBe(1);
       expect(r.delayMinutes).toBe(24 * 60);
       expect(r.status).toBe('review');
+    });
+
+    it('learning + quality=2: 保持 learning，12 小时后复习', () => {
+      const r = getNextReview(2, 1, 2.5, 'learning');
+      expect(r.interval).toBe(1);
+      expect(r.delayMinutes).toBe(12 * 60);
+      expect(r.status).toBe('learning');
     });
 
     it('learning + quality=1: 保持 learning，interval=0', () => {

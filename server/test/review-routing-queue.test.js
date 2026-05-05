@@ -112,7 +112,7 @@ describe('GET /review/due', () => {
     expect(res.body.data.length).toBeLessThanOrEqual(1);
   });
 
-  it('新词 quality=3 后会等待 10 分钟才重新进入待复习', async () => {
+  it('新词 quality=3 后会等待 30 分钟才重新进入待复习', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-09T10:00:00Z'));
 
@@ -129,7 +129,7 @@ describe('GET /review/due', () => {
       const immediateIds = immediateRes.body.data.map((item) => item.wordId);
       expect(immediateIds).not.toContain(stepWord.id);
 
-      vi.setSystemTime(new Date('2026-04-09T10:10:01Z'));
+      vi.setSystemTime(new Date('2026-04-09T10:30:01Z'));
       const laterRes = await request(fixture.app).get('/review/due');
       const laterIds = laterRes.body.data.map((item) => item.wordId);
       expect(laterIds).toContain(stepWord.id);

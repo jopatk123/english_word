@@ -12,9 +12,9 @@ export const KNOWN_PERFECT_STREAK_THRESHOLD = 3;
 
 const SHORT_LEARNING_STEPS = Object.freeze({
   NEW_HARD: 10,
-  NEW_GOOD: 10,
+  NEW_GOOD: 30,
   NEW_EASY: 4 * 60,
-  LEARNING_HARD: 1 * MINUTES_PER_DAY,
+  LEARNING_HARD: 12 * 60,
   LEARNING_GOOD: 1 * MINUTES_PER_DAY,
   LEARNING_EASY: 2 * MINUTES_PER_DAY,
 });
@@ -77,6 +77,11 @@ export function getNextReview(
     (currentStatus === REVIEW_STATUS.KNOWN || nextPerfectStreakCount >= KNOWN_PERFECT_STREAK_THRESHOLD)
   ) {
     const result = buildReviewStageResult(REVIEW_STATUS.KNOWN);
+    return { ...result, perfectStreakCount: nextPerfectStreakCount };
+  }
+
+  if (currentStatus === REVIEW_STATUS.KNOWN) {
+    const result = buildReviewStageResult(REVIEW_STATUS.REVIEW);
     return { ...result, perfectStreakCount: nextPerfectStreakCount };
   }
 
