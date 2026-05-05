@@ -61,12 +61,28 @@
         </div>
       </div>
 
+      <div class="root-toolbar" v-if="selectedRootCount">
+        <span class="root-selection-hint">
+          已选 {{ selectedRootCount }} 个词根，点击批量删除可一次性移除选中项
+        </span>
+        <el-button
+          type="danger"
+          plain
+          :loading="batchDeleting"
+          @click="handleBatchDeleteRoots"
+          >批量删除（{{ selectedRootCount }}）</el-button
+        >
+      </div>
+
       <el-table
+        ref="rootTableRef"
         :data="roots"
         stripe
         v-loading="loading"
         empty-text="暂无词根，点击「添加词根」开始吧"
+        @selection-change="handleRootSelectionChange"
       >
+        <el-table-column type="selection" width="55" :selectable="isRootSelectable" />
         <el-table-column prop="name" label="词根" min-width="120">
           <template #default="{ row }">
             <div class="cell-with-speak">
@@ -127,7 +143,7 @@
 </template>
 
 <script setup>
-  import { ref, onMounted, onUnmounted } from 'vue';
+  import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
   import { useRouter } from 'vue-router';
   import { Search } from '@element-plus/icons-vue';
   import { ElMessage, ElMessageBox } from 'element-plus';
@@ -138,6 +154,9 @@
   const loading = ref(false);
   const searchKeyword = ref('');
   const wordResults = ref([]);
+  const rootTableRef = ref(null);
+  const selectedRoots = ref([]);
+  const batchDeleting = ref(false);
 
   const rootDialogVisible = ref(false);
   const editingRoot = ref(null);
@@ -145,6 +164,16 @@
   const saving = ref(false);
 
   let searchTimer = null;
+
+  const selectedRootCount = computed(
+    () => selectedRoots.value.filter((root) => !root?.isDefault).length
+  );
+
+  const clearRootSelection = async () => {
+    selectedRoots.value = [];
+    await nextTick();
+    rootTableRef.value?.clearSelection?.();
+  };
 
   const fetchRoots = async (keyword) => {
     loading.value = true;
@@ -155,6 +184,7 @@
       roots.value = [];
       ElMessage.error('获取词根列表失败');
     } finally {
+      await clearRootSelection();
       loading.value = false;
     }
   };
@@ -198,6 +228,12 @@
   };
 
   const router = useRouter();
+
+  const handleRootSelectionChange = (rows) => {
+    selectedRoots.value = rows;
+  };
+
+  const isRootSelectable = (row) => !row.isDefault;
 
   const openRootDialog = (root = null) => {
     editingRoot.value = root;
@@ -271,9 +307,77 @@
     }
   };
 
+  const summarizeRoots = (items) => {
+    const preview = items
+      .slice(0, 5)
+      .map((item) => `「${item.name}」`)
+      .join('、');
+    return items.length > 5 ? `${preview} 等 ${items.length} 个词根` : preview;
+  };
+
+  const handleBatchDeleteRoots = async () => {
+    const targets = selectedRoots.value.filter((root) => !root?.isDefault);
+    if (!targets.length) {
+      return ElMessage.warning('请先选择要删除的词根');
+    }
+
+    try {
+      await ElMessageBox.confirm(
+        `确定删除选中的 ${targets.length} 个词根（${summarizeRoots(targets)}）？关联的单词和例句将一并删除。`,
+        '确认批量删除',
+        { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+      );
+    } catch {
+      return;
+    }
+
+    batchDeleting.value = true;
+    try {
+      const failures = [];
+
+      for (const root of targets) {
+        try {
+          await deleteRoot(root.id);
+        } catch {
+          failures.push(root.name || `${root.id}`);
+        }
+      }
+
+      const successCount = targets.length - failures.length;
+
+      if (successCount && !failures.length) {
+        ElMessage.success(`已删除 ${successCount} 个词根`);
+      } else if (successCount) {
+        ElMessage.warning(`已删除 ${successCount} 个词根，${failures.length} 个删除失败`);
+      } else {
+        ElMessage.error('批量删除失败，请稍后重试');
+      }
+
+      await fetchRoots(searchKeyword.value);
+    } finally {
+      batchDeleting.value = false;
+    }
+  };
+
   onMounted(() => fetchRoots());
 
   onUnmounted(() => {
     clearTimeout(searchTimer);
   });
 </script>
+
+<style scoped>
+  .root-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .root-selection-hint {
+    color: var(--el-text-color-secondary);
+    font-size: 14px;
+  }
+</style>

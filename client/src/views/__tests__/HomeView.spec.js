@@ -2,9 +2,10 @@ import { mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import HomeView from '../HomeView.vue';
 
-const { getRootsMock, getWordsMock, elMessage, elMessageBox } = vi.hoisted(() => ({
+const { getRootsMock, getWordsMock, deleteRootMock, elMessage, elMessageBox } = vi.hoisted(() => ({
   getRootsMock: vi.fn(),
   getWordsMock: vi.fn(),
+  deleteRootMock: vi.fn(),
   elMessage: {
     success: vi.fn(),
     error: vi.fn(),
@@ -24,7 +25,7 @@ vi.mock('../../api/index.js', () => ({
   getWords: (...args) => getWordsMock(...args),
   createRoot: vi.fn(),
   updateRoot: vi.fn(),
-  deleteRoot: vi.fn(),
+  deleteRoot: (...args) => deleteRootMock(...args),
 }));
 
 vi.mock('element-plus', () => ({
@@ -52,11 +53,20 @@ const globalStubs = {
       '<div class="el-input-stub"><input class="el-input-inner" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" /><div class="el-input-prefix"><slot name="prefix" /></div><div class="el-input-append"><slot name="append" /></div></div>',
   },
   'el-button': {
+    props: ['disabled', 'loading'],
     emits: ['click'],
-    template: '<button class="el-button-stub" @click="$emit(\'click\')"><slot /></button>',
+    template:
+      '<button class="el-button-stub" :disabled="disabled || loading" @click="$emit(\'click\')"><slot /></button>',
   },
   'el-table': {
-    template: '<div class="el-table-stub" />',
+    name: 'ElTableStub',
+    props: ['data'],
+    emits: ['selection-change'],
+    methods: {
+      clearSelection() {},
+      toggleAllSelection() {},
+    },
+    template: '<div class="el-table-stub"><slot /></div>',
   },
   'el-table-column': {
     template: '<div class="el-table-column-stub" />',
@@ -92,6 +102,8 @@ describe('HomeView', () => {
     vi.clearAllMocks();
     getRootsMock.mockResolvedValue({ data: [] });
     getWordsMock.mockRejectedValue(new Error('network error'));
+    deleteRootMock.mockResolvedValue({});
+    elMessageBox.confirm.mockResolvedValue();
   });
 
   afterEach(() => {
@@ -120,6 +132,53 @@ describe('HomeView', () => {
 
     expect(getWordsMock).toHaveBeenCalledWith({ keyword: 'engine' });
     expect(elMessage.error).toHaveBeenCalledWith('搜索单词失败，请稍后重试');
+
+    wrapper.unmount();
+  });
+
+  it('supports batch deleting selected roots from the list', async () => {
+    const roots = [
+      { id: 1, name: '-ain', meaning: '人或物', wordCount: 1, remark: '' },
+      { id: 2, name: '-al', meaning: '属于', wordCount: 1, remark: '' },
+      { id: 3, name: '未分类', meaning: '默认词根', wordCount: 0, remark: '', isDefault: true },
+    ];
+    getRootsMock.mockResolvedValueOnce({ data: roots }).mockResolvedValueOnce({ data: [] });
+
+    const wrapper = mount(HomeView, {
+      global: {
+        stubs: globalStubs,
+        directives: {
+          loading: {
+            mounted() {},
+            updated() {},
+          },
+        },
+      },
+    });
+
+    await flushPromises();
+
+    expect(wrapper.find('.root-toolbar').exists()).toBe(false);
+
+    const table = wrapper.findComponent({ name: 'ElTableStub' });
+    table.vm.$emit('selection-change', roots.slice(0, 2));
+    await flushPromises();
+
+    const batchDeleteButton = wrapper.find('.root-toolbar button.el-button-stub');
+
+    expect(batchDeleteButton.exists()).toBe(true);
+    await batchDeleteButton.trigger('click');
+    await flushPromises();
+
+    expect(elMessageBox.confirm).toHaveBeenCalledWith(
+      expect.stringContaining('确定删除选中的 2 个词根'),
+      '确认批量删除',
+      expect.objectContaining({ type: 'warning' })
+    );
+    expect(deleteRootMock).toHaveBeenNthCalledWith(1, 1);
+    expect(deleteRootMock).toHaveBeenNthCalledWith(2, 2);
+    expect(elMessage.success).toHaveBeenCalledWith('已删除 2 个词根');
+    expect(getRootsMock).toHaveBeenCalledTimes(2);
 
     wrapper.unmount();
   });
