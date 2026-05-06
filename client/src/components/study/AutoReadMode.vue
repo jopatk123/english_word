@@ -2,7 +2,20 @@
   <div class="flashcard-container">
     <SessionProgress :currentIndex="currentIndex" :total="total" @seek="$emit('seek', $event)" />
 
-    <div class="flashcard">
+    <div class="auto-read-toolbar">
+      <div class="auto-read-status" :class="{ 'is-paused': isPaused }">
+        {{ isPaused ? '已暂停' : '自动朗读中' }}
+      </div>
+      <el-button
+        class="auto-read-toggle"
+        :type="isPaused ? 'success' : 'warning'"
+        @click="$emit('toggle-pause')"
+      >
+        {{ isPaused ? '继续朗读' : '暂停朗读' }}
+      </el-button>
+    </div>
+
+    <div class="flashcard auto-read-card">
       <div class="card-word">{{ card.word.name }}</div>
       <div v-if="card.word.phonetic" class="card-phonetic">{{ card.word.phonetic }}</div>
       <div class="card-meaning">{{ card.word.meaning || '暂无释义' }}</div>
@@ -28,7 +41,8 @@
     card: { type: Object, required: true },
     currentIndex: { type: Number, required: true },
     total: { type: Number, required: true },
+    isPaused: { type: Boolean, default: false },
   });
 
-  defineEmits(['seek']);
+  defineEmits(['seek', 'toggle-pause']);
 </script>

@@ -3,6 +3,7 @@
  *   - pickEnglishVoice() 选音策略（通过 useSpeech 间接验证）
  *   - useSpeech().speak() 核心行为
  *   - useSpeech().speakSequence() 顺序朗读
+ *   - useSpeech().pauseSpeech() / resumeSpeech() 暂停与恢复
  *   - 重复调用同一文本时执行 cancel（切换朗读）
  *
  * 注意：speakingText 是模块级 ref 单例，每个测试须用不同文本，
@@ -16,11 +17,15 @@ const makeVoice = (name, lang) => ({ name, lang });
 const setupSpeechMock = (voices = []) => {
   const speakMock = vi.fn();
   const cancelMock = vi.fn();
+  const pauseMock = vi.fn();
+  const resumeMock = vi.fn();
   const getVoicesMock = vi.fn().mockReturnValue(voices);
 
   vi.stubGlobal('speechSynthesis', {
     speak: speakMock,
     cancel: cancelMock,
+    pause: pauseMock,
+    resume: resumeMock,
     getVoices: getVoicesMock,
     addEventListener: vi.fn((_event, cb) => cb()), // 立即触发 voiceschanged
   });
@@ -39,7 +44,7 @@ const setupSpeechMock = (voices = []) => {
     }
   );
 
-  return { speakMock, cancelMock, getVoicesMock };
+  return { speakMock, cancelMock, pauseMock, resumeMock, getVoicesMock };
 };
 
 beforeEach(() => {
@@ -149,6 +154,68 @@ describe('useSpeech().speak()', () => {
     await vi.advanceTimersByTimeAsync(2000);
     await sequencePromise;
     vi.useRealTimers();
+  });
+});
+
+// ─── 暂停与恢复 ───────────────────────────────────────────────
+describe('useSpeech().pauseSpeech() / resumeSpeech()', () => {
+  it('会调用 speechSynthesis.pause 和 resume', () => {
+    const { pauseMock, resumeMock } = setupSpeechMock([makeVoice('Samantha', 'en-US')]);
+    const { pauseSpeech, resumeSpeech } = useSpeech();
+
+    pauseSpeech();
+    resumeSpeech();
+
+    expect(pauseMock).toHaveBeenCalledTimes(1);
+    expect(resumeMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('pauseSpeech 后 speakSequence 会等待恢复后再开始', async () => {
+    const { speakMock } = setupSpeechMock([makeVoice('Samantha', 'en-US')]);
+    speakMock.mockImplementation((utterance) => utterance.onend?.());
+
+    const { speakSequence, pauseSpeech, resumeSpeech } = useSpeech();
+    pauseSpeech();
+
+    const sequencePromise = speakSequence(['pause-start-test']);
+    await Promise.resolve();
+    expect(speakMock).not.toHaveBeenCalled();
+
+    resumeSpeech();
+    await Promise.resolve();
+    expect(speakMock).toHaveBeenCalledTimes(1);
+
+    await sequencePromise;
+  });
+
+  it('句间等待在暂停时会冻结并在恢复后继续', async () => {
+    vi.useFakeTimers();
+    try {
+      const { speakMock } = setupSpeechMock([makeVoice('Samantha', 'en-US')]);
+      speakMock.mockImplementation((utterance) => utterance.onend?.());
+
+      const { speakSequence, pauseSpeech, resumeSpeech } = useSpeech();
+      const sequencePromise = speakSequence(['pause-gap-a', 'pause-gap-b'], 'en-US', 2000);
+
+      await Promise.resolve();
+      expect(speakMock).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(1000);
+      pauseSpeech();
+      await vi.advanceTimersByTimeAsync(5000);
+
+      expect(speakMock).toHaveBeenCalledTimes(1);
+
+      resumeSpeech();
+      await vi.advanceTimersByTimeAsync(1000);
+      await Promise.resolve();
+      expect(speakMock).toHaveBeenCalledTimes(2);
+
+      await vi.advanceTimersByTimeAsync(2000);
+      await sequencePromise;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

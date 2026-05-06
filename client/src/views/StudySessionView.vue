@@ -112,6 +112,8 @@
       :card="currentCard"
       :currentIndex="currentIndex"
       :total="queue.length"
+      :isPaused="isAutoReadPaused"
+      @toggle-pause="toggleAutoReadPause"
       @seek="seekToIndex"
     />
 
@@ -156,6 +158,7 @@
     spellingHard,
     spellingHint,
     spellingHintLevel,
+    isAutoReadPaused,
     hasAgainWords,
     againWordCount,
     originalQueueLength,
@@ -168,6 +171,7 @@
     continueReview,
     flipCard,
     submitRating,
+    toggleAutoReadPause,
     handleChoice,
     choiceNext,
     checkSpelling,

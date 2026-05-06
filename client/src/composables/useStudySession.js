@@ -108,7 +108,7 @@ export function useStudySession() {
     autoRead: '自动朗读',
   };
 
-  const { speak, speakSequence, cancelSpeech } = useSpeech();
+  const { speak, speakSequence, cancelSpeech, pauseSpeech, resumeSpeech, isPaused: isAutoReadPaused } = useSpeech();
 
   const getScope = () => (typeof route.query.scope === 'string' ? route.query.scope : '');
 
@@ -153,6 +153,15 @@ export function useStudySession() {
     cancelSpeech();
   };
 
+  const toggleAutoReadPause = () => {
+    if (isAutoReadPaused.value) {
+      resumeSpeech();
+      return;
+    }
+
+    pauseSpeech();
+  };
+
   const playAutoReadCard = async (card) => {
     const runToken = ++autoReadToken;
     const word = card?.word?.name?.trim();
@@ -170,11 +179,13 @@ export function useStudySession() {
     }
 
     if (wordTexts.length > 0) {
-      await speakSequence(wordTexts, 'en-US');
+      const readWords = await speakSequence(wordTexts, 'en-US');
+      if (!readWords || runToken !== autoReadToken) return;
     }
 
     if (sentences.length > 0) {
-      await speakSequence(sentences, 'en-US', 2000, true);
+      const readSentences = await speakSequence(sentences, 'en-US', 2000, true);
+      if (!readSentences || runToken !== autoReadToken) return;
     }
 
     if (runToken !== autoReadToken || studyMode.value !== 'autoRead' || !modeSelected.value) {
@@ -548,6 +559,7 @@ export function useStudySession() {
     spellingHard: spelling.spellingHard,
     spellingHint: spelling.spellingHint,
     spellingHintLevel: spelling.spellingHintLevel,
+    isAutoReadPaused,
     // 错误单词
     hasAgainWords,
     againWordCount,
@@ -562,6 +574,7 @@ export function useStudySession() {
     continueReview,
     flipCard,
     submitRating,
+    toggleAutoReadPause,
     loadChoices: choice.loadChoices,
     handleChoice: choice.handleChoice,
     choiceNext: choice.choiceNext,

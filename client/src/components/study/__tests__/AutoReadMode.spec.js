@@ -35,7 +35,8 @@ describe('AutoReadMode', () => {
   it('自动朗读模式显示单词释义', () => {
     const wrapper = createWrapper();
     expect(wrapper.text()).toContain('决心；分辨率；解决');
-    expect(wrapper.text()).not.toContain('自动朗读中');
+    expect(wrapper.text()).toContain('自动朗读中');
+    expect(wrapper.text()).toContain('暂停朗读');
   });
 
   it('没有释义时显示兜底文案', () => {
@@ -43,5 +44,20 @@ describe('AutoReadMode', () => {
       card: { ...defaultCard, word: { ...defaultCard.word, meaning: '' } },
     });
     expect(wrapper.text()).toContain('暂无释义');
+  });
+
+  it('暂停状态下显示继续朗读按钮', () => {
+    const wrapper = createWrapper({ isPaused: true });
+
+    expect(wrapper.text()).toContain('已暂停');
+    expect(wrapper.text()).toContain('继续朗读');
+  });
+
+  it('点击按钮会触发 toggle-pause', async () => {
+    const wrapper = createWrapper();
+
+    await wrapper.find('button.el-btn').trigger('click');
+
+    expect(wrapper.emitted('toggle-pause')).toBeTruthy();
   });
 });

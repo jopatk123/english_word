@@ -71,6 +71,19 @@ const submitReviewResultMock = vi.fn().mockResolvedValue({});
 const getQuizChoicesMock = vi.fn().mockResolvedValue({
   data: { correct: { id: 1, meaning: 'meaning1' }, distractors: [] },
 });
+const mockSpeak = vi.fn();
+const mockSpeakAsync = vi.fn().mockResolvedValue(true);
+const mockSpeakSequence = vi.fn().mockResolvedValue(true);
+const mockCancelSpeech = vi.fn(() => {
+  mockIsPaused.value = false;
+});
+const mockPauseSpeech = vi.fn(() => {
+  mockIsPaused.value = true;
+});
+const mockResumeSpeech = vi.fn(() => {
+  mockIsPaused.value = false;
+});
+const mockIsPaused = ref(false);
 
 vi.mock('../../api/index.js', () => ({
   getReviewDue: (...args) => getReviewDueMock(...args),
@@ -80,9 +93,13 @@ vi.mock('../../api/index.js', () => ({
 
 vi.mock('../../utils/speech.js', () => ({
   useSpeech: () => ({
-    speak: vi.fn(),
-    speakSequence: vi.fn().mockResolvedValue(undefined),
-    cancelSpeech: vi.fn(),
+    speak: mockSpeak,
+    speakAsync: mockSpeakAsync,
+    speakSequence: mockSpeakSequence,
+    cancelSpeech: mockCancelSpeech,
+    pauseSpeech: mockPauseSpeech,
+    resumeSpeech: mockResumeSpeech,
+    isPaused: mockIsPaused,
   }),
 }));
 
@@ -328,6 +345,38 @@ describe('useStudySession 对外暴露 seekToIndex', () => {
     });
 
     expect(typeof wrapper.vm.seekToIndex).toBe('function');
+    wrapper.unmount();
+  });
+});
+
+describe('自动朗读暂停控制', () => {
+  beforeEach(() => {
+    mockPauseSpeech.mockClear();
+    mockResumeSpeech.mockClear();
+    mockCancelSpeech.mockClear();
+    mockIsPaused.value = false;
+  });
+
+  it('toggleAutoReadPause 会切换暂停状态', async () => {
+    const wrapper = mount({
+      template: '<div />',
+      setup() {
+        return useStudySession();
+      },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper.vm.isAutoReadPaused).toBe(false);
+
+    wrapper.vm.toggleAutoReadPause();
+    expect(wrapper.vm.isAutoReadPaused).toBe(true);
+    expect(mockPauseSpeech).toHaveBeenCalledTimes(1);
+
+    wrapper.vm.toggleAutoReadPause();
+    expect(wrapper.vm.isAutoReadPaused).toBe(false);
+    expect(mockResumeSpeech).toHaveBeenCalledTimes(1);
+
     wrapper.unmount();
   });
 });

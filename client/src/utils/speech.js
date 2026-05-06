@@ -1,8 +1,11 @@
 import { ref } from 'vue';
 
 const speakingText = ref('');
+const isPaused = ref(false);
 let pendingSpeech = null;
 let speechRequestId = 0;
+const pauseWaiters = new Set();
+const activeDelayControllers = new Set();
 
 /**
  * 从已加载的 voices 列表中挑选最优英语语音。
@@ -44,9 +47,81 @@ function isSpeechSupported() {
   return typeof window !== 'undefined' && 'speechSynthesis' in window;
 }
 
+function releasePauseWaiters(result) {
+  if (pauseWaiters.size === 0) return;
+
+  const waiters = [...pauseWaiters];
+  pauseWaiters.clear();
+  for (const resolve of waiters) {
+    resolve(result);
+  }
+}
+
+function waitForResume() {
+  if (!isPaused.value) return Promise.resolve(true);
+
+  return new Promise((resolve) => {
+    const waiter = (result) => {
+      pauseWaiters.delete(waiter);
+      resolve(result);
+    };
+
+    pauseWaiters.add(waiter);
+  });
+}
+
+function releaseDelayControllers(result) {
+  if (activeDelayControllers.size === 0) return;
+
+  const controllers = [...activeDelayControllers];
+  activeDelayControllers.clear();
+  for (const controller of controllers) {
+    controller.cancel(result);
+  }
+}
+
+function waitForDelay(delayMs) {
+  if (delayMs <= 0) return Promise.resolve(true);
+
+  return new Promise((resolve) => {
+    let remaining = delayMs;
+    const step = Math.min(50, delayMs);
+
+    const finish = (result) => {
+      if (controller.done) return;
+      controller.done = true;
+      clearInterval(controller.timer);
+      activeDelayControllers.delete(controller);
+      resolve(result);
+    };
+
+    const controller = {
+      done: false,
+      timer: null,
+      cancel: finish,
+    };
+
+    controller.timer = setInterval(() => {
+      if (controller.done) return;
+
+      if (!isPaused.value) {
+        remaining -= Math.min(step, remaining);
+        if (remaining <= 0) {
+          finish(true);
+        }
+      }
+    }, step);
+
+    activeDelayControllers.add(controller);
+  });
+}
+
 function cancelSpeech() {
   const pending = pendingSpeech;
   pendingSpeech = null;
+  isPaused.value = false;
+  releasePauseWaiters(false);
+  releaseDelayControllers(false);
   speakingText.value = '';
 
   if (isSpeechSupported()) {
@@ -58,8 +133,28 @@ function cancelSpeech() {
   }
 }
 
+function pauseSpeech() {
+  if (!isSpeechSupported()) return;
+
+  isPaused.value = true;
+  window.speechSynthesis.pause();
+}
+
+function resumeSpeech() {
+  if (!isSpeechSupported()) return;
+  if (!isPaused.value) return;
+
+  isPaused.value = false;
+  window.speechSynthesis.resume();
+  releasePauseWaiters(true);
+}
+
 function startSpeech(text, lang = 'en-US') {
   if (!isSpeechSupported()) return Promise.resolve(false);
+
+  if (isPaused.value) {
+    return waitForResume().then((resumed) => (resumed ? startSpeech(text, lang) : false));
+  }
 
   cancelSpeech();
 
@@ -109,19 +204,33 @@ export function useSpeech() {
 
   const speakAsync = (text, lang = 'en-US') => startSpeech(text, lang);
 
-  const wait = (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs));
-
   const speakSequence = async (texts, lang = 'en-US', delayMs = 0, delayAfterLast = false) => {
+    if (!isSpeechSupported()) return true;
+
     const sequence = Array.isArray(texts) ? texts : [texts];
     const validTexts = sequence.filter((text) => typeof text === 'string' && text.trim());
 
     for (const [index, text] of validTexts.entries()) {
-      await speakAsync(text, lang);
+      const spoken = await speakAsync(text, lang);
+      if (!spoken) return false;
+
       if (delayMs > 0 && (delayAfterLast || index < validTexts.length - 1)) {
-        await wait(delayMs);
+        const waited = await waitForDelay(delayMs);
+        if (!waited) return false;
       }
     }
+
+    return true;
   };
 
-  return { speak, speakAsync, speakSequence, cancelSpeech, speakingText };
+  return {
+    speak,
+    speakAsync,
+    speakSequence,
+    cancelSpeech,
+    pauseSpeech,
+    resumeSpeech,
+    speakingText,
+    isPaused,
+  };
 }
