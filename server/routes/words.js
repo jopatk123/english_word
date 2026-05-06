@@ -270,52 +270,81 @@ router.post('/', async (req, res) => {
 // 编辑单词（支持更新词根关联）
 router.put('/:id', async (req, res) => {
   try {
-    const word = await Word.findOne({ where: { id: req.params.id, userId: req.userId } });
-    if (!word) return error(res, '单词不存在');
-
-    const { name, meaning, phonetic, remark, rootIds: rawRootIds } = req.body;
-    if (!name || !meaning) return error(res, '单词和含义为必填项');
-
-    const trimmedName = name.trim().toLowerCase();
-
-    // 检查同名单词（同一用户下不允许重名）
-    const existingWord = await Word.findOne({ where: { name: trimmedName, userId: req.userId } });
-    if (existingWord && existingWord.id !== word.id) {
-      return error(res, '已存在同名单词，请勿重复命名', 400);
-    }
-
-    await word.update({
-      name: trimmedName,
-      meaning: meaning.trim(),
-      phonetic: phonetic?.trim(),
-      remark: remark?.trim(),
-    });
-
-    // 更新词根关联（如果提供了 rootIds）
-    if (Array.isArray(rawRootIds)) {
-      const rootIds = rawRootIds.map(Number).filter(Boolean);
-      if (rootIds.length) {
-        const validRoots = await Root.findAll({ where: { id: rootIds, userId: req.userId } });
-        if (validRoots.length !== rootIds.length) return error(res, '部分关联的词根不存在');
-        await word.setRoots(rootIds);
+    const updatedWord = await sequelize.transaction(async (transaction) => {
+      const word = await Word.findOne({
+        where: { id: req.params.id, userId: req.userId },
+        transaction,
+      });
+      if (!word) {
+        const notFoundError = new Error('单词不存在');
+        notFoundError.code = 404;
+        throw notFoundError;
       }
-    }
 
-    const updatedWord = await Word.findByPk(word.id, {
-      include: [
+      const { name, meaning, phonetic, remark, rootIds: rawRootIds } = req.body;
+      if (!name || !meaning) {
+        const validationError = new Error('单词和含义为必填项');
+        validationError.code = 400;
+        throw validationError;
+      }
+
+      const trimmedName = name.trim().toLowerCase();
+
+      // 检查同名单词（同一用户下不允许重名）
+      const existingWord = await Word.findOne({
+        where: { name: trimmedName, userId: req.userId },
+        transaction,
+      });
+      if (existingWord && existingWord.id !== word.id) {
+        const duplicateError = new Error('已存在同名单词，请勿重复命名');
+        duplicateError.code = 400;
+        throw duplicateError;
+      }
+
+      await word.update(
         {
-          model: Root,
-          as: 'roots',
-          through: { attributes: [] },
-          attributes: ['id', 'name', 'meaning'],
-          where: { userId: req.userId },
-          required: false,
+          name: trimmedName,
+          meaning: meaning.trim(),
+          phonetic: phonetic?.trim(),
+          remark: remark?.trim(),
         },
-      ],
+        { transaction }
+      );
+
+      // 更新词根关联（如果提供了 rootIds）
+      if (Array.isArray(rawRootIds)) {
+        const rootIds = rawRootIds.map(Number).filter(Boolean);
+        if (rootIds.length) {
+          const validRoots = await Root.findAll({
+            where: { id: rootIds, userId: req.userId },
+            transaction,
+          });
+          if (validRoots.length !== rootIds.length) {
+            const relationError = new Error('部分关联的词根不存在');
+            relationError.code = 400;
+            throw relationError;
+          }
+          await word.setRoots(rootIds, { transaction });
+        }
+      }
+
+      return Word.findByPk(word.id, {
+        transaction,
+        include: [
+          {
+            model: Root,
+            as: 'roots',
+            through: { attributes: [] },
+            attributes: ['id', 'name', 'meaning'],
+            where: { userId: req.userId },
+            required: false,
+          },
+        ],
+      });
     });
     success(res, updatedWord, '更新成功');
   } catch (e) {
-    error(res, e.message);
+    error(res, e.message, e.code || 500);
   }
 });
 

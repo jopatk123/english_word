@@ -22,6 +22,10 @@ export function createApp(options = {}) {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+  app.get('/api/health', (_req, res) => {
+    res.json({ code: 200, data: { status: 'ok' }, msg: 'success' });
+  });
+
   app.use('/api/auth', authRouter);
   app.use('/api/admin', adminRouter);
 

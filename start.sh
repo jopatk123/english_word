@@ -128,7 +128,7 @@ trap cleanup INT TERM
 
 # wait for the server to respond; no hard timeout
 # the loop will only exit if the process dies or the endpoint becomes available
-while ! curl -fsS "http://$HOST:$PORT/api/roots" >/dev/null 2>&1; do
+while ! curl -fsS "http://$HOST:$PORT/api/health" >/dev/null 2>&1; do
   if ! kill -0 "$server_pid" >/dev/null 2>&1; then
     echo "服务启动失败。"
     rm -f "$PID_FILE"

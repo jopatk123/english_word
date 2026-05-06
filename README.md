@@ -25,6 +25,7 @@
 - HTTP 页面与 API 由同一个 Express 服务提供
 - 用户接口统一挂在 `/api/*`
 - 超级管理员接口挂在 `/api/admin/*`
+- 公开健康检查接口 `/api/health`，供本地启动脚本和容器探活使用
 - 学习计时实时通道为 `/ws/study-timer`
 - 生产环境前端静态资源来自 `client/dist`
 

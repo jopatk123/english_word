@@ -1,7 +1,7 @@
 /**
  * 测试：学习计时统计与服务端权威状态
  */
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import { initDB, User, StudySession } from '../models/index.js';
@@ -277,6 +277,25 @@ describe('GET /study-sessions/report', () => {
 
     const res = await request(app).get(`/study-sessions/report?tz=${tz}`);
     expect(res.body.data.streakDays).toBe(1); // 只有今天连续
+  });
+
+  it('跨午夜会话会同时计入前后两天的 streak', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-07T06:00:00Z'));
+
+    try {
+      const user = await User.create({ username: `rpt_cross_${suf()}`, password: 'x' });
+      const app = buildApp(user.id);
+      const today = todayStart(tz);
+
+      await makeSession(user.id, new Date(today.getTime() - 15 * 60 * 1000), 30 * 60);
+
+      const res = await request(app).get(`/study-sessions/report?tz=${tz}`);
+      expect(res.status).toBe(200);
+      expect(res.body.data.streakDays).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('若今天无会话则 streakDays 为 0（即使昨天有）', async () => {

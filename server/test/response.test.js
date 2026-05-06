@@ -92,6 +92,13 @@ describe('未知 API 路由返回 JSON 404（非 HTML）', () => {
     expect(res.body.msg).toContain('API 路由不存在');
   });
 
+  it('GET /api/health 返回健康检查响应', async () => {
+    const res = await request(app).get('/api/health');
+    expect(res.status).toBe(200);
+    expect(res.body.code).toBe(200);
+    expect(res.body.data).toEqual({ status: 'ok' });
+  });
+
   it('POST /api/nonexistent 也返回 JSON 404', async () => {
     const res = await request(app).post('/api/unknown-endpoint').send({});
     expect(res.status).toBe(404);

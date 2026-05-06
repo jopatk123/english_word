@@ -216,6 +216,24 @@ describe('PUT /words/:id', () => {
     expect(res.body.data.meaning).toBe('新含义');
   });
 
+  it('更新词根校验失败时不会留下半更新状态', async () => {
+    const getRes = await request(app).get(`/words/${wordId}`);
+    const currentWord = getRes.body.data;
+
+    const res = await request(app)
+      .put(`/words/${wordId}`)
+      .send({
+        name: currentWord.name,
+        meaning: '不会提交的含义',
+        rootIds: [99999999],
+      });
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+
+    const afterRes = await request(app).get(`/words/${wordId}`);
+    expect(afterRes.body.data.meaning).toBe(currentWord.meaning);
+  });
+
   it('更新不存在的单词返回错误', async () => {
     const res = await request(app).put('/words/99999999').send({ meaning: '不存在' });
     expect(res.status).toBeGreaterThanOrEqual(400);

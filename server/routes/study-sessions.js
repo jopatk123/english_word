@@ -28,6 +28,14 @@ function getOverlapSeconds(start, end, windowStart, windowEnd) {
   return Math.floor((overlapEnd - overlapStart) / 1000);
 }
 
+function hasStudyOnDay(sessions, dateStr, timezone) {
+  const dayStart = startOfDay(dateStr, timezone);
+  const nextDayStart = startOfDay(addDays(dateStr, 1), timezone);
+  return sessions.some((session) =>
+    getOverlapSeconds(session.startedAt, session.endedAt, dayStart, nextDayStart) > 0
+  );
+}
+
 export function createStudySessionsRouter(options = {}) {
   const router = Router();
   const publishTimerState = options.publishTimerState || (async () => {});
@@ -248,10 +256,9 @@ export function createStudySessionsRouter(options = {}) {
         activeDaysInRange > 0 ? Math.round(rangeSeconds / activeDaysInRange) : 0;
 
       // ── 连续学习天数（从今日起逆序检查，最多回溯 365 天） ────────────────
-      const studiedDateSet = new Set(allSessions.map((s) => dateStrAt(new Date(s.startedAt), tz)));
       let streakDays = 0;
       let checkStr = todayDateStr;
-      while (streakDays < 365 && studiedDateSet.has(checkStr)) {
+      while (streakDays < 365 && hasStudyOnDay(allSessions, checkStr, tz)) {
         streakDays++;
         checkStr = addDays(checkStr, -1);
       }
