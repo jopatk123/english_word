@@ -15,7 +15,9 @@ describe('POST /review/:wordId/result', () => {
     vi.setSystemTime(new Date('2026-04-09T09:00:00Z'));
 
     try {
-      const res = await request(fixture.app).post(`/review/${fixture.wordId}/result`).send({ quality: 3 });
+      const res = await request(fixture.app)
+        .post(`/review/${fixture.wordId}/result`)
+        .send({ quality: 3 });
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveProperty('interval');
       expect(res.body.data.interval).toBe(0);
@@ -47,7 +49,9 @@ describe('POST /review/:wordId/result', () => {
       perfectStreakCount: 1,
     });
 
-    const res = await request(fixture.app).post(`/review/${promotedWord.id}/result`).send({ quality: 4 });
+    const res = await request(fixture.app)
+      .post(`/review/${promotedWord.id}/result`)
+      .send({ quality: 4 });
 
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe('review');
@@ -75,7 +79,9 @@ describe('POST /review/:wordId/result', () => {
       perfectStreakCount: 2,
     });
 
-    const res = await request(fixture.app).post(`/review/${maturedWord.id}/result`).send({ quality: 4 });
+    const res = await request(fixture.app)
+      .post(`/review/${maturedWord.id}/result`)
+      .send({ quality: 4 });
 
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe('known');
@@ -102,7 +108,9 @@ describe('POST /review/:wordId/result', () => {
       perfectStreakCount: 3,
     });
 
-    const res = await request(fixture.app).post(`/review/${knownWord.id}/result`).send({ quality: 1 });
+    const res = await request(fixture.app)
+      .post(`/review/${knownWord.id}/result`)
+      .send({ quality: 1 });
 
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe('learning');
@@ -132,7 +140,9 @@ describe('POST /review/:wordId/result', () => {
       perfectStreakCount: 3,
     });
 
-    const res = await request(fixture.app).post(`/review/${knownWord.id}/result`).send({ quality: 3 });
+    const res = await request(fixture.app)
+      .post(`/review/${knownWord.id}/result`)
+      .send({ quality: 3 });
 
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe('known');
@@ -142,17 +152,25 @@ describe('POST /review/:wordId/result', () => {
   });
 
   it('quality 超出范围返回 400', async () => {
-    const res = await request(fixture.app).post(`/review/${fixture.wordId}/result`).send({ quality: 5 });
+    const res = await request(fixture.app)
+      .post(`/review/${fixture.wordId}/result`)
+      .send({ quality: 5 });
     expect(res.status).toBe(400);
   });
 
   it('缺失复习记录的单词会自动补齐后提交成功', async () => {
-    const word2 = await Word.create({ name: `rword2_${createTestSuffix()}`, meaning: '含义2', userId: fixture.userId });
+    const word2 = await Word.create({
+      name: `rword2_${createTestSuffix()}`,
+      meaning: '含义2',
+      userId: fixture.userId,
+    });
     await WordRoot.create({ wordId: word2.id, rootId: fixture.rootId });
     const res = await request(fixture.app).post(`/review/${word2.id}/result`).send({ quality: 3 });
     expect(res.status).toBe(200);
 
-    const review = await WordReview.findOne({ where: { userId: fixture.userId, wordId: word2.id } });
+    const review = await WordReview.findOne({
+      where: { userId: fixture.userId, wordId: word2.id },
+    });
     expect(review).toBeTruthy();
     expect(review.status).toBe('learning');
   });

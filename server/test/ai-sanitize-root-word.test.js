@@ -168,7 +168,19 @@ describe('sanitizeWordSuggestions', () => {
   });
 
   it('所有合法词性类型均被接受（最多保留 8 条）', () => {
-    const validTypes = ['n.', 'v.', 'adj.', 'adv.', 'prep.', 'pron.', 'conj.', 'interj.', 'num.', 'art.', 'aux.'];
+    const validTypes = [
+      'n.',
+      'v.',
+      'adj.',
+      'adv.',
+      'prep.',
+      'pron.',
+      'conj.',
+      'interj.',
+      'num.',
+      'art.',
+      'aux.',
+    ];
     const item = {
       ...validWordItem,
       partOfSpeech: validTypes.map((type) => ({ type, meaning: '测试' })),

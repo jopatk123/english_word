@@ -17,7 +17,12 @@
 
     <!-- 开始 / 停止 按钮 -->
     <div class="stp-actions">
-      <button v-if="!isRunning" class="stp-btn-start" :disabled="actionPending" @click="emit('start')">
+      <button
+        v-if="!isRunning"
+        class="stp-btn-start"
+        :disabled="actionPending"
+        @click="emit('start')"
+      >
         {{ actionPending ? '处理中...' : '▶ 开始学习' }}
       </button>
       <button v-else class="stp-btn-stop" :disabled="actionPending" @click="emit('stop')">

@@ -161,7 +161,13 @@ describe('SRS 算法 getNextReview', () => {
   /**
    * 与 server/routes/review.js 中的实际 SRS 算法保持同步
    */
-  function getNextReview(quality, currentInterval, easeFactor, _reviewCount = 0, perfectStreakCount = 0) {
+  function getNextReview(
+    quality,
+    currentInterval,
+    easeFactor,
+    _reviewCount = 0,
+    perfectStreakCount = 0
+  ) {
     let newInterval;
     let newEase;
     const isNew = currentInterval < 1;
@@ -186,7 +192,12 @@ describe('SRS 算法 getNextReview', () => {
     const MAX_INTERVAL = 365;
     newInterval = Math.min(newInterval, MAX_INTERVAL);
     const status = quality === 1 ? 'learning' : completedPerfectStreak >= 3 ? 'known' : 'review';
-    return { interval: newInterval, easeFactor: newEase, status, perfectStreakCount: completedPerfectStreak };
+    return {
+      interval: newInterval,
+      easeFactor: newEase,
+      status,
+      perfectStreakCount: completedPerfectStreak,
+    };
   }
 
   it('quality=1(again) interval=0 且降低 ease', () => {

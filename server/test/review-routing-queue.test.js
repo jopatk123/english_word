@@ -11,7 +11,10 @@ beforeEach(async () => {
 
 describe('GET /review/quiz-choices/:wordId', () => {
   it('只返回当前用户自己的正确项和干扰项', async () => {
-    const isolatedUser = await User.create({ username: `quiz_user_${createTestSuffix()}`, password: 'x' });
+    const isolatedUser = await User.create({
+      username: `quiz_user_${createTestSuffix()}`,
+      password: 'x',
+    });
     const isolatedRoot = await Root.create({
       name: `quiz_root_${createTestSuffix()}`,
       meaning: '隔离词根',
@@ -27,7 +30,10 @@ describe('GET /review/quiz-choices/:wordId', () => {
       meaning: '本地干扰项',
       userId: isolatedUser.id,
     });
-    const otherUser = await User.create({ username: `quiz_other_${createTestSuffix()}`, password: 'x' });
+    const otherUser = await User.create({
+      username: `quiz_other_${createTestSuffix()}`,
+      password: 'x',
+    });
     const otherRoot = await Root.create({
       name: `quiz_other_root_${createTestSuffix()}`,
       meaning: '他人词根',
@@ -55,7 +61,9 @@ describe('GET /review/quiz-choices/:wordId', () => {
 
 describe('自动加入复习', () => {
   it('夹具中的单词默认已有复习记录', async () => {
-    const review = await WordReview.findOne({ where: { userId: fixture.userId, wordId: fixture.wordId } });
+    const review = await WordReview.findOne({
+      where: { userId: fixture.userId, wordId: fixture.wordId },
+    });
     expect(review).toBeTruthy();
     expect(review.status).toBe('new');
   });
@@ -74,7 +82,11 @@ describe('GET /review/due', () => {
   });
 
   it('未来到期的单词不会进入今日待复习列表', async () => {
-    const futureWord = await Word.create({ name: `future_${createTestSuffix()}`, meaning: '未来到期', userId: fixture.userId });
+    const futureWord = await Word.create({
+      name: `future_${createTestSuffix()}`,
+      meaning: '未来到期',
+      userId: fixture.userId,
+    });
     await WordRoot.create({ wordId: futureWord.id, rootId: fixture.rootId });
     await WordReview.create({
       userId: fixture.userId,
@@ -103,10 +115,16 @@ describe('GET /review/due', () => {
     vi.setSystemTime(new Date('2026-04-09T10:00:00Z'));
 
     try {
-      const stepWord = await Word.create({ name: `step_${createTestSuffix()}`, meaning: '短间隔', userId: fixture.userId });
+      const stepWord = await Word.create({
+        name: `step_${createTestSuffix()}`,
+        meaning: '短间隔',
+        userId: fixture.userId,
+      });
       await WordRoot.create({ wordId: stepWord.id, rootId: fixture.rootId });
 
-      const resultRes = await request(fixture.app).post(`/review/${stepWord.id}/result`).send({ quality: 3 });
+      const resultRes = await request(fixture.app)
+        .post(`/review/${stepWord.id}/result`)
+        .send({ quality: 3 });
       expect(resultRes.status).toBe(200);
       expect(resultRes.body.data.interval).toBe(0);
 
@@ -124,7 +142,11 @@ describe('GET /review/due', () => {
   });
 
   it('scope=learning 仅返回未掌握单词', async () => {
-    const knownWord = await Word.create({ name: `known_${createTestSuffix()}`, meaning: '已掌握词', userId: fixture.userId });
+    const knownWord = await Word.create({
+      name: `known_${createTestSuffix()}`,
+      meaning: '已掌握词',
+      userId: fixture.userId,
+    });
     const learningWord = await Word.create({
       name: `learning_${createTestSuffix()}`,
       meaning: '学习词',
@@ -159,7 +181,11 @@ describe('GET /review/due', () => {
   });
 
   it('scope=known 仅返回已掌握单词', async () => {
-    const knownWord = await Word.create({ name: `known_only_${createTestSuffix()}`, meaning: '已掌握', userId: fixture.userId });
+    const knownWord = await Word.create({
+      name: `known_only_${createTestSuffix()}`,
+      meaning: '已掌握',
+      userId: fixture.userId,
+    });
     const learningWord = await Word.create({
       name: `learning_only_${createTestSuffix()}`,
       meaning: '学习中',

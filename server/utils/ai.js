@@ -54,9 +54,7 @@ const assertSafeBaseUrl = (rawUrl) => {
   const hostname = parsed.hostname;
   for (const pattern of PRIVATE_HOST_PATTERNS) {
     if (pattern.test(hostname)) {
-      throw new Error(
-        'AI baseUrl 不允许指向本地或私有网络地址，请填写公网可访问的 API 地址'
-      );
+      throw new Error('AI baseUrl 不允许指向本地或私有网络地址，请填写公网可访问的 API 地址');
     }
   }
 };

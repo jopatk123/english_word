@@ -30,8 +30,16 @@ export const createReviewFixture = async () => {
 
   const user = await User.create({ username: `revtest_${createTestSuffix()}`, password: 'x' });
   const app = buildReviewApp(user.id);
-  const root = await Root.create({ name: `rroot_${createTestSuffix()}`, meaning: '词根', userId: user.id });
-  const word = await Word.create({ name: `rword_${createTestSuffix()}`, meaning: '含义', userId: user.id });
+  const root = await Root.create({
+    name: `rroot_${createTestSuffix()}`,
+    meaning: '词根',
+    userId: user.id,
+  });
+  const word = await Word.create({
+    name: `rword_${createTestSuffix()}`,
+    meaning: '含义',
+    userId: user.id,
+  });
 
   await WordRoot.create({ wordId: word.id, rootId: root.id });
   await ensureWordReview(user.id, word.id);

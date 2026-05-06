@@ -38,7 +38,12 @@
     { key: 'choice', icon: '📝', name: '选择题', desc: '看单词选释义，四选一' },
     { key: 'spelling', icon: '✏️', name: '拼写模式', desc: '看释义拼单词，练习拼写' },
     { key: 'listening', icon: '🎧', name: '听力模式', desc: '听发音拼单词，锻炼听力' },
-    { key: 'autoRead', icon: '🔊', name: '自动朗读', desc: '单词读 2 次，例句读 1 次，不记录熟练度' },
+    {
+      key: 'autoRead',
+      icon: '🔊',
+      name: '自动朗读',
+      desc: '单词读 2 次，例句读 1 次，不记录熟练度',
+    },
   ];
 
   defineProps({

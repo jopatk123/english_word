@@ -1,6 +1,8 @@
+import { mount } from '@vue/test-utils';
 import { ref } from 'vue';
 import { describe, it, expect, vi } from 'vitest';
-import { seekToStudyCard } from '../useStudySession.js';
+import { seekToStudyCard, useStudySession } from '../useStudySession.js';
+import { FOLLOW_UP_OFFSETS, insertFollowUpCard } from '../studyQueue.js';
 
 describe('seekToStudyCard', () => {
   const createDeps = (overrides = {}) => ({
@@ -54,7 +56,8 @@ describe('seekToStudyCard', () => {
     expect(deps.incrementRevision).toHaveBeenCalledTimes(1);
     expect(deps.saveProgress).toHaveBeenCalledTimes(1);
   });
-});/**
+});
+/**
  * 测试：continueReview 排队策略与 seek 跳转逻辑（纯逻辑）
  *
  * continueReview() 的核心行为等价于：
@@ -62,12 +65,6 @@ describe('seekToStudyCard', () => {
  *
  * 此处直接测该纯逻辑，不依赖 composable 完整生命周期。
  */
-import { mount } from '@vue/test-utils';
-import { ref } from 'vue';
-import { describe, it, expect, vi } from 'vitest';
-
-import { seekToStudyCard, useStudySession } from '../useStudySession.js';
-import { FOLLOW_UP_OFFSETS, insertFollowUpCard } from '../studyQueue.js';
 
 const getReviewDueMock = vi.fn().mockResolvedValue({ data: [] });
 const submitReviewResultMock = vi.fn().mockResolvedValue({});
@@ -264,7 +261,7 @@ describe('useStudySession 的 hard 回插', () => {
 
     await wrapper.vm.submitRating(2);
 
-  expect(wrapper.vm.queue.map((item) => item.wordId)).toEqual([1, 2, 3, 1]);
+    expect(wrapper.vm.queue.map((item) => item.wordId)).toEqual([1, 2, 3, 1]);
     expect(wrapper.vm.currentIndex).toBe(1);
     expect(wrapper.vm.sessionStats.hard).toBe(1);
 

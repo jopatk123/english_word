@@ -53,7 +53,11 @@ function getStateChangedAtMs(session) {
   return Number.isFinite(stateChangedAtMs) ? stateChangedAtMs : 0;
 }
 
-export function buildStudyTimerState({ activeSession = null, lastSession = null, serverNow = new Date() }) {
+export function buildStudyTimerState({
+  activeSession = null,
+  lastSession = null,
+  serverNow = new Date(),
+}) {
   const session = activeSession || lastSession || null;
   const isRunning = Boolean(activeSession);
   const stateChangedAtMs = getStateChangedAtMs(session);

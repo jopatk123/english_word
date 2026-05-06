@@ -131,7 +131,14 @@ const root = {
 };
 
 const words = [
-  { id: 1, name: 'climate', meaning: 'n. 气候；风气，环境', phonetic: '/ˈklaɪmət/', exampleCount: 1, remark: '' },
+  {
+    id: 1,
+    name: 'climate',
+    meaning: 'n. 气候；风气，环境',
+    phonetic: '/ˈklaɪmət/',
+    exampleCount: 1,
+    remark: '',
+  },
   {
     id: 2,
     name: 'duplicate',

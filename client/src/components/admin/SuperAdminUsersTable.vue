@@ -14,18 +14,14 @@
   </div>
 
   <div class="sa-table-wrap">
-    <el-table
-      :data="users"
-      v-loading="loading"
-      stripe
-      empty-text="暂无用户数据"
-      class="sa-table"
-    >
+    <el-table :data="users" v-loading="loading" stripe empty-text="暂无用户数据" class="sa-table">
       <el-table-column prop="id" label="ID" width="72" align="center" />
       <el-table-column prop="username" label="用户名" min-width="180" />
       <el-table-column label="登录状态" width="110" align="center">
         <template #default="{ row }">
-          <span :class="['sa-status-badge', row.isDisabled ? 'sa-status-disabled' : 'sa-status-active']">
+          <span
+            :class="['sa-status-badge', row.isDisabled ? 'sa-status-disabled' : 'sa-status-active']"
+          >
             {{ row.isDisabled ? '已禁用' : '可登录' }}
           </span>
         </template>
@@ -38,7 +34,13 @@
       </el-table-column>
       <el-table-column label="操作" width="260" align="center" fixed="right">
         <template #default="{ row }">
-          <button class="sa-action-btn" :disabled="deletingUserId === row.id" @click="$emit('open-password', row)">改密码</button>
+          <button
+            class="sa-action-btn"
+            :disabled="deletingUserId === row.id"
+            @click="$emit('open-password', row)"
+          >
+            改密码
+          </button>
           <button
             :class="['sa-action-btn', row.isDisabled ? 'sa-action-enable' : 'sa-action-disable']"
             :disabled="deletingUserId === row.id"
@@ -174,7 +176,10 @@
     font-weight: 500;
     cursor: pointer;
     margin: 0 3px;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    transition:
+      background 0.15s,
+      border-color 0.15s,
+      color 0.15s;
   }
 
   .sa-action-btn:hover:not(:disabled) {

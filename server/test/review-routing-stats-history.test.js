@@ -15,7 +15,10 @@ describe('GET /review/stats', () => {
     vi.setSystemTime(new Date('2026-04-08T01:00:00Z'));
 
     try {
-      const isolatedUser = await User.create({ username: `stats_user_${createTestSuffix()}`, password: 'x' });
+      const isolatedUser = await User.create({
+        username: `stats_user_${createTestSuffix()}`,
+        password: 'x',
+      });
       const isolatedApp = buildReviewApp(isolatedUser.id);
       const reviewedWord = await Word.create({
         name: `stats_today_${createTestSuffix()}`,
@@ -78,7 +81,10 @@ describe('GET /review/stats', () => {
     vi.setSystemTime(new Date('2026-04-09T11:00:00Z'));
 
     try {
-      const isolatedUser = await User.create({ username: `stats_short_user_${createTestSuffix()}`, password: 'x' });
+      const isolatedUser = await User.create({
+        username: `stats_short_user_${createTestSuffix()}`,
+        password: 'x',
+      });
       const isolatedApp = buildReviewApp(isolatedUser.id);
       const futureDueWord = await Word.create({
         name: `stats_short_${createTestSuffix()}`,

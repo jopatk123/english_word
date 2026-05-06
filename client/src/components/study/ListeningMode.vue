@@ -22,13 +22,13 @@
             换一句
           </el-button>
         </div>
-        <div v-else class="listening-audio-empty">当前单词暂无例句音频，可先听单词发音后再输入。</div>
+        <div v-else class="listening-audio-empty">
+          当前单词暂无例句音频，可先听单词发音后再输入。
+        </div>
       </div>
 
       <!-- 渐进式字母提示（仅在点击提示后显示） -->
-      <div v-if="hintLevel > 0 && !answered" class="listening-hint">
-        提示：{{ hint }}
-      </div>
+      <div v-if="hintLevel > 0 && !answered" class="listening-hint">提示：{{ hint }}</div>
 
       <div class="spelling-input-area" style="margin-top: 20px">
         <div class="spelling-input-row">
@@ -189,7 +189,7 @@
   .listening-audio-button-secondary {
     color: #5f6f89;
   }
-  
+
   @media (max-width: 640px) {
     .listening-audio-actions {
       width: 100%;

@@ -53,7 +53,11 @@ beforeEach(() => {
 describe('POST /words/ transaction integrity', () => {
   it('复习记录创建失败时会整体回滚单词和词根关联', async () => {
     const user = await User.create({ username: `wordtx_${suffix()}`, password: 'x' });
-    const root = await Root.create({ name: `txroot_${suffix()}`, meaning: '事务测试', userId: user.id });
+    const root = await Root.create({
+      name: `txroot_${suffix()}`,
+      meaning: '事务测试',
+      userId: user.id,
+    });
     const app = buildApp(user.id);
     const wordName = `rollback_${suffix()}`;
 

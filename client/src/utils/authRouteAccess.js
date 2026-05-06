@@ -1,4 +1,5 @@
-export const isAdminRoutePath = (path = '') => typeof path === 'string' && path.startsWith('/super-admin');
+export const isAdminRoutePath = (path = '') =>
+  typeof path === 'string' && path.startsWith('/super-admin');
 
 export const getAuthRedirectPath = (route, token) => {
   const path = route?.path || '';

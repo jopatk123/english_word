@@ -10,7 +10,9 @@ describe('AutoReadMode', () => {
       name: 'resolution',
       phonetic: '/ˌrezəˈluːʃn/',
       meaning: '决心；分辨率；解决',
-      examples: [{ id: 1, sentence: "She made a New Year's resolution.", translation: '她立下了新年决心。' }],
+      examples: [
+        { id: 1, sentence: "She made a New Year's resolution.", translation: '她立下了新年决心。' },
+      ],
     },
   };
 
@@ -37,7 +39,9 @@ describe('AutoReadMode', () => {
   });
 
   it('没有释义时显示兜底文案', () => {
-    const wrapper = createWrapper({ card: { ...defaultCard, word: { ...defaultCard.word, meaning: '' } } });
+    const wrapper = createWrapper({
+      card: { ...defaultCard, word: { ...defaultCard.word, meaning: '' } },
+    });
     expect(wrapper.text()).toContain('暂无释义');
   });
 });

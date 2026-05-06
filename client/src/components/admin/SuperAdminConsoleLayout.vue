@@ -18,9 +18,7 @@
       </nav>
 
       <div class="sa-sidebar-footer">
-        <div class="sa-admin-badge">
-          <span>●</span> 管理员已登录
-        </div>
+        <div class="sa-admin-badge"><span>●</span> 管理员已登录</div>
         <button class="sa-logout-btn" @click="$emit('logout')">退出管理</button>
       </div>
     </aside>
@@ -177,8 +175,13 @@
   }
 
   @keyframes sa-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
   }
 
   .sa-logout-btn {
@@ -190,7 +193,10 @@
     color: #94a3b8;
     font-size: 13px;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    transition:
+      background 0.15s,
+      color 0.15s,
+      border-color 0.15s;
     text-align: center;
   }
 

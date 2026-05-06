@@ -169,7 +169,9 @@
 
   .alarm-panel-fade-enter-active,
   .alarm-panel-fade-leave-active {
-    transition: opacity 0.22s, transform 0.22s;
+    transition:
+      opacity 0.22s,
+      transform 0.22s;
   }
 
   .alarm-panel-fade-enter-from,

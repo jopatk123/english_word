@@ -139,12 +139,12 @@ npm run test:coverage
 
 ## 环境变量说明
 
-| 变量名 | 是否必填 | 说明 |
-| --- | --- | --- |
-| `PORT` | 是 | 服务监听端口；Docker 对外映射也使用同一个端口 |
-| `DB_PATH` | 是 | SQLite 文件路径；Docker 建议 `/app/data/words.db`，本地建议 `./data/words.dev.db` |
-| `JWT_SECRET` | 是 | 用户登录与管理员 token 的签名密钥 |
-| `ADMIN_PASSWORD` | 是 | 超级管理员登录密码，对应页面为 `/super-admin` |
+| 变量名           | 是否必填 | 说明                                                                              |
+| ---------------- | -------- | --------------------------------------------------------------------------------- |
+| `PORT`           | 是       | 服务监听端口；Docker 对外映射也使用同一个端口                                     |
+| `DB_PATH`        | 是       | SQLite 文件路径；Docker 建议 `/app/data/words.db`，本地建议 `./data/words.dev.db` |
+| `JWT_SECRET`     | 是       | 用户登录与管理员 token 的签名密钥                                                 |
+| `ADMIN_PASSWORD` | 是       | 超级管理员登录密码，对应页面为 `/super-admin`                                     |
 
 ## 项目结构
 

@@ -29,13 +29,10 @@ export function getNextReview(
   perfectStreakCount = 0
 ) {
   const isNew =
-    currentStatus === REVIEW_STATUS.NEW ||
-    (currentStatus === undefined && currentInterval < 1);
+    currentStatus === REVIEW_STATUS.NEW || (currentStatus === undefined && currentInterval < 1);
   const isLearning = currentStatus === REVIEW_STATUS.LEARNING;
   const nextPerfectStreakCount =
-    quality === 4
-      ? Math.max(0, Math.trunc(Number(perfectStreakCount) || 0)) + 1
-      : 0;
+    quality === 4 ? Math.max(0, Math.trunc(Number(perfectStreakCount) || 0)) + 1 : 0;
 
   const buildReviewStageResult = (status) => {
     let newInterval;
@@ -74,7 +71,8 @@ export function getNextReview(
   // 连续三次 quality=4 才能升为已掌握。
   if (
     quality === 4 &&
-    (currentStatus === REVIEW_STATUS.KNOWN || nextPerfectStreakCount >= KNOWN_PERFECT_STREAK_THRESHOLD)
+    (currentStatus === REVIEW_STATUS.KNOWN ||
+      nextPerfectStreakCount >= KNOWN_PERFECT_STREAK_THRESHOLD)
   ) {
     const result = buildReviewStageResult(REVIEW_STATUS.KNOWN);
     return { ...result, perfectStreakCount: nextPerfectStreakCount };

@@ -11,8 +11,7 @@ const readEnv = (name) => {
   return typeof value === 'string' ? value.trim() : '';
 };
 
-const missingEnvMessage = (name) =>
-  `缺少环境变量 ${name}，请参考项目根目录 .env.example 完成配置`;
+const missingEnvMessage = (name) => `缺少环境变量 ${name}，请参考项目根目录 .env.example 完成配置`;
 
 export const getJwtSecret = () => {
   const secret = readEnv('JWT_SECRET');
@@ -34,8 +33,7 @@ export const getAdminPassword = () => {
   }
 
   throw new Error(
-    `${missingEnvMessage('ADMIN_PASSWORD')}。\n` +
-      '为保证安全，系统不再提供内置默认密码。'
+    `${missingEnvMessage('ADMIN_PASSWORD')}。\n` + '为保证安全，系统不再提供内置默认密码。'
   );
 };
 

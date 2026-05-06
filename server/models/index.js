@@ -77,4 +77,15 @@ const initDB = async () => {
   console.log('数据库同步完成');
 };
 
-export { sequelize, User, Root, Word, WordRoot, Example, WordReview, ReviewHistory, StudySession, initDB };
+export {
+  sequelize,
+  User,
+  Root,
+  Word,
+  WordRoot,
+  Example,
+  WordReview,
+  ReviewHistory,
+  StudySession,
+  initDB,
+};

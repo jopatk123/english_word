@@ -68,10 +68,7 @@ router.get('/due', async (req, res) => {
     } else if (scope === 'known') {
       where.status = REVIEW_STATUS.KNOWN;
     } else if (scope === 'due') {
-      where[Op.or] = [
-        { dueDate: { [Op.lt]: today } },
-        { dueDate: today, ...dueNowForToday },
-      ];
+      where[Op.or] = [{ dueDate: { [Op.lt]: today } }, { dueDate: today, ...dueNowForToday }];
     }
 
     const queryOpts = {

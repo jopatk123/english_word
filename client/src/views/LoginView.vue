@@ -3,8 +3,7 @@
     <div class="login-card">
       <div class="login-hero">
         <h2 class="login-title">背单词工具</h2>
-        <p class="login-subtitle">
-        </p>
+        <p class="login-subtitle"></p>
         <div class="login-badges">
           <span>词根管理</span>
           <span>例句整理</span>

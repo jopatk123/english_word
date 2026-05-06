@@ -111,21 +111,13 @@ export function useSpeech() {
 
   const wait = (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs));
 
-  const speakSequence = async (
-    texts,
-    lang = 'en-US',
-    delayMs = 0,
-    delayAfterLast = false
-  ) => {
+  const speakSequence = async (texts, lang = 'en-US', delayMs = 0, delayAfterLast = false) => {
     const sequence = Array.isArray(texts) ? texts : [texts];
     const validTexts = sequence.filter((text) => typeof text === 'string' && text.trim());
 
     for (const [index, text] of validTexts.entries()) {
       await speakAsync(text, lang);
-      if (
-        delayMs > 0 &&
-        (delayAfterLast || index < validTexts.length - 1)
-      ) {
+      if (delayMs > 0 && (delayAfterLast || index < validTexts.length - 1)) {
         await wait(delayMs);
       }
     }

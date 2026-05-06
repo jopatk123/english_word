@@ -17,7 +17,11 @@ function getOverlapSeconds(start, end, windowStart, windowEnd) {
 
   const overlapStart = Math.max(startMs, windowStartMs);
   const overlapEnd = Math.min(endMs, windowEndMs);
-  if (!Number.isFinite(overlapStart) || !Number.isFinite(overlapEnd) || overlapEnd <= overlapStart) {
+  if (
+    !Number.isFinite(overlapStart) ||
+    !Number.isFinite(overlapEnd) ||
+    overlapEnd <= overlapStart
+  ) {
     return 0;
   }
 
@@ -76,7 +80,10 @@ export function createStudySessionsRouter(options = {}) {
           if (existing) {
             return success(
               res,
-              await getStudyTimerState(req.userId, { activeSession: existing, lastSession: existing })
+              await getStudyTimerState(req.userId, {
+                activeSession: existing,
+                lastSession: existing,
+              })
             );
           }
         }
@@ -199,8 +206,7 @@ export function createStudySessionsRouter(options = {}) {
       // ── 全量汇总 ──────────────────────────────────────────────────────────
       const totalSeconds = allSessions.reduce((sum, s) => sum + (s.durationSeconds || 0), 0);
       const totalSessions = allSessions.length;
-      const avgSessionSeconds =
-        totalSessions > 0 ? Math.round(totalSeconds / totalSessions) : 0;
+      const avgSessionSeconds = totalSessions > 0 ? Math.round(totalSeconds / totalSessions) : 0;
 
       // ── 固定窗口（7 天 / 30 天），与 days 参数无关 ──────────────────────
       const todayWindowStart = todayStart(tz);
@@ -242,9 +248,7 @@ export function createStudySessionsRouter(options = {}) {
         activeDaysInRange > 0 ? Math.round(rangeSeconds / activeDaysInRange) : 0;
 
       // ── 连续学习天数（从今日起逆序检查，最多回溯 365 天） ────────────────
-      const studiedDateSet = new Set(
-        allSessions.map((s) => dateStrAt(new Date(s.startedAt), tz))
-      );
+      const studiedDateSet = new Set(allSessions.map((s) => dateStrAt(new Date(s.startedAt), tz)));
       let streakDays = 0;
       let checkStr = todayDateStr;
       while (streakDays < 365 && studiedDateSet.has(checkStr)) {

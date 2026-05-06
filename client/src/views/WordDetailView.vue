@@ -373,7 +373,9 @@
       return ElMessage.warning('请选择要删除的词根');
     }
 
-    const targetRoot = associatedRoots.value.find((rootItem) => rootItem.id === selectedDeleteRootId.value);
+    const targetRoot = associatedRoots.value.find(
+      (rootItem) => rootItem.id === selectedDeleteRootId.value
+    );
     if (!targetRoot) {
       return ElMessage.warning('请选择当前已关联的词根');
     }

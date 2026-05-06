@@ -1,5 +1,13 @@
 import { Router } from 'express';
-import { sequelize, Word, Root, WordRoot, Example, WordReview, ReviewHistory } from '../models/index.js';
+import {
+  sequelize,
+  Word,
+  Root,
+  WordRoot,
+  Example,
+  WordReview,
+  ReviewHistory,
+} from '../models/index.js';
 import { success, successList, error } from '../utils/response.js';
 import { ensureDefaultRoot } from '../utils/defaultRoot.js';
 import { buildKeywordSearch } from '../utils/search.js';

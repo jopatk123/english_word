@@ -205,7 +205,7 @@ describe('GET /study-sessions/report', () => {
 
     expect(d.totalSeconds).toBe((60 + 30 + 20) * 60);
     expect(d.thirtyDaySeconds).toBe((30 + 20) * 60); // 35天前的排除
-    expect(d.sevenDaySeconds).toBe(20 * 60);          // 只今天
+    expect(d.sevenDaySeconds).toBe(20 * 60); // 只今天
   });
 
   it('dailyBuckets 今天的桶秒数与今日会话匹配', async () => {
@@ -234,17 +234,13 @@ describe('GET /study-sessions/report', () => {
 
     // 今天 60分、昨天 40分（共 2 天活跃，30天范围 28 天为 0）
     await makeSession(user.id, new Date(today.getTime() + 60 * 60_000), 60 * 60);
-    await makeSession(
-      user.id,
-      new Date(today.getTime() - 24 * 60 * 60_000 + 60 * 60_000),
-      40 * 60
-    );
+    await makeSession(user.id, new Date(today.getTime() - 24 * 60 * 60_000 + 60 * 60_000), 40 * 60);
 
     const res = await request(app).get(`/study-sessions/report?tz=${tz}&days=30`);
     const d = res.body.data;
 
     expect(d.activeDaysInRange).toBe(2);
-    expect(d.avgDailySeconds).toBe(Math.round((60 + 40) * 60 / 2));
+    expect(d.avgDailySeconds).toBe(Math.round(((60 + 40) * 60) / 2));
   });
 
   it('streakDays 连续天数从今日起逆序计算', async () => {
@@ -289,11 +285,7 @@ describe('GET /study-sessions/report', () => {
     const today = todayStart(tz);
 
     // 仅昨天有会话
-    await makeSession(
-      user.id,
-      new Date(today.getTime() - 24 * 60 * 60_000 + 60 * 60_000),
-      30 * 60
-    );
+    await makeSession(user.id, new Date(today.getTime() - 24 * 60 * 60_000 + 60 * 60_000), 30 * 60);
 
     const res = await request(app).get(`/study-sessions/report?tz=${tz}`);
     expect(res.body.data.streakDays).toBe(0);

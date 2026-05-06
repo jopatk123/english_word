@@ -9,7 +9,17 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { initDB, User, Root, Word, WordRoot, Example, WordReview, ReviewHistory, StudySession } from '../models/index.js';
+import {
+  initDB,
+  User,
+  Root,
+  Word,
+  WordRoot,
+  Example,
+  WordReview,
+  ReviewHistory,
+  StudySession,
+} from '../models/index.js';
 import authRouter from '../routes/auth.js';
 import adminRouter from '../routes/admin.js';
 
@@ -33,7 +43,9 @@ beforeAll(async () => {
   app = buildApp();
 
   const userName = `admin_test_${suffix()}`;
-  await request(app).post('/api/auth/register').send({ username: userName, password: 'oldpass123' });
+  await request(app)
+    .post('/api/auth/register')
+    .send({ username: userName, password: 'oldpass123' });
   targetUser = await User.findOne({ where: { username: userName } });
 
   const adminRes = await request(app).post('/api/admin/login').send({ password: adminPassword });
@@ -137,7 +149,10 @@ describe('DELETE /api/admin/users/:id', () => {
   let survivorUser;
 
   beforeAll(async () => {
-    deleteTargetUser = await User.create({ username: `admin_delete_${suffix()}`, password: 'deletepass123' });
+    deleteTargetUser = await User.create({
+      username: `admin_delete_${suffix()}`,
+      password: 'deletepass123',
+    });
     deleteTargetRoot = await Root.create({
       name: `admin_delete_root_${suffix()}`,
       meaning: '待删除词根',
@@ -183,7 +198,10 @@ describe('DELETE /api/admin/users/:id', () => {
       note: 'delete-target',
     });
 
-    survivorUser = await User.create({ username: `admin_survivor_${suffix()}`, password: 'survivorpass123' });
+    survivorUser = await User.create({
+      username: `admin_survivor_${suffix()}`,
+      password: 'survivorpass123',
+    });
     const survivorRoot = await Root.create({
       name: `admin_survivor_root_${suffix()}`,
       meaning: '幸存词根',

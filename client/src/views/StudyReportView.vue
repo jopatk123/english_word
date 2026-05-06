@@ -54,9 +54,7 @@
           <div class="card-icon streak-icon">🔥</div>
           <div class="card-info">
             <div class="card-title">连续学习</div>
-            <div class="card-value">
-              {{ report.streakDays }} <span class="unit">天</span>
-            </div>
+            <div class="card-value">{{ report.streakDays }} <span class="unit">天</span></div>
           </div>
         </el-card>
       </el-col>
@@ -143,11 +141,7 @@
     </el-row>
 
     <!-- 最近学习记录 -->
-    <el-card
-      shadow="never"
-      class="recent-card"
-      v-if="!loading && report.recentSessions.length > 0"
-    >
+    <el-card shadow="never" class="recent-card" v-if="!loading && report.recentSessions.length > 0">
       <template #header>
         <div class="card-header">
           <span>最近学习记录</span>

@@ -31,6 +31,20 @@ export default [
     },
   },
 
+  // ── 客户端根目录配置（Vite/Vitest）────────────────────────
+  {
+    files: ['client/*.js'],
+    languageOptions: {
+      globals: { ...globals.node },
+      ecmaVersion: 2022,
+      sourceType: 'module',
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...looseRules,
+    },
+  },
+
   // ── 客户端 JS（浏览器 ESM）───────────────────────────────
   {
     files: ['client/src/**/*.js'],

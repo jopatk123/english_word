@@ -11,7 +11,9 @@
           <el-button class="nav-btn" link @click="$router.push('/search')">🔍 搜索</el-button>
           <el-button class="nav-btn" link @click="$router.push('/')">📚 学单词</el-button>
           <el-button class="nav-btn" link @click="$router.push('/study')">📝 背单词</el-button>
-          <el-button class="nav-btn" link @click="$router.push('/ai/settings')">🤖 AI 配置</el-button>
+          <el-button class="nav-btn" link @click="$router.push('/ai/settings')"
+            >🤖 AI 配置</el-button
+          >
           <AlarmClock class="header-alarm" />
           <div class="header-user">
             <span class="username">{{ user.username }}</span>

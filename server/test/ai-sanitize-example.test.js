@@ -26,11 +26,16 @@ describe('sanitizeExampleSuggestions', () => {
   });
 
   it('句子太短（少于 8 字符）时过滤', () => {
-    expect(sanitizeExampleSuggestions([{ sentence: 'Short', translation: '翻译' }])).toHaveLength(0);
+    expect(sanitizeExampleSuggestions([{ sentence: 'Short', translation: '翻译' }])).toHaveLength(
+      0
+    );
   });
 
   it('已有句子去重（不区分大小写）', () => {
-    const result = sanitizeExampleSuggestions([validExampleItem], [validExampleItem.sentence.toUpperCase()]);
+    const result = sanitizeExampleSuggestions(
+      [validExampleItem],
+      [validExampleItem.sentence.toUpperCase()]
+    );
     expect(result).toHaveLength(0);
   });
 

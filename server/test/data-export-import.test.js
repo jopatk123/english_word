@@ -5,7 +5,16 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { initDB, sequelize, User, Root, Word, WordRoot, Example, WordReview } from '../models/index.js';
+import {
+  initDB,
+  sequelize,
+  User,
+  Root,
+  Word,
+  WordRoot,
+  Example,
+  WordReview,
+} from '../models/index.js';
 import reviewDataRouter from '../routes/review/data.js';
 
 // ============================================================

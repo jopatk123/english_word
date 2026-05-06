@@ -93,7 +93,11 @@ router.put('/users/:id/status', adminAuthMiddleware, async (req, res) => {
     if (!user) return error(res, '用户不存在', 404);
 
     await user.update({ isDisabled: disabled });
-    success(res, { id: user.id, isDisabled: user.isDisabled }, disabled ? '已禁用登录' : '已启用登录');
+    success(
+      res,
+      { id: user.id, isDisabled: user.isDisabled },
+      disabled ? '已禁用登录' : '已启用登录'
+    );
   } catch (e) {
     error(res, e.message);
   }
@@ -153,8 +157,14 @@ router.delete('/users/:id', adminAuthMiddleware, async (req, res) => {
       }
 
       counts.wordReviews += await WordReview.destroy({ where: { userId: user.id }, transaction });
-      counts.reviewHistories += await ReviewHistory.destroy({ where: { userId: user.id }, transaction });
-      counts.studySessions += await StudySession.destroy({ where: { userId: user.id }, transaction });
+      counts.reviewHistories += await ReviewHistory.destroy({
+        where: { userId: user.id },
+        transaction,
+      });
+      counts.studySessions += await StudySession.destroy({
+        where: { userId: user.id },
+        transaction,
+      });
 
       if (wordIds.length) {
         counts.words += await Word.destroy({

@@ -11,8 +11,16 @@ describe('ListeningMode', () => {
       meaning: '建造；构建',
       roots: [{ name: 'struct', meaning: '建造' }],
       examples: [
-        { id: 1, sentence: 'They plan to construct a new bridge.', translation: '他们计划建一座新桥。' },
-        { id: 2, sentence: 'The team will construct the model together.', translation: '团队会一起搭建这个模型。' },
+        {
+          id: 1,
+          sentence: 'They plan to construct a new bridge.',
+          translation: '他们计划建一座新桥。',
+        },
+        {
+          id: 2,
+          sentence: 'The team will construct the model together.',
+          translation: '团队会一起搭建这个模型。',
+        },
       ],
     },
   };
@@ -95,7 +103,12 @@ describe('ListeningMode', () => {
   });
 
   it('hintLevel>0 且已作答后不显示提示层', () => {
-    const wrapper = createWrapper({ hintLevel: 1, hint: 'c________', answered: true, correct: true });
+    const wrapper = createWrapper({
+      hintLevel: 1,
+      hint: 'c________',
+      answered: true,
+      correct: true,
+    });
     expect(wrapper.find('.listening-hint').exists()).toBe(false);
   });
 

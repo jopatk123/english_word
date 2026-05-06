@@ -65,11 +65,7 @@
         <span class="root-selection-hint">
           已选 {{ selectedRootCount }} 个词根，点击批量删除可一次性移除选中项
         </span>
-        <el-button
-          type="danger"
-          plain
-          :loading="batchDeleting"
-          @click="handleBatchDeleteRoots"
+        <el-button type="danger" plain :loading="batchDeleting" @click="handleBatchDeleteRoots"
           >批量删除（{{ selectedRootCount }}）</el-button
         >
       </div>
