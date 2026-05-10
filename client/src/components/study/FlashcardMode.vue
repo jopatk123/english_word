@@ -22,7 +22,7 @@
         <div class="card-meaning">{{ card.word.meaning }}</div>
         <div v-if="card.word.remark" class="card-remark">{{ card.word.remark }}</div>
         <div v-if="card.word.examples && card.word.examples.length > 0" class="card-examples">
-          <div v-for="ex in card.word.examples.slice(0, 2)" :key="ex.id" class="card-example">
+          <div v-for="ex in card.word.examples" :key="ex.id" class="card-example">
             <p class="example-en">
               {{ ex.sentence }} <SpeakButton :text="ex.sentence" class="example-speak" />
             </p>

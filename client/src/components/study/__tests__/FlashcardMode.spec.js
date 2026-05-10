@@ -67,6 +67,29 @@ describe('FlashcardMode', () => {
     expect(wrapper.text()).toContain('检查；视察');
   });
 
+  it('showAnswer=true 时显示全部例句', () => {
+    const wrapper = createWrapper({
+      showAnswer: true,
+      card: {
+        ...defaultCard,
+        word: {
+          ...defaultCard.word,
+          examples: [
+            { id: 1, sentence: 'She inspects the room.', translation: '她检查房间。' },
+            { id: 2, sentence: 'He inspected the engine carefully.', translation: '他仔细检查了发动机。' },
+            { id: 3, sentence: 'The teacher inspected our homework.', translation: '老师检查了我们的作业。' },
+          ],
+        },
+      },
+    });
+
+    const examples = wrapper.findAll('.card-example');
+
+    expect(examples).toHaveLength(3);
+    expect(wrapper.text()).toContain('He inspected the engine carefully.');
+    expect(wrapper.text()).toContain('The teacher inspected our homework.');
+  });
+
   it('点击评分按钮触发 rate 事件', async () => {
     const wrapper = createWrapper({ showAnswer: true });
     const rateBtn = wrapper.findAll('.el-btn').find((b) => b.text().includes('认识'));
