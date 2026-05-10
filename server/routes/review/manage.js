@@ -29,7 +29,11 @@ router.get('/roots-progress', async (req, res) => {
           ],
         },
       ],
-      order: [['create_time', 'DESC']],
+      // 「未分类」默认词根排在最前，其余词根按词根名称首字母升序排列
+      order: [
+        ['is_default', 'DESC'],
+        ['name', 'ASC'],
+      ],
     });
 
     const result = roots.map((r) => {

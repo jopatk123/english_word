@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import { Root, User, Word, WordRoot, WordReview } from '../models/index.js';
 import { buildReviewApp, createReviewFixture, createTestSuffix } from './review-test-utils.js';
+import { ensureDefaultRoot } from '../utils/defaultRoot.js';
 
 let fixture;
 
@@ -128,6 +129,35 @@ describe('GET /review/roots-progress', () => {
     expect(typeof r.known).toBe('number');
     expect(typeof r.learning).toBe('number');
     expect(r.learning + r.known).toBe(r.wordCount);
+  });
+
+  it('默认词根排在最前，其余词根按名称升序排列', async () => {
+    const user = await User.create({
+      username: `progress_user_${createTestSuffix()}`,
+      password: 'x',
+    });
+    const app = buildReviewApp(user.id);
+
+    const defaultRoot = await ensureDefaultRoot(user.id);
+    const zetaRoot = await Root.create({
+      name: `zeta_${createTestSuffix()}`,
+      meaning: 'zeta',
+      userId: user.id,
+    });
+    const alphaRoot = await Root.create({
+      name: `alpha_${createTestSuffix()}`,
+      meaning: 'alpha',
+      userId: user.id,
+    });
+
+    const res = await request(app).get('/review/roots-progress');
+    expect(res.status).toBe(200);
+    expect(res.body.data.map((item) => item.id)).toEqual([
+      defaultRoot.id,
+      alphaRoot.id,
+      zetaRoot.id,
+    ]);
+    expect(res.body.data[0].isDefault).toBe(true);
   });
 });
 
