@@ -12,8 +12,14 @@ import { useSpeech } from '../utils/speech.js';
  * @param {() => void}                 deps.advanceCard - called when auto-read finishes a card
  */
 export function useAutoRead({ currentCard, studyMode, modeSelected, sessionStats, advanceCard }) {
-  const { speak, speakSequence, cancelSpeech, pauseSpeech, resumeSpeech, isPaused: isAutoReadPaused } =
-    useSpeech();
+  const {
+    speak,
+    speakSequence,
+    cancelSpeech,
+    pauseSpeech,
+    resumeSpeech,
+    isPaused: isAutoReadPaused,
+  } = useSpeech();
 
   let autoReadToken = 0;
 

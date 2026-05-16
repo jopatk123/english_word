@@ -2,6 +2,9 @@
   "name": "english-word",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.17.0"
+  },
   "scripts": {
     "test:client": "npm --prefix client run test:run",
     "test:server": "npm --prefix server test",

@@ -15,7 +15,7 @@
 
 ## 技术栈
 
-- 后端：Node.js、Express、Sequelize、SQLite、ws
+- 后端：Node.js 20.17+、Express、Sequelize、SQLite、ws
 - 前端：Vue 3、Vite、Element Plus、ECharts
 - 测试：Vitest、Supertest
 - 部署：Docker、Docker Compose
@@ -31,8 +31,9 @@
 
 ## 部署前必读
 
-- `PORT`、`DB_PATH`、`JWT_SECRET`、`ADMIN_PASSWORD` 全部必填
+- `PORT`、`DB_PATH`、`JWT_SECRET`、`ADMIN_JWT_SECRET`、`ADMIN_PASSWORD_HASH` 全部必填
 - 项目已移除运行时和 Docker 部署层的默认值；任一变量缺失或为空，部署会直接失败
+- 管理员登录密码只以 bcrypt 哈希形式配置，不再支持明文环境变量
 - Docker 部署时，`DB_PATH` 应填写容器内持久化目录，例如 `/app/data/words.db`
 - 本地开发时，`DB_PATH` 应填写宿主机路径，例如 `./data/words.dev.db`
 - `PORT` 同时用于服务监听端口和 Docker 对外映射端口
@@ -53,10 +54,18 @@ cp .env.example .env
 PORT=3010
 DB_PATH=/app/data/words.db
 JWT_SECRET=replace-with-a-long-random-secret
-ADMIN_PASSWORD=replace-with-a-strong-admin-password
+ADMIN_JWT_SECRET=replace-with-another-long-random-secret
+ADMIN_PASSWORD_HASH=replace-with-bcrypt-hash
 ```
 
 如果任一变量为空，`docker compose build` 或 `docker compose up` 会直接失败，而不会再使用默认值继续启动。
+
+可使用项目后端依赖生成管理员密码哈希：
+
+```bash
+npm --prefix server install
+cd server && node -e "import bcrypt from 'bcryptjs'; console.log(await bcrypt.hash('your-admin-password', 12));"
+```
 
 ### 2. 构建并启动
 
@@ -85,6 +94,8 @@ docker compose down
 
 ## 本地开发
 
+请使用 Node.js 20.17 或更高版本；后端 SQLite 依赖需要该运行时版本。
+
 ### 1. 准备 `.env`
 
 ```bash
@@ -97,7 +108,8 @@ cp .env.example .env
 PORT=3010
 DB_PATH=./data/words.dev.db
 JWT_SECRET=replace-with-a-long-random-secret
-ADMIN_PASSWORD=replace-with-a-strong-admin-password
+ADMIN_JWT_SECRET=replace-with-another-long-random-secret
+ADMIN_PASSWORD_HASH=replace-with-bcrypt-hash
 ```
 
 ### 2. 安装依赖
@@ -140,12 +152,22 @@ npm run test:coverage
 
 ## 环境变量说明
 
-| 变量名           | 是否必填 | 说明                                                                              |
-| ---------------- | -------- | --------------------------------------------------------------------------------- |
-| `PORT`           | 是       | 服务监听端口；Docker 对外映射也使用同一个端口                                     |
-| `DB_PATH`        | 是       | SQLite 文件路径；Docker 建议 `/app/data/words.db`，本地建议 `./data/words.dev.db` |
-| `JWT_SECRET`     | 是       | 用户登录与管理员 token 的签名密钥                                                 |
-| `ADMIN_PASSWORD` | 是       | 超级管理员登录密码，对应页面为 `/super-admin`                                     |
+| 变量名                | 是否必填 | 说明                                                                              |
+| --------------------- | -------- | --------------------------------------------------------------------------------- |
+| `PORT`                | 是       | 服务监听端口；Docker 对外映射也使用同一个端口                                     |
+| `DB_PATH`             | 是       | SQLite 文件路径；Docker 建议 `/app/data/words.db`，本地建议 `./data/words.dev.db` |
+| `JWT_SECRET`          | 是       | 普通用户 token 的签名密钥                                                         |
+| `ADMIN_JWT_SECRET`    | 是       | 超级管理员 token 的签名密钥，必须与 `JWT_SECRET` 不同                             |
+| `ADMIN_PASSWORD_HASH` | 是       | 超级管理员登录密码的 bcrypt 哈希，对应页面为 `/super-admin`                       |
+
+## 运维审计命令
+
+```bash
+# 只读检查历史数据是否存在跨用户单词/词根关联或孤立关联记录
+npm --prefix server run audit:data-isolation
+```
+
+该命令会输出 JSON；若发现 `ownerlessWords`、`crossUserWordRoots` 或 `orphanWordRoots` 非空，会以非 0 状态退出，需先人工拆分或清理历史数据。
 
 ## 项目结构
 

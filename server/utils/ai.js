@@ -20,6 +20,36 @@ const normalizeBaseUrl = (baseUrl) => {
   return baseUrl.trim().replace(/\/+$/, '');
 };
 
+export class AiConfigError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'AiConfigError';
+    this.statusCode = 400;
+  }
+}
+
+export class AiUpstreamError extends Error {
+  constructor(message, statusCode = 502) {
+    super(message);
+    this.name = 'AiUpstreamError';
+    this.statusCode = statusCode;
+  }
+}
+
+export class AiTimeoutError extends AiUpstreamError {
+  constructor(message = 'AI 服务调用超时，请稍后重试') {
+    super(message, 504);
+    this.name = 'AiTimeoutError';
+  }
+}
+
+const mapAiResponseStatus = (status) => {
+  if ([400, 401, 403, 404].includes(status)) return 400;
+  if (status === 408) return 504;
+  if (status === 429) return 429;
+  return 502;
+};
+
 /**
  * 检测 URL 是否指向私有/环回/本地网络地址（SSRF 防护）。
  * 仅做字面量匹配，不做 DNS 解析，可拦截最常见的攻击向量。
@@ -44,17 +74,21 @@ const assertSafeBaseUrl = (rawUrl) => {
   try {
     parsed = new URL(rawUrl);
   } catch {
-    throw new Error('AI baseUrl 格式无效，请填写完整的 URL（如 https://api.openai.com/v1）');
+    throw new AiConfigError(
+      'AI baseUrl 格式无效，请填写完整的 URL（如 https://api.openai.com/v1）'
+    );
   }
 
   if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-    throw new Error('AI baseUrl 仅支持 http 或 https 协议');
+    throw new AiConfigError('AI baseUrl 仅支持 http 或 https 协议');
   }
 
   const hostname = parsed.hostname;
   for (const pattern of PRIVATE_HOST_PATTERNS) {
     if (pattern.test(hostname)) {
-      throw new Error('AI baseUrl 不允许指向本地或私有网络地址，请填写公网可访问的 API 地址');
+      throw new AiConfigError(
+        'AI baseUrl 不允许指向本地或私有网络地址，请填写公网可访问的 API 地址'
+      );
     }
   }
 };
@@ -145,7 +179,7 @@ export const validateAiConfig = (config = {}) => {
   const providerType = trimText(config.providerType, 80);
 
   if (!apiKey || !baseUrl || !model || !providerId) {
-    throw new Error('AI 配置不完整，请先填写厂商、Base URL、模型和 API Key');
+    throw new AiConfigError('AI 配置不完整，请先填写厂商、Base URL、模型和 API Key');
   }
 
   assertSafeBaseUrl(baseUrl);
@@ -197,6 +231,11 @@ const callOpenAICompatible = async ({
         ],
       }),
     });
+  } catch (e) {
+    if (e?.name === 'AbortError') {
+      throw new AiTimeoutError();
+    }
+    throw new AiUpstreamError('AI 服务网络连接失败，请稍后重试');
   } finally {
     clearTimeout(timer);
   }
@@ -204,7 +243,7 @@ const callOpenAICompatible = async ({
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     const errorMessage = payload?.error?.message || payload?.message || 'AI 服务调用失败';
-    throw new Error(errorMessage);
+    throw new AiUpstreamError(errorMessage, mapAiResponseStatus(response.status));
   }
 
   const content = payload?.choices?.[0]?.message?.content;
@@ -233,6 +272,11 @@ const callAnthropic = async ({ apiKey, baseUrl, model, temperature, systemPrompt
         messages: [{ role: 'user', content: userPrompt }],
       }),
     });
+  } catch (e) {
+    if (e?.name === 'AbortError') {
+      throw new AiTimeoutError();
+    }
+    throw new AiUpstreamError('AI 服务网络连接失败，请稍后重试');
   } finally {
     clearTimeout(timer);
   }
@@ -240,7 +284,7 @@ const callAnthropic = async ({ apiKey, baseUrl, model, temperature, systemPrompt
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     const errorMessage = payload?.error?.message || payload?.message || 'AI 服务调用失败';
-    throw new Error(errorMessage);
+    throw new AiUpstreamError(errorMessage, mapAiResponseStatus(response.status));
   }
 
   return normalizeContentText(payload?.content);
@@ -260,12 +304,12 @@ export const requestAiJson = async (config, prompts) => {
       : await callOpenAICompatible(requestPayload);
 
   if (!rawText) {
-    throw new Error('AI 未返回有效内容');
+    throw new AiUpstreamError('AI 未返回有效内容');
   }
 
   const parsed = extractFirstJsonValue(rawText);
   if (!parsed || typeof parsed !== 'object') {
-    throw new Error('AI 返回内容无法解析为 JSON，请更换模型或重试');
+    throw new AiUpstreamError('AI 返回内容无法解析为 JSON，请更换模型或重试');
   }
 
   return parsed;

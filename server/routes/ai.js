@@ -28,8 +28,9 @@ const router = Router();
  */
 const handleAiError = (res, req, startedAt, route, e, extra = {}) => {
   const debugInfo = createDebugInfo(req, req.body?.config || {}, startedAt);
+  const statusCode = Number.isInteger(e?.statusCode) ? e.statusCode : 502;
   logAiError(`${route}.error`, debugInfo, e, extra);
-  error(res, `${e.message} [requestId=${debugInfo.requestId}]`, 400);
+  error(res, `${e.message} [requestId=${debugInfo.requestId}]`, statusCode);
 };
 
 /**

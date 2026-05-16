@@ -34,9 +34,15 @@ const buildApp = () => {
 let app;
 let adminToken;
 let targetUser;
-// 与 vitest.config.js 中注入的 ADMIN_PASSWORD 保持一致
-const adminPassword = process.env.ADMIN_PASSWORD?.trim() || 'test-admin-password';
+const adminPassword = 'test-admin-password';
 const suffix = () => Date.now() + Math.random().toString(36).slice(2, 6);
+const restoreEnv = (name, value) => {
+  if (value === undefined) {
+    delete process.env[name];
+  } else {
+    process.env[name] = value;
+  }
+};
 
 beforeAll(async () => {
   await initDB();
@@ -252,24 +258,55 @@ describe('DELETE /api/admin/users/:id', () => {
   });
 });
 
-// ── getAdminPassword 环境变量行为 ──────────────────────────────
+// ── 管理员环境变量行为 ──────────────────────────────
 
-import { getAdminPassword, getDbPath, getServerPort } from '../utils/env.js';
+import { getAdminJwtSecret, getAdminPasswordHash, getDbPath, getServerPort } from '../utils/env.js';
 
-describe('getAdminPassword', () => {
-  it('ADMIN_PASSWORD 已配置时返回配置值', () => {
-    const original = process.env.ADMIN_PASSWORD;
-    process.env.ADMIN_PASSWORD = 'custom-secure-pass';
-    expect(getAdminPassword()).toBe('custom-secure-pass');
-    process.env.ADMIN_PASSWORD = original;
+describe('getAdminPasswordHash', () => {
+  it('ADMIN_PASSWORD_HASH 已配置且为 bcrypt 哈希时返回配置值', () => {
+    const original = process.env.ADMIN_PASSWORD_HASH;
+    const customHash = '$2b$10$AVCABJrjHP7GZaizpnFmIOCQZdR6ak1.eVTXh835EERT9RMjOoM56';
+    process.env.ADMIN_PASSWORD_HASH = customHash;
+    expect(getAdminPasswordHash()).toBe(customHash);
+    restoreEnv('ADMIN_PASSWORD_HASH', original);
   });
 
-  it('NODE_ENV=test 时未配置也不抛出（返回测试占位密码）', () => {
-    const original = process.env.ADMIN_PASSWORD;
-    delete process.env.ADMIN_PASSWORD;
-    // vitest 运行时 NODE_ENV 为 "test"，应返回内置占位密码而非抛出
-    expect(() => getAdminPassword()).not.toThrow();
-    process.env.ADMIN_PASSWORD = original;
+  it('ADMIN_PASSWORD_HASH 不是 bcrypt 哈希时抛错', () => {
+    const original = process.env.ADMIN_PASSWORD_HASH;
+    process.env.ADMIN_PASSWORD_HASH = 'plain-password';
+    expect(() => getAdminPasswordHash()).toThrow(/bcrypt/);
+    restoreEnv('ADMIN_PASSWORD_HASH', original);
+  });
+
+  it('ADMIN_PASSWORD_HASH 的 bcrypt cost 低于 10 时抛错', () => {
+    const original = process.env.ADMIN_PASSWORD_HASH;
+    process.env.ADMIN_PASSWORD_HASH =
+      '$2b$04$aOSmNFVwkgdWpRJj5tqEtOfcYnpak0YAPVfKNYuB8WhTgY3lTU936';
+    expect(() => getAdminPasswordHash()).toThrow(/cost/);
+    restoreEnv('ADMIN_PASSWORD_HASH', original);
+  });
+
+  it('NODE_ENV=test 时未配置也不抛出（返回测试哈希）', () => {
+    const original = process.env.ADMIN_PASSWORD_HASH;
+    delete process.env.ADMIN_PASSWORD_HASH;
+    expect(() => getAdminPasswordHash()).not.toThrow();
+    restoreEnv('ADMIN_PASSWORD_HASH', original);
+  });
+});
+
+describe('getAdminJwtSecret', () => {
+  it('ADMIN_JWT_SECRET 已配置时返回配置值', () => {
+    const original = process.env.ADMIN_JWT_SECRET;
+    process.env.ADMIN_JWT_SECRET = 'custom-admin-jwt-secret';
+    expect(getAdminJwtSecret()).toBe('custom-admin-jwt-secret');
+    restoreEnv('ADMIN_JWT_SECRET', original);
+  });
+
+  it('NODE_ENV=test 时未配置也不抛出', () => {
+    const original = process.env.ADMIN_JWT_SECRET;
+    delete process.env.ADMIN_JWT_SECRET;
+    expect(() => getAdminJwtSecret()).not.toThrow();
+    restoreEnv('ADMIN_JWT_SECRET', original);
   });
 });
 
@@ -278,14 +315,14 @@ describe('getDbPath', () => {
     const original = process.env.DB_PATH;
     process.env.DB_PATH = '/tmp/english-word-test.db';
     expect(getDbPath()).toBe('/tmp/english-word-test.db');
-    process.env.DB_PATH = original;
+    restoreEnv('DB_PATH', original);
   });
 
   it('DB_PATH 未配置时抛错', () => {
     const original = process.env.DB_PATH;
     delete process.env.DB_PATH;
     expect(() => getDbPath()).toThrow(/DB_PATH/);
-    process.env.DB_PATH = original;
+    restoreEnv('DB_PATH', original);
   });
 });
 
@@ -294,20 +331,20 @@ describe('getServerPort', () => {
     const original = process.env.PORT;
     process.env.PORT = '3010';
     expect(getServerPort()).toBe(3010);
-    process.env.PORT = original;
+    restoreEnv('PORT', original);
   });
 
   it('PORT 未配置时抛错', () => {
     const original = process.env.PORT;
     delete process.env.PORT;
     expect(() => getServerPort()).toThrow(/PORT/);
-    process.env.PORT = original;
+    restoreEnv('PORT', original);
   });
 
   it('PORT 非法时抛错', () => {
     const original = process.env.PORT;
     process.env.PORT = 'abc';
     expect(() => getServerPort()).toThrow(/1-65535/);
-    process.env.PORT = original;
+    restoreEnv('PORT', original);
   });
 });

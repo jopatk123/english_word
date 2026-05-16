@@ -85,7 +85,13 @@ export function useStudySession() {
 
   // 初始化子模式 composable（依赖 currentCard、sessionStats、handleAgain、advanceCard）
   // advanceCard 通过 getter 延迟绑定，在 useAutoRead 内部仅在 watch 回调中调用
-  const choice = useChoiceMode({ currentCard, sessionStats, handleAgain, advanceCard: () => advanceCard(), isReplay });
+  const choice = useChoiceMode({
+    currentCard,
+    sessionStats,
+    handleAgain,
+    advanceCard: () => advanceCard(),
+    isReplay,
+  });
   const spelling = useSpellingMode({
     currentCard,
     sessionStats,
@@ -107,22 +113,21 @@ export function useStudySession() {
     }
   };
 
-  const { saveProgress, clearProgress, applyRemoteProgress, handleStudySessionSync } =
-    useSessionProgress({
-      getScope,
-      getQueueIds,
-      queue,
-      currentIndex,
-      studyMode,
-      modeSelected,
-      sessionStats,
-      againCountMap,
-      finished,
-      showAnswer,
-      resumeInfo,
-      resetAllModes,
-      initModeCard,
-    });
+  const { saveProgress, clearProgress, handleStudySessionSync } = useSessionProgress({
+    getScope,
+    getQueueIds,
+    queue,
+    currentIndex,
+    studyMode,
+    modeSelected,
+    sessionStats,
+    againCountMap,
+    finished,
+    showAnswer,
+    resumeInfo,
+    resetAllModes,
+    initModeCard,
+  });
 
   // 推进到下一张卡片（通知各模式重置自身状态）
   const advanceCard = () => {

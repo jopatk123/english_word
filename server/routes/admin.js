@@ -13,17 +13,19 @@ import {
   StudySession,
 } from '../models/index.js';
 import { success, successList, error } from '../utils/response.js';
-import { getAdminPassword } from '../utils/env.js';
+import { getAdminPasswordHash } from '../utils/env.js';
 import { adminAuthMiddleware, generateAdminToken } from '../middleware/admin.js';
+import { adminLoginRateLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
 
-router.post('/login', async (req, res) => {
+router.post('/login', adminLoginRateLimiter, async (req, res) => {
   try {
     const { password } = req.body;
     if (!password) return error(res, '密码为必填项', 400);
 
-    if (password !== getAdminPassword()) {
+    const passwordMatches = await bcrypt.compare(password, getAdminPasswordHash());
+    if (!passwordMatches) {
       return error(res, '管理员密码错误', 401);
     }
 

@@ -28,41 +28,16 @@ ensure_dependencies() {
   fi
 }
 
-wait_for_port_close() {
-  local port="$1"
-  local retries=5
-  local count=0
-
-  while [ "$count" -lt "$retries" ] && lsof -ti tcp:"$port" -sTCP:LISTEN >/dev/null 2>&1; do
-    sleep 1
-    count=$((count + 1))
-  done
-}
-
-clear_port() {
+ensure_port_available() {
   local port="$1"
   local pids
   pids="$(lsof -ti tcp:"$port" -sTCP:LISTEN 2>/dev/null || true)"
 
   if [ -n "$pids" ]; then
-    echo "端口 $port 已被占用，尝试清理进程: $pids"
-    if kill $pids >/dev/null 2>&1; then
-      echo "已发送终止信号，等待端口 $port 释放..."
-      wait_for_port_close "$port"
-    fi
-
-    if lsof -ti tcp:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
-      echo "端口 $port 仍被占用，尝试强制终止进程: $pids"
-      kill -9 $pids >/dev/null 2>&1 || true
-      wait_for_port_close "$port"
-    fi
-
-    if lsof -ti tcp:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
-      echo "端口 $port 仍然被占用，无法启动。请手动释放端口后重试。"
-      exit 1
-    fi
-
-    echo "端口 $port 已经清理完成。"
+    echo "端口 $port 已被其他进程占用: $pids"
+    echo "为避免误伤共享环境中的进程，start.sh 不会自动清理非本脚本启动的端口占用。"
+    echo "请手动释放端口，或设置 PORT/CLIENT_PORT 使用其他端口后重试。"
+    exit 1
   fi
 }
 
@@ -82,8 +57,8 @@ stop_existing_process() {
     rm -f "$PID_FILE"
   fi
 
-  clear_port "$PORT"
-  clear_port "$CLIENT_PORT"
+  ensure_port_available "$PORT"
+  ensure_port_available "$CLIENT_PORT"
 }
 
 require_command node

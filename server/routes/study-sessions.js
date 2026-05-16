@@ -31,8 +31,8 @@ function getOverlapSeconds(start, end, windowStart, windowEnd) {
 function hasStudyOnDay(sessions, dateStr, timezone) {
   const dayStart = startOfDay(dateStr, timezone);
   const nextDayStart = startOfDay(addDays(dateStr, 1), timezone);
-  return sessions.some((session) =>
-    getOverlapSeconds(session.startedAt, session.endedAt, dayStart, nextDayStart) > 0
+  return sessions.some(
+    (session) => getOverlapSeconds(session.startedAt, session.endedAt, dayStart, nextDayStart) > 0
   );
 }
 

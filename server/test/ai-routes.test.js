@@ -103,10 +103,10 @@ describe('POST /ai/test', () => {
     expect(res.status).toBe(400);
   });
 
-  it('requestAiJson 抛出错误时返回 400', async () => {
+  it('requestAiJson 抛出错误时返回 502', async () => {
     requestAiJson.mockRejectedValue(new Error('AI 调用失败'));
     const res = await request(app).post('/ai/test').send({ config: validConfig });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(502);
   });
 });
 
@@ -150,10 +150,10 @@ describe('POST /ai/suggest-roots', () => {
     expect(res.status).toBe(400);
   });
 
-  it('requestAiJson 抛出错误时返回 400', async () => {
+  it('requestAiJson 抛出错误时返回 502', async () => {
     requestAiJson.mockRejectedValue(new Error('AI 失败'));
     const res = await request(app).post('/ai/suggest-roots').send({ config: validConfig });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(502);
   });
 });
 
@@ -391,11 +391,11 @@ describe('POST /ai/analyze-sentence', () => {
     expect(res.status).toBe(400);
   });
 
-  it('requestAiJson 抛出错误时返回 400', async () => {
+  it('requestAiJson 抛出错误时返回 502', async () => {
     requestAiJson.mockRejectedValue(new Error('AI 超时'));
     const res = await request(app)
       .post('/ai/analyze-sentence')
       .send({ config: validConfig, sentence: 'She reads every day.' });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(502);
   });
 });

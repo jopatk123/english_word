@@ -11,7 +11,8 @@ services:
       PORT: ${PORT:?PORT is required}
       DB_PATH: ${DB_PATH:?DB_PATH is required}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:?ADMIN_JWT_SECRET is required}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:?ADMIN_PASSWORD_HASH is required}
     restart: always
 
 volumes:

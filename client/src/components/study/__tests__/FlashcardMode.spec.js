@@ -76,8 +76,16 @@ describe('FlashcardMode', () => {
           ...defaultCard.word,
           examples: [
             { id: 1, sentence: 'She inspects the room.', translation: '她检查房间。' },
-            { id: 2, sentence: 'He inspected the engine carefully.', translation: '他仔细检查了发动机。' },
-            { id: 3, sentence: 'The teacher inspected our homework.', translation: '老师检查了我们的作业。' },
+            {
+              id: 2,
+              sentence: 'He inspected the engine carefully.',
+              translation: '他仔细检查了发动机。',
+            },
+            {
+              id: 3,
+              sentence: 'The teacher inspected our homework.',
+              translation: '老师检查了我们的作业。',
+            },
           ],
         },
       },

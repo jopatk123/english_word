@@ -2,4 +2,8 @@ node_modules
 data
 .git
 .gitignore
+.env
 *.md
+coverage
+server/coverage
+client/coverage

@@ -253,9 +253,11 @@ describe('requestAiJson', () => {
     await expect(requestAiJson(badConfig, validPrompts)).rejects.toThrow('AI 配置不完整');
   });
 
-  it('fetch 网络错误时抛出', async () => {
+  it('fetch 网络错误时抛出上游服务错误', async () => {
     fetch.mockRejectedValue(new Error('Network Error'));
-    await expect(requestAiJson(baseAiConfig, validPrompts)).rejects.toThrow('Network Error');
+    await expect(requestAiJson(baseAiConfig, validPrompts)).rejects.toMatchObject({
+      statusCode: 502,
+    });
   });
 
   it('content 为数组时能正确拼接', async () => {

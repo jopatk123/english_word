@@ -12,6 +12,7 @@ const readEnv = (name) => {
 };
 
 const missingEnvMessage = (name) => `缺少环境变量 ${name}，请参考项目根目录 .env.example 完成配置`;
+const TEST_ADMIN_PASSWORD_HASH = '$2b$10$AVCABJrjHP7GZaizpnFmIOCQZdR6ak1.eVTXh835EERT9RMjOoM56';
 
 export const getJwtSecret = () => {
   const secret = readEnv('JWT_SECRET');
@@ -24,17 +25,31 @@ export const getJwtSecret = () => {
   throw new Error(missingEnvMessage('JWT_SECRET'));
 };
 
-export const getAdminPassword = () => {
-  const password = readEnv('ADMIN_PASSWORD');
-  if (password) return password;
+export const getAdminJwtSecret = () => {
+  const secret = readEnv('ADMIN_JWT_SECRET');
+  if (secret) return secret;
 
   if (process.env.NODE_ENV === 'test') {
-    return 'test-admin-password';
+    return 'test-admin-jwt-secret';
   }
 
-  throw new Error(
-    `${missingEnvMessage('ADMIN_PASSWORD')}。\n` + '为保证安全，系统不再提供内置默认密码。'
-  );
+  throw new Error(missingEnvMessage('ADMIN_JWT_SECRET'));
+};
+
+export const getAdminPasswordHash = () => {
+  const passwordHash = readEnv('ADMIN_PASSWORD_HASH');
+  if (passwordHash) {
+    if (/^\$2[aby]\$(1[0-9]|2[0-9]|3[01])\$/.test(passwordHash)) {
+      return passwordHash;
+    }
+    throw new Error('环境变量 ADMIN_PASSWORD_HASH 必须是 cost 不低于 10 的 bcrypt 哈希值');
+  }
+
+  if (process.env.NODE_ENV === 'test') {
+    return TEST_ADMIN_PASSWORD_HASH;
+  }
+
+  throw new Error(missingEnvMessage('ADMIN_PASSWORD_HASH'));
 };
 
 export const getDbPath = () => {

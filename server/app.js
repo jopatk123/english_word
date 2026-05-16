@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { authMiddleware } from './middleware/auth.js';
-import { authRateLimiter } from './middleware/rateLimiter.js';
+import { aiRateLimiter, authRateLimiter } from './middleware/rateLimiter.js';
 import authRouter from './routes/auth.js';
 import adminRouter from './routes/admin.js';
 import rootsRouter from './routes/roots.js';
@@ -68,7 +68,7 @@ export function createApp(options = {}) {
   app.use('/api/roots', authMiddleware, rootsRouter);
   app.use('/api/words', authMiddleware, wordsRouter);
   app.use('/api/examples', authMiddleware, examplesRouter);
-  app.use('/api/ai', authMiddleware, aiRouter);
+  app.use('/api/ai', authMiddleware, aiRateLimiter, aiRouter);
   app.use('/api/review', authMiddleware, reviewRouter);
   app.use(
     '/api/study-sessions',
@@ -92,7 +92,7 @@ export function createApp(options = {}) {
   });
 
   // SPA fallback：仅对非 API 路由回退到前端入口
-  app.get('*', (req, res) => {
+  app.use((req, res) => {
     res.sendFile(path.join(clientDist, 'index.html'));
   });
 

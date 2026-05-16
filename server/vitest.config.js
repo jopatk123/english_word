@@ -5,8 +5,7 @@ export default defineConfig({
     // 使用内存数据库，避免污染真实数据
     env: {
       DB_PATH: ':memory:',
-      // 测试专用管理员密码，与 getAdminPassword() 的 test 分支对齐
-      ADMIN_PASSWORD: 'test-admin-password',
+      // 管理员口令/JWT 在测试环境使用 env.js 内置安全占位值。
     },
     // 保证测试串行执行（共享同一个内存DB）
     singleFork: true,
