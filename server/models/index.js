@@ -8,6 +8,7 @@ import Example from './Example.js';
 import WordReview from './WordReview.js';
 import ReviewHistory from './ReviewHistory.js';
 import StudySession from './StudySession.js';
+import UserAiSetting from './UserAiSetting.js';
 
 // 用户 -> 词根 (一对多)
 User.hasMany(Root, { foreignKey: 'user_id', as: 'roots', onDelete: 'CASCADE' });
@@ -59,6 +60,14 @@ ReviewHistory.belongsTo(Word, { foreignKey: 'word_id', as: 'word' });
 User.hasMany(StudySession, { foreignKey: 'user_id', as: 'studySessions', onDelete: 'CASCADE' });
 StudySession.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
+// 用户 -> AI 设置（单条加密配置）
+User.hasOne(UserAiSetting, {
+  foreignKey: 'user_id',
+  as: 'aiSetting',
+  onDelete: 'CASCADE',
+});
+UserAiSetting.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
 const initDB = async () => {
   const qi = sequelize.getQueryInterface();
   const existingTables = await qi.showAllTables().catch(() => []);
@@ -87,5 +96,6 @@ export {
   WordReview,
   ReviewHistory,
   StudySession,
+  UserAiSetting,
   initDB,
 };

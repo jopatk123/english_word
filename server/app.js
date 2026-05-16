@@ -7,6 +7,7 @@ import { authMiddleware } from './middleware/auth.js';
 import { aiRateLimiter, authRateLimiter } from './middleware/rateLimiter.js';
 import authRouter from './routes/auth.js';
 import adminRouter from './routes/admin.js';
+import aiSettingsRouter from './routes/ai-settings.js';
 import rootsRouter from './routes/roots.js';
 import wordsRouter from './routes/words.js';
 import examplesRouter from './routes/examples.js';
@@ -27,7 +28,7 @@ export function createApp(options = {}) {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'blob:'],
           connectSrc: ["'self'", 'wss:', 'ws:'],
@@ -64,6 +65,7 @@ export function createApp(options = {}) {
 
   app.use('/api/auth', authRateLimiter, authRouter);
   app.use('/api/admin', adminRouter);
+  app.use('/api/ai-settings', authMiddleware, aiSettingsRouter);
 
   app.use('/api/roots', authMiddleware, rootsRouter);
   app.use('/api/words', authMiddleware, wordsRouter);

@@ -111,6 +111,10 @@ export const exportAllData = () => api.get('/review/data/export');
 export const importAllData = (data) => api.post('/review/data/import', data);
 
 // ========== AI API ==========
+export const getAiSettingsSummary = () => api.get('/ai-settings');
+export const saveAiSettingsKey = (data) => api.put('/ai-settings', data);
+export const deleteAiSettingsProviderKey = (providerId) =>
+  api.delete(`/ai-settings/providers/${encodeURIComponent(providerId)}`);
 export const testAiConnection = (config) => aiApi.post('/ai/test', { config });
 export const getAiRootSuggestions = (config) => aiApi.post('/ai/suggest-roots', { config });
 export const getAiWordSuggestions = (rootId, config, options = {}) =>

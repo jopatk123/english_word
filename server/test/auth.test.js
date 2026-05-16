@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { initDB } from '../models/index.js';
+import { initDB, User } from '../models/index.js';
 import authRouter from '../routes/auth.js';
 import { authMiddleware } from '../middleware/auth.js';
 
@@ -139,6 +139,7 @@ describe('GET /api/auth/me', () => {
 // ─── authMiddleware ────────────────────────────────────────────
 describe('authMiddleware', () => {
   let token;
+  let userId;
 
   beforeAll(async () => {
     const username = `mwuser_${uniqueSuffix()}`;
@@ -146,6 +147,7 @@ describe('authMiddleware', () => {
       .post('/api/auth/register')
       .send({ username, password: 'mwpassword' });
     token = regRes.body.data.token;
+    userId = regRes.body.data.user.id;
   });
 
   it('携带有效 token 可访问受保护路由', async () => {
@@ -170,5 +172,24 @@ describe('authMiddleware', () => {
       .get('/protected')
       .set('Authorization', 'Bearer thisisaninvalidtoken');
     expect(res.status).toBe(401);
+  });
+
+  it('tokenVersion 变化后旧 token 失效', async () => {
+    const user = await User.findByPk(userId);
+    await user.update({ tokenVersion: (user.tokenVersion || 0) + 1 });
+
+    const staleRes = await request(app).get('/protected').set('Authorization', `Bearer ${token}`);
+    expect(staleRes.status).toBe(401);
+    expect(staleRes.body.msg).toMatch(/失效|过期/);
+
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ username: user.username, password: 'mwpassword' });
+    expect(loginRes.status).toBe(200);
+
+    const freshRes = await request(app)
+      .get('/protected')
+      .set('Authorization', `Bearer ${loginRes.body.data.token}`);
+    expect(freshRes.status).toBe(200);
   });
 });

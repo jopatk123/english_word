@@ -89,6 +89,7 @@
     findAiProviderById,
     isAiSettingsReady,
     loadAiSettings,
+    refreshAiSettings,
     subscribeAiSettingsChanges,
   } from '../utils/aiSettings.js';
 
@@ -99,8 +100,8 @@
   );
   let stopAiSettingsSync = () => {};
 
-  const syncAiSettings = () => {
-    settings.value = loadAiSettings();
+  const syncAiSettings = (nextSettings) => {
+    settings.value = nextSettings || loadAiSettings();
   };
 
   const loading = ref(false);
@@ -189,10 +190,11 @@
     }
   };
 
-  onMounted(() => {
+  onMounted(async () => {
     stopAiSettingsSync = subscribeAiSettingsChanges(syncAiSettings);
+    settings.value = await refreshAiSettings();
     if (ready.value) {
-      generateSuggestions();
+      await generateSuggestions();
     }
   });
 

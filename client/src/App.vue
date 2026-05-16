@@ -33,6 +33,7 @@
   import { useRouter, useRoute } from 'vue-router';
   import AlarmClock from './components/AlarmClock.vue';
   import { notifyUserSessionChanged, subscribeUserSessionChanges } from './utils/authSync.js';
+  import { clearAiSettingsServerState } from './utils/aiSettings.js';
   import { getAuthRedirectPath, isAdminRoutePath } from './utils/authRouteAccess.js';
 
   const router = useRouter();
@@ -103,6 +104,7 @@
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    clearAiSettingsServerState();
     notifyUserSessionChanged({ type: 'logout' });
     user.value = null;
     router.push('/login');

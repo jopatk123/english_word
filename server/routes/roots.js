@@ -14,6 +14,10 @@ import { buildKeywordSearch } from '../utils/search.js';
 
 const router = Router();
 
+const isUniqueNameConflict = (err) =>
+  err?.name === 'SequelizeUniqueConstraintError' ||
+  String(err?.message || '').includes('idx_roots_user_name_unique');
+
 // 获取（或自动创建）当前用户的「未分类」默认词根
 // 注意：必须在 /:id 路由之前定义，否则会被当成 id
 router.get('/default', async (req, res) => {
@@ -120,6 +124,9 @@ router.post('/', async (req, res) => {
     });
     success(res, root, '添加成功');
   } catch (e) {
+    if (isUniqueNameConflict(e)) {
+      return error(res, '词根已存在，请勿重复添加', 400);
+    }
     error(res, e.message);
   }
 });
@@ -138,6 +145,9 @@ router.put('/:id', async (req, res) => {
     await root.update({ name: trimmedName, meaning: meaning.trim(), remark: remark?.trim() });
     success(res, root, '更新成功');
   } catch (e) {
+    if (isUniqueNameConflict(e)) {
+      return error(res, '词根已存在，请勿重复命名', 400);
+    }
     error(res, e.message);
   }
 });

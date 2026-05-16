@@ -1,18 +1,19 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import LoginView from '../views/LoginView.vue';
-import HomeView from '../views/HomeView.vue';
-import RootDetailView from '../views/RootDetailView.vue';
-import WordDetailView from '../views/WordDetailView.vue';
-import AISettingsView from '../views/AISettingsView.vue';
-import AIRootSuggestionView from '../views/AIRootSuggestionView.vue';
-import AIWordSuggestionView from '../views/AIWordSuggestionView.vue';
-import AIExampleSuggestionView from '../views/AIExampleSuggestionView.vue';
-import SearchView from '../views/SearchView.vue';
-import StudyDashboardView from '../views/StudyDashboardView.vue';
-import StudySessionView from '../views/StudySessionView.vue';
-import StudyReportView from '../views/StudyReportView.vue';
-import AdminView from '../views/AdminView.vue';
 import { getAuthRedirectPath } from '../utils/authRouteAccess.js';
+
+const LoginView = () => import('../views/LoginView.vue');
+const HomeView = () => import('../views/HomeView.vue');
+const RootDetailView = () => import('../views/RootDetailView.vue');
+const WordDetailView = () => import('../views/WordDetailView.vue');
+const AISettingsView = () => import('../views/AISettingsView.vue');
+const AIRootSuggestionView = () => import('../views/AIRootSuggestionView.vue');
+const AIWordSuggestionView = () => import('../views/AIWordSuggestionView.vue');
+const AIExampleSuggestionView = () => import('../views/AIExampleSuggestionView.vue');
+const SearchView = () => import('../views/SearchView.vue');
+const StudyDashboardView = () => import('../views/StudyDashboardView.vue');
+const StudySessionView = () => import('../views/StudySessionView.vue');
+const StudyReportView = () => import('../views/StudyReportView.vue');
+const AdminView = () => import('../views/AdminView.vue');
 
 const routes = [
   { path: '/login', name: 'Login', component: LoginView, meta: { guest: true } },

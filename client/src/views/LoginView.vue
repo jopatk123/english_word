@@ -103,6 +103,7 @@
   import { ref } from 'vue';
   import { useRouter } from 'vue-router';
   import { login, register } from '../api/index.js';
+  import { clearAiSettingsServerState } from '../utils/aiSettings.js';
   import { showMsg } from '../utils/msg.js';
 
   const router = useRouter();
@@ -154,6 +155,7 @@
         const res = await login({ username, password });
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('user', JSON.stringify(res.data.user));
+        clearAiSettingsServerState();
         notifyUserSessionChanged({ type: 'login' });
         showMsg('登录成功', 'success');
         router.push('/');
@@ -174,6 +176,7 @@
         const res = await register({ username, password });
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('user', JSON.stringify(res.data.user));
+        clearAiSettingsServerState();
         notifyUserSessionChanged({ type: 'register' });
         showMsg('注册成功', 'success');
         router.push('/');

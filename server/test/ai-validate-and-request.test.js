@@ -1,4 +1,15 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+
+const { dnsLookupMock } = vi.hoisted(() => ({
+  dnsLookupMock: vi.fn(),
+}));
+
+vi.mock('dns/promises', () => ({
+  default: {
+    lookup: (...args) => dnsLookupMock(...args),
+  },
+}));
+
 import { requestAiJson, validateAiConfig } from '../utils/ai.js';
 import { baseAiConfig, validPrompts } from './ai-test-utils.js';
 
@@ -158,6 +169,7 @@ describe('validateAiConfig SSRF 防护', () => {
 describe('requestAiJson', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn());
+    dnsLookupMock.mockResolvedValue([{ address: '203.0.113.10' }]);
   });
 
   afterEach(() => {
@@ -251,6 +263,22 @@ describe('requestAiJson', () => {
   it('配置不完整时抛出（validateAiConfig 校验）', async () => {
     const badConfig = { ...baseAiConfig, apiKey: '' };
     await expect(requestAiJson(badConfig, validPrompts)).rejects.toThrow('AI 配置不完整');
+  });
+
+  it('域名解析到私有地址时拒绝请求', async () => {
+    dnsLookupMock.mockResolvedValue([{ address: '127.0.0.1' }]);
+    await expect(requestAiJson(baseAiConfig, validPrompts)).rejects.toThrow(
+      'AI baseUrl 解析结果指向本地或私有网络地址'
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('域名解析失败时拒绝请求', async () => {
+    dnsLookupMock.mockRejectedValue(new Error('dns failed'));
+    await expect(requestAiJson(baseAiConfig, validPrompts)).rejects.toThrow(
+      'AI baseUrl 域名解析失败'
+    );
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('fetch 网络错误时抛出上游服务错误', async () => {

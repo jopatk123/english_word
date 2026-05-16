@@ -7,6 +7,8 @@ import { ensureDefaultRoot } from '../../utils/defaultRoot.js';
 
 const router = Router();
 
+const normalizeRootName = (name) => `${name || ''}`.trim().toLowerCase();
+
 // 全量导出：所有词根、单词、例句（结构化 JSON）
 router.get('/data/export', async (req, res) => {
   try {
@@ -100,7 +102,7 @@ router.post('/data/import', async (req, res) => {
     // 先加载现有词根
     const existingRoots = await Root.findAll({ where: { userId: req.userId }, transaction: t });
     for (const r of existingRoots) {
-      rootNameToId.set(r.name, r.id);
+      rootNameToId.set(normalizeRootName(r.name), r.id);
     }
 
     // 找到已有的默认词根（每用户只有一条）
@@ -108,18 +110,20 @@ router.post('/data/import', async (req, res) => {
 
     for (const rootData of data.roots) {
       if (!rootData.name || !rootData.meaning) continue;
+      const normalizedRootName = normalizeRootName(rootData.name);
+      if (!normalizedRootName) continue;
 
       // 名称已存在，跳过创建
-      if (rootNameToId.has(rootData.name)) continue;
+      if (rootNameToId.has(normalizedRootName)) continue;
 
       // 导入数据携带 isDefault=true 时，绝不创建第二条默认词根；
       // 将该名称映射到用户已有的默认词根；若不存在则补创建。
       if (rootData.isDefault) {
         if (existingDefaultRoot) {
-          rootNameToId.set(rootData.name, existingDefaultRoot.id);
+          rootNameToId.set(normalizedRootName, existingDefaultRoot.id);
         } else {
           const defaultRoot = await ensureDefaultRoot(req.userId, { transaction: t });
-          rootNameToId.set(rootData.name, defaultRoot.id);
+          rootNameToId.set(normalizedRootName, defaultRoot.id);
           stats.rootsAdded++;
         }
         continue;
@@ -127,15 +131,15 @@ router.post('/data/import', async (req, res) => {
 
       const newRoot = await Root.create(
         {
-          name: rootData.name,
-          meaning: rootData.meaning,
+          name: rootData.name.trim(),
+          meaning: rootData.meaning.trim(),
           remark: rootData.remark || null,
           userId: req.userId,
           isDefault: false, // 导入时强制为 false，避免意外创建第二默认词根
         },
         { transaction: t }
       );
-      rootNameToId.set(rootData.name, newRoot.id);
+      rootNameToId.set(normalizedRootName, newRoot.id);
       stats.rootsAdded++;
     }
 
@@ -164,7 +168,9 @@ router.post('/data/import', async (req, res) => {
       await ensureWordReview(req.userId, word.id, { transaction: t });
 
       // 步骤3：建立单词与该用户词根的关联
-      const targetRootNames = (wordData.rootNames || []).filter((n) => rootNameToId.has(n));
+      const targetRootNames = (wordData.rootNames || [])
+        .map((name) => normalizeRootName(name))
+        .filter((name) => rootNameToId.has(name));
       for (const rootName of targetRootNames) {
         const rootId = rootNameToId.get(rootName);
         const [, linkCreated] = await WordRoot.findOrCreate({

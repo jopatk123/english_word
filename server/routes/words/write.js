@@ -14,6 +14,10 @@ import { ensureWordReview } from '../../utils/wordReview.js';
 
 const router = Router();
 
+const isWordNameConflict = (err) =>
+  err?.name === 'SequelizeUniqueConstraintError' ||
+  String(err?.message || '').includes('idx_words_user_name_unique');
+
 // 添加单词（支持 rootIds 数组或 rootId 单值；不传时自动归入「未分类」词根）
 // 若同名单词已存在，则自动追加新的词根关联
 router.post('/', async (req, res) => {
@@ -122,6 +126,9 @@ router.post('/', async (req, res) => {
     });
     success(res, fullWord, '添加成功');
   } catch (e) {
+    if (isWordNameConflict(e)) {
+      return error(res, '单词已存在，请勿重复添加', 400);
+    }
     error(res, e.message);
   }
 });
@@ -201,6 +208,9 @@ router.put('/:id', async (req, res) => {
     });
     success(res, updatedWord, '更新成功');
   } catch (e) {
+    if (isWordNameConflict(e)) {
+      return error(res, '已存在同名单词，请勿重复命名', 400);
+    }
     error(res, e.message, e.code || 500);
   }
 });

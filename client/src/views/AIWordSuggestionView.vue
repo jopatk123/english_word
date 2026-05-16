@@ -103,6 +103,7 @@
     findAiProviderById,
     isAiSettingsReady,
     loadAiSettings,
+    refreshAiSettings,
     subscribeAiSettingsChanges,
   } from '../utils/aiSettings.js';
 
@@ -116,8 +117,8 @@
   );
   let stopAiSettingsSync = () => {};
 
-  const syncAiSettings = () => {
-    settings.value = loadAiSettings();
+  const syncAiSettings = (nextSettings) => {
+    settings.value = nextSettings || loadAiSettings();
   };
 
   const root = ref(null);
@@ -239,9 +240,10 @@
 
   onMounted(async () => {
     stopAiSettingsSync = subscribeAiSettingsChanges(syncAiSettings);
+    settings.value = await refreshAiSettings();
     await fetchBaseData();
     if (ready.value) {
-      generateSuggestions();
+      await generateSuggestions();
     }
   });
 

@@ -10,6 +10,7 @@ const {
   analyzeWordMock,
   analyzeSentenceMock,
   loadAiSettingsMock,
+  refreshAiSettingsMock,
   isAiSettingsReadyMock,
   findAiProviderByIdMock,
   subscribeAiSettingsChangesMock,
@@ -19,6 +20,7 @@ const {
   analyzeWordMock: vi.fn(),
   analyzeSentenceMock: vi.fn(),
   loadAiSettingsMock: vi.fn(),
+  refreshAiSettingsMock: vi.fn(),
   isAiSettingsReadyMock: vi.fn(),
   findAiProviderByIdMock: vi.fn(),
   subscribeAiSettingsChangesMock: vi.fn(() => () => {}),
@@ -42,6 +44,7 @@ vi.mock('../../api/index.js', () => ({
 vi.mock('../../utils/aiSettings.js', () => ({
   findAiProviderById: (...args) => findAiProviderByIdMock(...args),
   loadAiSettings: (...args) => loadAiSettingsMock(...args),
+  refreshAiSettings: (...args) => refreshAiSettingsMock(...args),
   isAiSettingsReady: (...args) => isAiSettingsReadyMock(...args),
   subscribeAiSettingsChanges: (...args) => subscribeAiSettingsChangesMock(...args),
 }));
@@ -87,7 +90,9 @@ const globalStubs = {
 const mountedWrappers = [];
 
 async function createWrapper() {
-  loadAiSettingsMock.mockReturnValue({ providerId: 'openai', model: 'gpt-test' });
+  const settings = { providerId: 'openai', model: 'gpt-test', hasApiKey: true };
+  loadAiSettingsMock.mockReturnValue(settings);
+  refreshAiSettingsMock.mockResolvedValue(settings);
   isAiSettingsReadyMock.mockReturnValue(true);
   findAiProviderByIdMock.mockReturnValue({ name: 'OpenAI' });
 
@@ -136,10 +141,14 @@ describe('SearchView', () => {
     await wrapper.find('.el-btn').trigger('click');
     await flushPromises();
 
-    expect(analyzeWordMock).toHaveBeenCalledWith('Engine', {
-      providerId: 'openai',
-      model: 'gpt-test',
-    });
+    expect(analyzeWordMock).toHaveBeenCalledWith(
+      'Engine',
+      expect.objectContaining({
+        providerId: 'openai',
+        model: 'gpt-test',
+        hasApiKey: true,
+      })
+    );
     expect(speakMock).toHaveBeenCalledTimes(1);
     expect(speakMock).toHaveBeenCalledWith('engine');
   });
@@ -157,10 +166,14 @@ describe('SearchView', () => {
     await wrapper.find('.el-btn').trigger('click');
     await flushPromises();
 
-    expect(analyzeSentenceMock).toHaveBeenCalledWith('This is a test sentence.', {
-      providerId: 'openai',
-      model: 'gpt-test',
-    });
+    expect(analyzeSentenceMock).toHaveBeenCalledWith(
+      'This is a test sentence.',
+      expect.objectContaining({
+        providerId: 'openai',
+        model: 'gpt-test',
+        hasApiKey: true,
+      })
+    );
     expect(speakMock).not.toHaveBeenCalled();
   });
 

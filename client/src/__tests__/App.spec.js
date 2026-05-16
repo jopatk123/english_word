@@ -11,11 +11,13 @@ const {
   notifyUserSessionChangedMock,
   getAuthRedirectPathMock,
   isAdminRoutePathMock,
+  clearAiSettingsServerStateMock,
 } = vi.hoisted(() => ({
   subscribeUserSessionChangesMock: vi.fn(() => () => {}),
   notifyUserSessionChangedMock: vi.fn(),
   getAuthRedirectPathMock: vi.fn(() => null),
   isAdminRoutePathMock: vi.fn((path) => path.startsWith('/super-admin')),
+  clearAiSettingsServerStateMock: vi.fn(),
 }));
 
 vi.mock('vue-router', () => ({
@@ -31,6 +33,10 @@ vi.mock('../utils/authSync.js', () => ({
 vi.mock('../utils/authRouteAccess.js', () => ({
   getAuthRedirectPath: (...args) => getAuthRedirectPathMock(...args),
   isAdminRoutePath: (...args) => isAdminRoutePathMock(...args),
+}));
+
+vi.mock('../utils/aiSettings.js', () => ({
+  clearAiSettingsServerState: (...args) => clearAiSettingsServerStateMock(...args),
 }));
 
 vi.mock('../components/AlarmClock.vue', () => ({

@@ -187,4 +187,31 @@ describe('GET /review/history/summary', () => {
     expect(typeof s.streak).toBe('number');
     expect(typeof s.totalReviews).toBe('number');
   });
+
+  it('tz 非法时回退到 UTC 分组而不是报错', async () => {
+    await request(fixture.app).post(`/review/${fixture.wordId}/result`).send({ quality: 4 });
+    const res = await request(fixture.app).get('/review/history/summary?tz=Invalid/Zone');
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data.daily)).toBe(true);
+  });
+});
+
+describe('GET /review/export', () => {
+  it('导出 JSON 时返回结构化学习数据', async () => {
+    const res = await request(fixture.app).get('/review/export?format=json');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('application/json');
+    expect(res.headers['content-disposition']).toContain('learning-data.json');
+    expect(res.body).toHaveProperty('data');
+    expect(res.body).toHaveProperty('exportedAt');
+    expect(res.body).toHaveProperty('total');
+  });
+
+  it('导出 CSV 时返回 BOM + 表头', async () => {
+    const res = await request(fixture.app).get('/review/export?format=csv');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('text/csv');
+    expect(res.headers['content-disposition']).toContain('learning-data.csv');
+    expect(res.text.startsWith('\ufeffword,meaning,phonetic')).toBe(true);
+  });
 });

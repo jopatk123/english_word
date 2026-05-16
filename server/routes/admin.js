@@ -77,7 +77,10 @@ router.put('/users/:id/password', adminAuthMiddleware, async (req, res) => {
     if (!user) return error(res, '用户不存在', 404);
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    await user.update({ password: hashedPassword });
+    await user.update({
+      password: hashedPassword,
+      tokenVersion: (user.tokenVersion || 0) + 1,
+    });
     success(res, null, '密码已更新');
   } catch (e) {
     error(res, e.message);

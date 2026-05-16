@@ -173,8 +173,13 @@
 <script setup>
   import { ref, computed, onMounted, onUnmounted, nextTick, shallowRef, watch } from 'vue';
   import { ElMessage } from 'element-plus';
-  import * as echarts from 'echarts';
+  import { BarChart, PieChart } from 'echarts/charts';
+  import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
+  import { init, use } from 'echarts/core';
+  import { CanvasRenderer } from 'echarts/renderers';
   import { getStudyTimeReport, getReviewStats, exportStudySessions } from '../api/index.js';
+
+  use([BarChart, PieChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer]);
 
   // ── 响应式状态 ──────────────────────────────────────────────────────────────
   const loading = ref(true);
@@ -369,10 +374,10 @@
 
       nextTick(() => {
         if (!dailyChartInstance.value && dailyChartRef.value) {
-          dailyChartInstance.value = echarts.init(dailyChartRef.value);
+          dailyChartInstance.value = init(dailyChartRef.value);
         }
         if (!masteryChartInstance.value && masteryChartRef.value) {
-          masteryChartInstance.value = echarts.init(masteryChartRef.value);
+          masteryChartInstance.value = init(masteryChartRef.value);
         }
         updateCharts();
       });

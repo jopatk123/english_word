@@ -5,7 +5,6 @@ import {
   sanitizeExampleSuggestions,
   sanitizeRootSuggestions,
   sanitizeWordSuggestions,
-  validateAiConfig,
 } from '../utils/ai.js';
 import { createDebugInfo, logAiError, logAiInfo, withDuration } from '../utils/aiDebug.js';
 import {
@@ -18,6 +17,7 @@ import {
   sanitizeAnalyzeWordResult,
 } from '../utils/aiPrompts.js';
 import { success, error } from '../utils/response.js';
+import { resolveUserAiConfig } from '../services/user-ai-settings.js';
 
 const router = Router();
 
@@ -75,7 +75,7 @@ const normalizeSentenceList = (value, maxLength = 400, maxCount = 20) => {
 router.post('/test', async (req, res) => {
   const startedAt = Date.now();
   try {
-    const config = validateAiConfig(req.body?.config || {});
+    const config = await resolveUserAiConfig(req.userId, req.body?.config || {});
     const debugInfo = createDebugInfo(req, config, startedAt);
     logAiInfo('test.start', debugInfo);
 
@@ -104,7 +104,7 @@ router.post('/test', async (req, res) => {
 router.post('/suggest-roots', async (req, res) => {
   const startedAt = Date.now();
   try {
-    const validatedConfig = validateAiConfig(req.body?.config || {});
+    const validatedConfig = await resolveUserAiConfig(req.userId, req.body?.config || {});
     const debugInfo = createDebugInfo(req, validatedConfig, startedAt);
     logAiInfo('suggest-roots.start', debugInfo);
 
@@ -141,7 +141,7 @@ router.post('/suggest-words', async (req, res) => {
     const { rootId, config = {}, excludedWords = [] } = req.body || {};
     if (!rootId) return error(res, '缺少词根 ID', 400);
 
-    const validatedConfig = validateAiConfig(config);
+    const validatedConfig = await resolveUserAiConfig(req.userId, config);
     const debugInfo = createDebugInfo(req, validatedConfig, startedAt);
     logAiInfo('suggest-words.start', debugInfo, { rootId });
 
@@ -200,7 +200,7 @@ router.post('/suggest-examples', async (req, res) => {
     const { wordId, config = {}, excludedSentences = [] } = req.body || {};
     if (!wordId) return error(res, '缺少单词 ID', 400);
 
-    const validatedConfig = validateAiConfig(config);
+    const validatedConfig = await resolveUserAiConfig(req.userId, config);
     const debugInfo = createDebugInfo(req, validatedConfig, startedAt);
     logAiInfo('suggest-examples.start', debugInfo, { wordId });
 
@@ -309,7 +309,7 @@ router.post('/analyze-word', async (req, res) => {
       });
     }
 
-    const validatedConfig = validateAiConfig(config);
+    const validatedConfig = await resolveUserAiConfig(req.userId, config);
     const debugInfo = createDebugInfo(req, validatedConfig, startedAt);
     const normalizedExcludedSentences = normalizeSentenceList(excludedSentences);
     const shouldGenerateSingleExample = Boolean(singleExample);
@@ -375,7 +375,7 @@ router.post('/analyze-sentence', async (req, res) => {
     }
     const trimmedSentence = sentence.trim().slice(0, 500);
 
-    const validatedConfig = validateAiConfig(config);
+    const validatedConfig = await resolveUserAiConfig(req.userId, config);
     const debugInfo = createDebugInfo(req, validatedConfig, startedAt);
     logAiInfo('analyze-sentence.start', debugInfo, { sentenceLength: trimmedSentence.length });
 

@@ -11,8 +11,8 @@
           <div>
             <h2>AI 配置</h2>
             <p>
-              API Key 只保存在当前浏览器的本地存储中，不会写入数据库。您可以为不同的 AI
-              厂商分别配置不同的 API Key，切换厂商时会自动加载已保存的 Key。
+              API Key 会以加密形式保存在服务端，不再写入浏览器 localStorage。
+              浏览器仅保存厂商、模型和温度等非敏感偏好。
             </p>
           </div>
         </div>
@@ -93,7 +93,17 @@
         </el-form-item>
 
         <el-form-item label="API Key">
-          <el-input v-model="form.apiKey" show-password placeholder="请输入 API Key" />
+          <el-input
+            v-model="form.apiKey"
+            show-password
+            placeholder="输入新的 API Key；留空则保留当前已保存 Key"
+          />
+          <div class="temperature-hint">
+            <template v-if="hasCurrentProviderKey">
+              当前厂商已保存服务端密钥：{{ form.maskedApiKey }}
+            </template>
+            <template v-else>当前厂商尚未保存 API Key</template>
+          </div>
         </el-form-item>
 
         <el-form-item label="Temperature">
@@ -124,8 +134,11 @@
 
         <el-form-item>
           <div class="page-actions">
-            <el-button type="primary" :loading="saving" @click="handleSave">保存到本地</el-button>
+            <el-button type="primary" :loading="saving" @click="handleSave">保存配置</el-button>
             <el-button :loading="testing" @click="handleTest">测试连接</el-button>
+            <el-button v-if="hasCurrentProviderKey" @click="handleDeleteStoredKey"
+              >删除已保存 Key</el-button
+            >
             <el-button @click="$router.push('/')">返回首页</el-button>
           </div>
         </el-form-item>
@@ -213,9 +226,12 @@
   import { testAiConnection } from '../api/index.js';
   import { AI_PROVIDERS } from '../constants/aiProviders.js';
   import {
+    deleteProviderAiKey,
     loadAiSettings,
     maskApiKey,
+    refreshAiSettings,
     saveAiSettings,
+    saveAiSettingsLocally,
     setCurrentProviderId,
     loadProviderSettings,
     getAllProviders,
@@ -236,9 +252,9 @@
   };
   let stopAiSettingsSync = () => {};
 
-  const syncAiSettings = () => {
+  const syncAiSettings = (nextSettings) => {
     refreshSettings();
-    form.value = loadAiSettings();
+    form.value = { ...(nextSettings || loadAiSettings()), apiKey: '' };
   };
 
   // --- 厂商列表 ---
@@ -272,7 +288,10 @@
     return getCustomModels(form.value.providerId);
   });
 
-  const maskedKey = computed(() => maskApiKey(form.value.apiKey));
+  const hasCurrentProviderKey = computed(() => Boolean(form.value.hasApiKey));
+  const maskedKey = computed(() =>
+    form.value.apiKey ? maskApiKey(form.value.apiKey) : form.value.maskedApiKey || '未配置'
+  );
 
   // --- 对话框状态 ---
   const showAddProvider = ref(false);
@@ -284,19 +303,21 @@
   // --- 厂商切换 ---
   const handleProviderChange = (providerId) => {
     setCurrentProviderId(providerId);
-    form.value = loadProviderSettings(providerId);
+    form.value = { ...loadProviderSettings(providerId), apiKey: '' };
   };
 
   // --- 保存配置 ---
   const handleSave = async () => {
-    if (!form.value.baseUrl || !form.value.model || !form.value.apiKey) {
-      return ElMessage.warning('请先完整填写 Base URL、模型和 API Key');
+    if (!form.value.baseUrl || !form.value.model || (!form.value.apiKey && !form.value.hasApiKey)) {
+      return ElMessage.warning('请先完整填写 Base URL、模型，并至少提供一个可用的 API Key');
     }
 
     saving.value = true;
     try {
-      form.value = saveAiSettings(form.value);
-      ElMessage.success('AI 配置已保存到本地');
+      form.value = { ...(await saveAiSettings(form.value)), apiKey: '' };
+      ElMessage.success(
+        form.value.hasApiKey ? 'AI 配置已保存，密钥已加密写入服务端' : 'AI 配置已保存'
+      );
     } finally {
       saving.value = false;
     }
@@ -304,15 +325,14 @@
 
   // --- 测试连接 ---
   const handleTest = async () => {
-    if (!form.value.baseUrl || !form.value.model || !form.value.apiKey) {
-      return ElMessage.warning('请先完整填写 Base URL、模型和 API Key');
+    if (!form.value.baseUrl || !form.value.model || (!form.value.apiKey && !form.value.hasApiKey)) {
+      return ElMessage.warning('请先完整填写 Base URL、模型，并至少提供一个可用的 API Key');
     }
 
     testing.value = true;
     try {
-      const normalized = saveAiSettings(form.value);
-      form.value = normalized;
-      await testAiConnection(normalized);
+      saveAiSettingsLocally(form.value);
+      await testAiConnection(form.value.apiKey ? form.value : { ...form.value, apiKey: undefined });
       ElMessage.success('AI 连接测试成功');
     } catch (e) {
       ElMessage.error(
@@ -358,10 +378,28 @@
     } catch {
       return; // 用户取消
     }
+    if (hasCurrentProviderKey.value) {
+      await deleteProviderAiKey(form.value.providerId);
+    }
     deleteCustomProvider(form.value.providerId);
     refreshSettings();
-    form.value = loadAiSettings();
+    form.value = { ...loadAiSettings(), apiKey: '' };
     ElMessage.success(`厂商「${providerName}」已删除`);
+  };
+
+  const handleDeleteStoredKey = async () => {
+    try {
+      await ElMessageBox.confirm(
+        `确认删除厂商「${currentProvider.value?.name}」当前已保存的 API Key？删除后相关 AI 功能将不可用，直到重新保存密钥。`,
+        '删除 API Key',
+        { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
+      );
+    } catch {
+      return;
+    }
+
+    form.value = { ...(await deleteProviderAiKey(form.value.providerId)), apiKey: '' };
+    ElMessage.success('已删除当前厂商的 API Key');
   };
 
   // --- 新增自定义模型 ---
@@ -386,8 +424,9 @@
     ElMessage.success(`模型「${modelName}」已删除`);
   };
 
-  onMounted(() => {
+  onMounted(async () => {
     stopAiSettingsSync = subscribeAiSettingsChanges(syncAiSettings);
+    form.value = { ...(await refreshAiSettings()), apiKey: '' };
   });
 
   onUnmounted(() => {

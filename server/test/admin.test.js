@@ -9,6 +9,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import express from 'express';
 import request from 'supertest';
+import bcrypt from 'bcryptjs';
 import {
   initDB,
   User,
@@ -69,6 +70,25 @@ describe('POST /api/admin/login', () => {
     const res = await request(app).post('/api/admin/login').send({ password: 'wrong-password' });
     expect(res.status).toBe(401);
   });
+
+  it('管理员密码哈希变化后旧 token 失效', async () => {
+    const originalHash = process.env.ADMIN_PASSWORD_HASH;
+    process.env.ADMIN_PASSWORD_HASH = await bcrypt.hash('rotated-admin-password', 10);
+
+    try {
+      const staleRes = await request(app)
+        .get('/api/admin/users')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(staleRes.status).toBe(401);
+
+      const reloginRes = await request(app)
+        .post('/api/admin/login')
+        .send({ password: 'rotated-admin-password' });
+      expect(reloginRes.status).toBe(200);
+    } finally {
+      restoreEnv('ADMIN_PASSWORD_HASH', originalHash);
+    }
+  });
 });
 
 describe('GET /api/admin/users', () => {
@@ -95,6 +115,11 @@ describe('GET /api/admin/users', () => {
 describe('PUT /api/admin/users/:id/password', () => {
   it('修改密码后新密码可登录，旧密码不可用', async () => {
     const newPassword = 'newpass123';
+    const oldLoginBeforeReset = await request(app)
+      .post('/api/auth/login')
+      .send({ username: targetUser.username, password: 'oldpass123' });
+    expect(oldLoginBeforeReset.status).toBe(200);
+
     const res = await request(app)
       .put(`/api/admin/users/${targetUser.id}/password`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -111,6 +136,11 @@ describe('PUT /api/admin/users/:id/password', () => {
       .post('/api/auth/login')
       .send({ username: targetUser.username, password: newPassword });
     expect(newLogin.status).toBe(200);
+
+    const staleTokenProtected = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${oldLoginBeforeReset.body.data.token}`);
+    expect(staleTokenProtected.status).toBe(401);
   });
 });
 

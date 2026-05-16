@@ -27,6 +27,13 @@ const User = sequelize.define(
       field: 'is_disabled',
       comment: '是否禁用登录',
     },
+    tokenVersion: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: 'token_version',
+      comment: '用户登录令牌版本，密码变更后递增以使旧令牌失效',
+    },
   },
   {
     tableName: 'users',

@@ -1,3 +1,6 @@
+import dns from 'dns/promises';
+import net from 'net';
+
 const OPENAI_COMPATIBLE_PROVIDERS = new Set([
   'openai',
   'nvidia-nim',
@@ -69,6 +72,55 @@ const PRIVATE_HOST_PATTERNS = [
   /^fe80:/i, // IPv6 链路本地
 ];
 
+const IPV4_PRIVATE_RANGES = [
+  { prefix: '127.', message: '环回地址' },
+  { prefix: '10.', message: '私有网络地址' },
+  { prefix: '192.168.', message: '私有网络地址' },
+  { prefix: '169.254.', message: '链路本地地址' },
+];
+
+function isPrivateIpv4(address) {
+  for (const { prefix } of IPV4_PRIVATE_RANGES) {
+    if (address.startsWith(prefix)) {
+      return true;
+    }
+  }
+
+  const octets = address.split('.').map((part) => Number.parseInt(part, 10));
+  if (
+    octets.length !== 4 ||
+    octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)
+  ) {
+    return false;
+  }
+
+  if (octets[0] === 0) return true;
+  return octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31;
+}
+
+function normalizeIpAddress(address) {
+  if (typeof address !== 'string') return '';
+  const trimmed = address.trim().toLowerCase();
+  return trimmed.startsWith('::ffff:') ? trimmed.slice(7) : trimmed;
+}
+
+function isPrivateIpAddress(address) {
+  const normalized = normalizeIpAddress(address);
+  const version = net.isIP(normalized);
+  if (version === 4) {
+    return isPrivateIpv4(normalized);
+  }
+  if (version === 6) {
+    return (
+      normalized === '::1' ||
+      normalized.startsWith('fc') ||
+      normalized.startsWith('fd') ||
+      normalized.startsWith('fe80:')
+    );
+  }
+  return false;
+}
+
 const assertSafeBaseUrl = (rawUrl) => {
   let parsed;
   try {
@@ -90,6 +142,25 @@ const assertSafeBaseUrl = (rawUrl) => {
         'AI baseUrl 不允许指向本地或私有网络地址，请填写公网可访问的 API 地址'
       );
     }
+  }
+};
+
+const assertPublicResolvedHostname = async (rawUrl) => {
+  const parsed = new URL(rawUrl);
+  let records;
+
+  try {
+    records = await dns.lookup(parsed.hostname, { all: true, verbatim: true });
+  } catch {
+    throw new AiConfigError('AI baseUrl 域名解析失败，请确认地址可访问');
+  }
+
+  if (!Array.isArray(records) || records.length === 0) {
+    throw new AiConfigError('AI baseUrl 域名解析失败，请确认地址可访问');
+  }
+
+  if (records.some((record) => isPrivateIpAddress(record.address))) {
+    throw new AiConfigError('AI baseUrl 解析结果指向本地或私有网络地址，已拒绝请求');
   }
 };
 
@@ -292,6 +363,7 @@ const callAnthropic = async ({ apiKey, baseUrl, model, temperature, systemPrompt
 
 export const requestAiJson = async (config, prompts) => {
   const normalizedConfig = validateAiConfig(config);
+  await assertPublicResolvedHostname(normalizedConfig.baseUrl);
   const requestPayload = {
     ...normalizedConfig,
     systemPrompt: prompts.systemPrompt,

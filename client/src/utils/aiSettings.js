@@ -1,9 +1,18 @@
+import {
+  deleteAiSettingsProviderKey,
+  getAiSettingsSummary,
+  saveAiSettingsKey,
+} from '../api/index.js';
 import { AI_PROVIDERS, DEFAULT_PROVIDER_ID, getProviderById } from '../constants/aiProviders.js';
 import { createTabSyncChannel } from './tabSync.js';
 
 export const AI_SETTINGS_STORAGE_KEY = 'english-word-ai-settings';
 
 let aiSettingsSyncChannel;
+let serverKeySummary = {
+  loaded: false,
+  providerKeys: {},
+};
 
 const getAiSettingsSyncChannel = () => {
   if (!aiSettingsSyncChannel) {
@@ -13,19 +22,40 @@ const getAiSettingsSyncChannel = () => {
   return aiSettingsSyncChannel;
 };
 
+const getEmptyAllSettings = () => ({
+  currentProviderId: DEFAULT_PROVIDER_ID,
+  providers: {},
+  customProviders: [],
+  customModels: {},
+});
+
+const getServerKeyMeta = (providerId) => {
+  const maskedApiKey = serverKeySummary.providerKeys?.[providerId] || '';
+  return {
+    hasApiKey: Boolean(maskedApiKey),
+    maskedApiKey,
+  };
+};
+
+const withServerKeyMeta = (settings) => ({
+  ...settings,
+  ...getServerKeyMeta(settings.providerId),
+  apiKey: settings.apiKey || '',
+});
+
 /**
  * 创建默认的单个提供者配置
  */
 export const createDefaultAiSettings = () => {
   const provider = getProviderById(DEFAULT_PROVIDER_ID);
-  return {
+  return withServerKeyMeta({
     providerId: provider.id,
     providerType: provider.providerType,
     baseUrl: provider.baseUrl,
     model: provider.models[0],
     apiKey: '',
     temperature: 0.2,
-  };
+  });
 };
 
 /**
@@ -36,12 +66,7 @@ const getAllAiSettings = () => {
   try {
     const raw = localStorage.getItem(AI_SETTINGS_STORAGE_KEY);
     if (!raw) {
-      return {
-        currentProviderId: DEFAULT_PROVIDER_ID,
-        providers: {},
-        customProviders: [],
-        customModels: {},
-      };
+      return getEmptyAllSettings();
     }
 
     const parsed = JSON.parse(raw);
@@ -55,12 +80,7 @@ const getAllAiSettings = () => {
           : {},
     };
   } catch {
-    return {
-      currentProviderId: DEFAULT_PROVIDER_ID,
-      providers: {},
-      customProviders: [],
-      customModels: {},
-    };
+    return getEmptyAllSettings();
   }
 };
 
@@ -130,17 +150,12 @@ const normalizeProviderSettings = (settings) => {
   };
 };
 
-/**
- * 加载当前选中提供者的配置
- */
-export const loadAiSettings = () => {
-  const allSettings = getAllAiSettings();
-  const currentProviderId = allSettings.currentProviderId;
-  const provider =
-    getAllProviders().find((p) => p.id === currentProviderId) || getAllProviders()[0];
+const getLocalProviderSettings = (providerId) => {
+  const provider = getAllProviders().find((p) => p.id === providerId) || getAllProviders()[0];
   const allModels = getAllModels(provider.id);
-
+  const allSettings = getAllAiSettings();
   const saved = allSettings.providers[provider.id];
+
   if (saved) {
     const rawTemp = parseFloat(saved.temperature);
     const temperature =
@@ -150,7 +165,7 @@ export const loadAiSettings = () => {
       providerType: provider.providerType,
       baseUrl: saved.baseUrl || provider.baseUrl,
       model: allModels.includes(saved.model) ? saved.model : allModels[0] || '',
-      apiKey: saved.apiKey || '',
+      apiKey: '',
       temperature,
     };
   }
@@ -165,26 +180,88 @@ export const loadAiSettings = () => {
   };
 };
 
+const updateServerKeySummary = (providerKeys = {}) => {
+  serverKeySummary = {
+    loaded: true,
+    providerKeys,
+  };
+};
+
+export const clearAiSettingsServerState = () => {
+  serverKeySummary = {
+    loaded: false,
+    providerKeys: {},
+  };
+};
+
 /**
- * 保存当前选中提供者的配置
+ * 加载当前选中提供者的配置
  */
-export const saveAiSettings = (settings) => {
+export const loadAiSettings = () => {
+  const { currentProviderId } = getAllAiSettings();
+  return withServerKeyMeta(getLocalProviderSettings(currentProviderId));
+};
+
+export const refreshAiSettings = async () => {
+  try {
+    const response = await getAiSettingsSummary();
+    updateServerKeySummary(response?.data?.providerKeys || {});
+  } catch {
+    updateServerKeySummary({});
+  }
+
+  return loadAiSettings();
+};
+
+/**
+ * 保存当前选中提供者的非敏感配置到本地
+ */
+export const saveAiSettingsLocally = (settings) => {
   const normalized = normalizeProviderSettings(settings);
   const allSettings = getAllAiSettings();
 
-  // 保存到该提供者的配置
   allSettings.providers[normalized.providerId] = {
     baseUrl: normalized.baseUrl,
     model: normalized.model,
-    apiKey: normalized.apiKey,
     temperature: normalized.temperature,
   };
-
-  // 更新当前选中的提供者
   allSettings.currentProviderId = normalized.providerId;
-
   saveAllAiSettings(allSettings);
-  return normalized;
+  return loadProviderSettings(normalized.providerId);
+};
+
+/**
+ * 保存当前选中提供者的配置。API Key 仅写入服务端加密存储。
+ */
+export const saveAiSettings = async (settings) => {
+  const normalized = normalizeProviderSettings(settings);
+  saveAiSettingsLocally(normalized);
+
+  if (normalized.apiKey) {
+    const response = await saveAiSettingsKey({
+      providerId: normalized.providerId,
+      apiKey: normalized.apiKey,
+    });
+    serverKeySummary = {
+      loaded: true,
+      providerKeys: {
+        ...serverKeySummary.providerKeys,
+        [normalized.providerId]: response?.data?.maskedApiKey || maskApiKey(normalized.apiKey),
+      },
+    };
+    getAiSettingsSyncChannel().publish({ updatedAt: Date.now() });
+  }
+
+  return loadProviderSettings(normalized.providerId);
+};
+
+export const deleteProviderAiKey = async (providerId) => {
+  await deleteAiSettingsProviderKey(providerId);
+  const nextProviderKeys = { ...serverKeySummary.providerKeys };
+  delete nextProviderKeys[providerId];
+  updateServerKeySummary(nextProviderKeys);
+  getAiSettingsSyncChannel().publish({ updatedAt: Date.now() });
+  return loadProviderSettings(providerId);
 };
 
 /**
@@ -207,35 +284,8 @@ export const getCurrentProviderId = () => {
 /**
  * 加载特定提供者的配置（用于切换提供者时）
  */
-export const loadProviderSettings = (providerId) => {
-  const provider = getAllProviders().find((p) => p.id === providerId) || getAllProviders()[0];
-  const allModels = getAllModels(provider.id);
-  const allSettings = getAllAiSettings();
-
-  const saved = allSettings.providers[provider.id];
-  if (saved && saved.apiKey) {
-    const rawTemp = parseFloat(saved.temperature);
-    const temperature =
-      !isNaN(rawTemp) && rawTemp >= 0 && rawTemp <= 2 ? Math.round(rawTemp * 10) / 10 : 0.2;
-    return {
-      providerId: provider.id,
-      providerType: provider.providerType,
-      baseUrl: saved.baseUrl || provider.baseUrl,
-      model: allModels.includes(saved.model) ? saved.model : allModels[0] || '',
-      apiKey: saved.apiKey,
-      temperature,
-    };
-  }
-
-  return {
-    providerId: provider.id,
-    providerType: provider.providerType,
-    baseUrl: provider.baseUrl,
-    model: allModels[0] || '',
-    apiKey: '',
-    temperature: 0.2,
-  };
-};
+export const loadProviderSettings = (providerId) =>
+  withServerKeyMeta(getLocalProviderSettings(providerId));
 
 export const maskApiKey = (apiKey) => {
   if (!apiKey) return '未配置';
@@ -249,12 +299,14 @@ export const isAiSettingsReady = (settings) =>
     settings?.providerType &&
     settings?.baseUrl &&
     settings?.model &&
-    settings?.apiKey
+    (settings?.hasApiKey || settings?.apiKey)
   );
 
 export const subscribeAiSettingsChanges = (handler) =>
   getAiSettingsSyncChannel().subscribe(() => {
-    handler(loadAiSettings());
+    void refreshAiSettings().then((settings) => {
+      handler(settings);
+    });
   });
 
 // ── 自定义厂商 写操作 ──────────────────────────────────────────────────────────

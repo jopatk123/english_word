@@ -65,7 +65,7 @@ afterEach(async () => {
 describe('学习计时 websocket', () => {
   it('连接时收到权威快照，start/stop 后收到最新广播', async () => {
     const user = await User.create({ username: `ws_${suf()}`, password: 'x' });
-    const token = generateToken(user.id);
+    const token = generateToken(user);
     const studyTimerHub = createStudyTimerHub();
     const app = createApp({ studyTimerHub });
     const server = http.createServer(app);
@@ -81,6 +81,10 @@ describe('学习计时 websocket', () => {
     resources.push(
       () =>
         new Promise((resolve) => {
+          if (socket.readyState === WebSocket.CLOSED) {
+            resolve();
+            return;
+          }
           socket.once('close', () => resolve());
           socket.close();
         })

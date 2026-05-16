@@ -195,6 +195,7 @@
   import {
     isAiSettingsReady,
     loadAiSettings,
+    refreshAiSettings,
     subscribeAiSettingsChanges,
   } from '../utils/aiSettings.js';
 
@@ -232,8 +233,8 @@
 
   const wordId = props.id || route.params.id;
 
-  const syncAiSettings = () => {
-    aiSettings.value = loadAiSettings();
+  const syncAiSettings = (nextSettings) => {
+    aiSettings.value = nextSettings || loadAiSettings();
   };
 
   const fetchWord = async () => {
@@ -493,10 +494,10 @@
     }
   };
 
-  onMounted(() => {
+  onMounted(async () => {
     stopAiSettingsSync = subscribeAiSettingsChanges(syncAiSettings);
-    fetchWord();
-    fetchExamples();
+    aiSettings.value = await refreshAiSettings();
+    await Promise.all([fetchWord(), fetchExamples()]);
   });
 
   onUnmounted(() => {

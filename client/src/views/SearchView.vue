@@ -85,6 +85,7 @@
     findAiProviderById,
     isAiSettingsReady,
     loadAiSettings,
+    refreshAiSettings,
     subscribeAiSettingsChanges,
   } from '../utils/aiSettings.js';
   import { useSpeech } from '../utils/speech.js';
@@ -100,8 +101,8 @@
   const { speak } = useSpeech();
   let stopAiSettingsSync = () => {};
 
-  const syncAiSettings = () => {
-    settings.value = loadAiSettings();
+  const syncAiSettings = (nextSettings) => {
+    settings.value = nextSettings || loadAiSettings();
   };
 
   const searchInput = ref('');
@@ -196,12 +197,13 @@
     }
   };
 
-  onMounted(() => {
+  onMounted(async () => {
     stopAiSettingsSync = subscribeAiSettingsChanges(syncAiSettings);
+    settings.value = await refreshAiSettings();
     const q = route.query.q;
     if (q && typeof q === 'string' && q.trim()) {
       searchInput.value = q.trim();
-      handleSearch();
+      await handleSearch();
     }
   });
 

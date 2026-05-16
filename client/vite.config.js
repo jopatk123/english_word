@@ -17,4 +17,29 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.{test,spec}.{js,ts,jsx,tsx}'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) {
+            return undefined;
+          }
+
+          if (id.includes('node_modules/element-plus')) {
+            return 'element-plus';
+          }
+
+          if (id.includes('echarts')) {
+            return 'echarts';
+          }
+
+          if (id.includes('vue')) {
+            return 'vue-vendor';
+          }
+
+          return 'vendor';
+        },
+      },
+    },
+  },
 });

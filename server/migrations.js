@@ -286,6 +286,49 @@ async function m014_word_reviews_backfill_all_words() {
   console.log(`[migration] M014: 已为 ${missingCount} 个历史单词补齐复习记录`);
 }
 
+// M015：为 users 表添加 token_version 列，用于密码变更后撤销旧 JWT
+async function m015_users_add_token_version() {
+  const info = await qi.describeTable('users').catch(() => ({}));
+  if (info.token_version !== undefined || Object.keys(info).length === 0) return;
+  await qi.addColumn('users', 'token_version', {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  });
+  console.log('[migration] M015: users.token_version 已添加');
+}
+
+// M016：为 roots / words 添加每用户唯一索引，避免并发写入重复数据
+async function m016_unique_indexes_for_roots_and_words() {
+  await sequelize.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_roots_user_name_unique
+     ON roots (user_id, name COLLATE NOCASE)
+     WHERE user_id IS NOT NULL`
+  );
+  await sequelize.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_words_user_name_unique
+     ON words (user_id, name)
+     WHERE user_id IS NOT NULL`
+  );
+  console.log('[migration] M016: roots/words 每用户唯一索引已创建');
+}
+
+// M017：创建 user_ai_settings 表，用于加密保存每用户的 AI Key 映射
+async function m017_create_user_ai_settings() {
+  const tables = await qi.showAllTables().catch(() => []);
+  if (tables.includes('user_ai_settings')) return;
+  await qi.createTable('user_ai_settings', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    user_id: { type: DataTypes.INTEGER, allowNull: false, unique: true },
+    encrypted_payload: { type: DataTypes.TEXT, allowNull: false },
+    iv: { type: DataTypes.STRING, allowNull: false },
+    auth_tag: { type: DataTypes.STRING, allowNull: false },
+    create_time: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+    update_time: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+  });
+  console.log('[migration] M017: user_ai_settings 表已创建');
+}
+
 /**
  * 按顺序执行所有迁移。每个迁移函数都是幂等的，可以安全重复运行。
  */
@@ -304,4 +347,7 @@ export async function runMigrations() {
   await m012_word_reviews_add_success_count();
   await m013_word_reviews_add_perfect_streak_count();
   await m014_word_reviews_backfill_all_words();
+  await m015_users_add_token_version();
+  await m016_unique_indexes_for_roots_and_words();
+  await m017_create_user_ai_settings();
 }

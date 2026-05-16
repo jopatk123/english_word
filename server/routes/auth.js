@@ -25,7 +25,7 @@ router.post('/register', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({ username: trimmedUsername, password: hashedPassword });
-    const token = generateToken(user.id);
+    const token = generateToken(user);
 
     success(res, { token, user: { id: user.id, username: user.username } }, '注册成功');
   } catch (e) {
@@ -46,7 +46,7 @@ router.post('/login', async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return error(res, '用户名或密码错误', 401);
 
-    const token = generateToken(user.id);
+    const token = generateToken(user);
     success(res, { token, user: { id: user.id, username: user.username } }, '登录成功');
   } catch (e) {
     error(res, e.message);

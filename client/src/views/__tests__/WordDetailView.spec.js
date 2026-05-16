@@ -18,6 +18,7 @@ const {
   elMessage,
   elMessageBox,
   loadAiSettingsMock,
+  refreshAiSettingsMock,
   isAiSettingsReadyMock,
   subscribeAiSettingsChangesMock,
 } = vi.hoisted(() => ({
@@ -40,6 +41,7 @@ const {
     confirm: vi.fn(),
   },
   loadAiSettingsMock: vi.fn(),
+  refreshAiSettingsMock: vi.fn(),
   isAiSettingsReadyMock: vi.fn(),
   subscribeAiSettingsChangesMock: vi.fn(() => () => {}),
 }));
@@ -71,6 +73,7 @@ vi.mock('element-plus', () => ({
 
 vi.mock('../../utils/aiSettings.js', () => ({
   loadAiSettings: (...args) => loadAiSettingsMock(...args),
+  refreshAiSettings: (...args) => refreshAiSettingsMock(...args),
   isAiSettingsReady: (...args) => isAiSettingsReadyMock(...args),
   subscribeAiSettingsChanges: (...args) => subscribeAiSettingsChangesMock(...args),
 }));
@@ -141,7 +144,9 @@ async function createWrapper() {
       { id: 8, name: 'termin', meaning: '结束' },
     ],
   });
-  loadAiSettingsMock.mockReturnValue({ providerId: 'openai', model: 'gpt-test' });
+  const settings = { providerId: 'openai', model: 'gpt-test', hasApiKey: true };
+  loadAiSettingsMock.mockReturnValue(settings);
+  refreshAiSettingsMock.mockResolvedValue(settings);
   isAiSettingsReadyMock.mockReturnValue(true);
   updateExampleMock.mockResolvedValue({});
   updateWordMock.mockResolvedValue({});
@@ -200,7 +205,7 @@ describe('WordDetailView', () => {
 
     expect(getAiExampleSuggestionsMock).toHaveBeenCalledWith(
       '1',
-      { providerId: 'openai', model: 'gpt-test' },
+      expect.objectContaining({ providerId: 'openai', model: 'gpt-test', hasApiKey: true }),
       {
         excludedSentences: ['The table is stable.', 'Prices remained stable.'],
       }
@@ -239,7 +244,7 @@ describe('WordDetailView', () => {
     expect(getAiExampleSuggestionsMock).toHaveBeenNthCalledWith(
       2,
       '1',
-      { providerId: 'openai', model: 'gpt-test' },
+      expect.objectContaining({ providerId: 'openai', model: 'gpt-test', hasApiKey: true }),
       {
         excludedSentences: ['The table is stable.', 'Prices remained stable.'],
       }

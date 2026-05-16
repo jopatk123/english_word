@@ -3,8 +3,10 @@ import { error } from '../utils/response.js';
 import { getJwtSecret } from '../utils/env.js';
 import { User } from '../models/index.js';
 
-export const generateToken = (userId) => {
-  return jwt.sign({ userId }, getJwtSecret(), { expiresIn: '7d' });
+export const generateToken = (user) => {
+  return jwt.sign({ userId: user.id, tokenVersion: user.tokenVersion || 0 }, getJwtSecret(), {
+    expiresIn: '7d',
+  });
 };
 
 export const authMiddleware = async (req, res, next) => {
@@ -22,6 +24,9 @@ export const authMiddleware = async (req, res, next) => {
     }
     if (user.isDisabled) {
       return error(res, '账号已被禁用，请联系管理员', 401);
+    }
+    if ((decoded.tokenVersion || 0) !== (user.tokenVersion || 0)) {
+      return error(res, '登录已失效，请重新登录', 401);
     }
     req.userId = user.id;
     req.user = user;
