@@ -1,33 +1,23 @@
 import { Router } from 'express';
-import { Op } from 'sequelize';
+import { Op, literal } from 'sequelize';
 import { Word, Root, Example, WordReview } from '../../models/index.js';
 import { success, error } from '../../utils/response.js';
 import { REVIEW_STATUS, todayStr, todayStart } from '../../utils/srs.js';
 
 const router = Router();
 
-function compareByDueAndEase(a, b) {
-  const aDueAt = a.dueAt ? new Date(a.dueAt).getTime() : null;
-  const bDueAt = b.dueAt ? new Date(b.dueAt).getTime() : null;
-  const aDueKey = aDueAt ?? Date.parse(`${String(a.dueDate || '')}T00:00:00Z`) ?? 0;
-  const bDueKey = bDueAt ?? Date.parse(`${String(b.dueDate || '')}T00:00:00Z`) ?? 0;
-  const dueCompare = aDueKey - bDueKey;
-  if (dueCompare !== 0) return dueCompare;
-  return (a.easeFactor || 0) - (b.easeFactor || 0);
-}
+// SQL expressions for sorting – pushed directly to the DB for efficiency.
+const ORDER_BY_DUE_AND_EASE = [
+  [literal("COALESCE(due_at, due_date || 'T00:00:00.000Z')"), 'ASC'],
+  ['easeFactor', 'ASC'],
+];
 
-function compareByLastReviewedDesc(a, b) {
-  const aTime = a.lastReviewedAt ? new Date(a.lastReviewedAt).getTime() : 0;
-  const bTime = b.lastReviewedAt ? new Date(b.lastReviewedAt).getTime() : 0;
-  return bTime - aTime;
-}
+const ORDER_BY_LAST_REVIEWED_DESC = [['lastReviewedAt', 'DESC']];
 
-function compareLearningFirst(a, b) {
-  const aRank = a.status === REVIEW_STATUS.KNOWN ? 1 : 0;
-  const bRank = b.status === REVIEW_STATUS.KNOWN ? 1 : 0;
-  if (aRank !== bRank) return aRank - bRank;
-  return compareByDueAndEase(a, b);
-}
+const ORDER_BY_LEARNING_FIRST = [
+  [literal("CASE WHEN status = 'known' THEN 1 ELSE 0 END"), 'ASC'],
+  ...ORDER_BY_DUE_AND_EASE,
+];
 
 router.get('/due', async (req, res) => {
   try {
@@ -71,8 +61,18 @@ router.get('/due', async (req, res) => {
       where[Op.or] = [{ dueDate: { [Op.lt]: today } }, { dueDate: today, ...dueNowForToday }];
     }
 
+    let order;
+    if (scope === 'today-reviewed') {
+      order = ORDER_BY_LAST_REVIEWED_DESC;
+    } else if (scope === 'all' || scope === 'continue') {
+      order = ORDER_BY_LEARNING_FIRST;
+    } else {
+      order = ORDER_BY_DUE_AND_EASE;
+    }
+
     const queryOpts = {
       where,
+      order,
       include: [
         {
           model: Word,
@@ -90,19 +90,15 @@ router.get('/due', async (req, res) => {
       ],
     };
 
-    const reviews = await WordReview.findAll(queryOpts);
-    const valid = reviews.filter((r) => r.word);
-
-    if (scope === 'today-reviewed') {
-      valid.sort(compareByLastReviewedDesc);
-    } else if (scope === 'all' || scope === 'continue') {
-      valid.sort(compareLearningFirst);
-    } else {
-      valid.sort(compareByDueAndEase);
+    if (limit > 0) {
+      queryOpts.limit = limit;
+      queryOpts.offset = offset;
+      queryOpts.subQuery = false;
     }
 
-    const sliced = limit > 0 ? valid.slice(offset, offset + limit) : valid;
-    success(res, sliced);
+    const reviews = await WordReview.findAll(queryOpts);
+    const valid = reviews.filter((r) => r.word);
+    success(res, valid);
   } catch (e) {
     error(res, e.message);
   }

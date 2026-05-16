@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { Op } from 'sequelize';
+import { Op, fn, col } from 'sequelize';
 import { StudySession } from '../models/index.js';
 import { success, error } from '../utils/response.js';
 import { todayStart, tomorrowStart, dateStrAt, addDays, startOfDay } from '../utils/srs.js';
@@ -156,27 +156,40 @@ export function createStudySessionsRouter(options = {}) {
     try {
       const userId = req.userId;
       const tz = req.query.tz;
-
-      // 总时长（所有已完成的会话）
-      const allSessions = await StudySession.findAll({
-        where: { userId, endedAt: { [Op.ne]: null } },
-        attributes: ['id', 'durationSeconds', 'startedAt', 'endedAt', 'note'],
-        order: [['startedAt', 'DESC']],
-      });
-
-      const totalSeconds = allSessions.reduce((sum, s) => sum + (s.durationSeconds || 0), 0);
-
-      // 今日时长（按用户时区统计会话与今日时间窗的重叠部分）
       const todayWindowStart = todayStart(tz);
       const tomorrowWindowStart = tomorrowStart(tz);
-      const todaySeconds = allSessions.reduce(
+
+      // SQL SUM 计算全量总时长，避免加载所有历史记录到内存
+      const totalRow = await StudySession.findOne({
+        where: { userId, endedAt: { [Op.ne]: null } },
+        attributes: [[fn('SUM', col('duration_seconds')), 'total']],
+        raw: true,
+      });
+      const totalSeconds = Number(totalRow?.total || 0);
+
+      // 只加载与今日时间窗有重叠的会话用于计算今日时长
+      const todaySessions = await StudySession.findAll({
+        where: {
+          userId,
+          endedAt: { [Op.and]: [{ [Op.ne]: null }, { [Op.gte]: todayWindowStart }] },
+          startedAt: { [Op.lt]: tomorrowWindowStart },
+        },
+        attributes: ['startedAt', 'endedAt', 'durationSeconds'],
+      });
+      const todaySeconds = todaySessions.reduce(
         (sum, s) =>
           sum + getOverlapSeconds(s.startedAt, s.endedAt, todayWindowStart, tomorrowWindowStart),
         0
       );
 
-      // 最近 30 条
-      const recentSessions = allSessions.slice(0, 30).map((s) => ({
+      // 最近 30 条，由数据库直接排序和截断
+      const recentRows = await StudySession.findAll({
+        where: { userId, endedAt: { [Op.ne]: null } },
+        attributes: ['id', 'startedAt', 'endedAt', 'durationSeconds', 'note'],
+        order: [['startedAt', 'DESC']],
+        limit: 30,
+      });
+      const recentSessions = recentRows.map((s) => ({
         id: s.id,
         startedAt: s.startedAt,
         endedAt: s.endedAt,
@@ -204,19 +217,20 @@ export function createStudySessionsRouter(options = {}) {
       // 将 days 限制在 [7, 90] 区间，防止超大查询
       const days = Math.min(Math.max(parseInt(req.query.days) || 30, 7), 90);
 
-      // 拉取所有已完成会话（按时间正序，便于逐条遍历）
-      const allSessions = await StudySession.findAll({
+      // SQL 聚合计算全量总时长和总次数，无需将所有历史记录加载到内存
+      const totalRow = await StudySession.findOne({
         where: { userId, endedAt: { [Op.ne]: null } },
-        attributes: ['id', 'startedAt', 'endedAt', 'durationSeconds', 'note'],
-        order: [['startedAt', 'ASC']],
+        attributes: [
+          [fn('SUM', col('duration_seconds')), 'totalSeconds'],
+          [fn('COUNT', col('id')), 'totalSessions'],
+        ],
+        raw: true,
       });
-
-      // ── 全量汇总 ──────────────────────────────────────────────────────────
-      const totalSeconds = allSessions.reduce((sum, s) => sum + (s.durationSeconds || 0), 0);
-      const totalSessions = allSessions.length;
+      const totalSeconds = Number(totalRow?.totalSeconds || 0);
+      const totalSessions = Number(totalRow?.totalSessions || 0);
       const avgSessionSeconds = totalSessions > 0 ? Math.round(totalSeconds / totalSessions) : 0;
 
-      // ── 固定窗口（7 天 / 30 天），与 days 参数无关 ──────────────────────
+      // 日期窗口计算
       const todayWindowStart = todayStart(tz);
       const tomorrowWindowStart = tomorrowStart(tz);
       const todayDateStr = dateStrAt(todayWindowStart, tz);
@@ -224,12 +238,24 @@ export function createStudySessionsRouter(options = {}) {
       const sevenDayWindowStart = startOfDay(addDays(todayDateStr, -6), tz);
       const thirtyDayWindowStart = startOfDay(addDays(todayDateStr, -29), tz);
 
-      const sevenDaySeconds = allSessions.reduce(
+      // 仅加载日粒度桶范围和连续天数回溯所需的会话（最多 365 天），
+      // 避免将所有历史数据加载到内存。
+      const STREAK_LOOKBACK = 365;
+      const windowStartDate = addDays(todayDateStr, -(Math.max(days, STREAK_LOOKBACK) - 1));
+      const windowStart = startOfDay(windowStartDate, tz);
+      const windowSessions = await StudySession.findAll({
+        where: { userId, endedAt: { [Op.ne]: null }, startedAt: { [Op.gte]: windowStart } },
+        attributes: ['id', 'startedAt', 'endedAt', 'durationSeconds', 'note'],
+        order: [['startedAt', 'ASC']],
+      });
+
+      // ── 固定窗口（7 天 / 30 天） ────────────────────────────────────────
+      const sevenDaySeconds = windowSessions.reduce(
         (sum, s) =>
           sum + getOverlapSeconds(s.startedAt, s.endedAt, sevenDayWindowStart, tomorrowWindowStart),
         0
       );
-      const thirtyDaySeconds = allSessions.reduce(
+      const thirtyDaySeconds = windowSessions.reduce(
         (sum, s) =>
           sum +
           getOverlapSeconds(s.startedAt, s.endedAt, thirtyDayWindowStart, tomorrowWindowStart),
@@ -242,7 +268,7 @@ export function createStudySessionsRouter(options = {}) {
         const bucketDateStr = addDays(startDateStr, i);
         const bucketDayStart = startOfDay(bucketDateStr, tz);
         const bucketDayEnd = startOfDay(addDays(bucketDateStr, 1), tz);
-        const seconds = allSessions.reduce(
+        const seconds = windowSessions.reduce(
           (sum, s) => sum + getOverlapSeconds(s.startedAt, s.endedAt, bucketDayStart, bucketDayEnd),
           0
         );
@@ -258,13 +284,13 @@ export function createStudySessionsRouter(options = {}) {
       // ── 连续学习天数（从今日起逆序检查，最多回溯 365 天） ────────────────
       let streakDays = 0;
       let checkStr = todayDateStr;
-      while (streakDays < 365 && hasStudyOnDay(allSessions, checkStr, tz)) {
+      while (streakDays < STREAK_LOOKBACK && hasStudyOnDay(windowSessions, checkStr, tz)) {
         streakDays++;
         checkStr = addDays(checkStr, -1);
       }
 
       // ── 最近 10 条记录（时间倒序，方便前端直接渲染） ─────────────────────
-      const recentSessions = [...allSessions]
+      const recentSessions = [...windowSessions]
         .reverse()
         .slice(0, 10)
         .map((s) => ({
@@ -326,5 +352,3 @@ export function createStudySessionsRouter(options = {}) {
 
   return router;
 }
-
-export default createStudySessionsRouter();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sanitizeExampleSuggestions } from '../utils/ai.js';
+import { sanitizeExampleSuggestions } from '../utils/aiSanitize.js';
 import { validExampleItem } from './ai-test-utils.js';
 
 describe('sanitizeExampleSuggestions', () => {

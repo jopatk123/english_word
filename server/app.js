@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { authMiddleware } from './middleware/auth.js';
 import { aiRateLimiter, authRateLimiter } from './middleware/rateLimiter.js';
+import { requestLogger } from './utils/logger.js';
 import authRouter from './routes/auth.js';
 import adminRouter from './routes/admin.js';
 import aiSettingsRouter from './routes/ai-settings.js';
@@ -58,6 +59,7 @@ export function createApp(options = {}) {
 
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  app.use(requestLogger);
 
   app.get('/api/health', (_req, res) => {
     res.json({ code: 200, data: { status: 'ok' }, msg: 'success' });

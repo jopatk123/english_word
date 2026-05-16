@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { Root, Word, Example } from '../models/index.js';
+import { requestAiJson } from '../utils/ai.js';
 import {
-  requestAiJson,
   sanitizeExampleSuggestions,
   sanitizeRootSuggestions,
   sanitizeWordSuggestions,
-} from '../utils/ai.js';
+} from '../utils/aiSanitize.js';
 import { createDebugInfo, logAiError, logAiInfo, withDuration } from '../utils/aiDebug.js';
 import {
   buildAnalyzeSentencePrompt,

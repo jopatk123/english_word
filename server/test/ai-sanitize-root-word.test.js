@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sanitizeRootSuggestions, sanitizeWordSuggestions } from '../utils/ai.js';
+import { sanitizeRootSuggestions, sanitizeWordSuggestions } from '../utils/aiSanitize.js';
 import { validRootItem, validWordItem } from './ai-test-utils.js';
 
 describe('sanitizeRootSuggestions', () => {
