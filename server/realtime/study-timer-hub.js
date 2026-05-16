@@ -22,6 +22,7 @@ async function authenticateRequest(request) {
     const decoded = jwt.verify(token, getJwtSecret());
     const user = await User.findByPk(decoded.userId);
     if (!user || user.isDisabled) return null;
+    if ((decoded.tokenVersion || 0) !== (user.tokenVersion || 0)) return null;
     return user;
   } catch {
     return null;

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
-import { User, Root, Word, WordRoot, WordReview } from '../models/index.js';
+import { User, Root, Word, WordRoot, Example, WordReview } from '../models/index.js';
 import { buildReviewApp, createReviewFixture, createTestSuffix } from './review-test-utils.js';
 
 let fixture;
@@ -296,5 +296,70 @@ describe('GET /review/due', () => {
     expect(res.status).toBe(200);
     const ids = res.body.data.map((item) => item.wordId);
     expect(ids.indexOf(learningWord.id)).toBeLessThan(ids.indexOf(knownWord.id));
+  });
+
+  it('多词根/多例句单词分页时 limit 精确命中目标条数', async () => {
+    const user2 = await User.create({
+      username: `due_multi_${createTestSuffix()}`,
+      password: 'x',
+    });
+    const app2 = buildReviewApp(user2.id);
+
+    const root1 = await Root.create({
+      name: `mr1_${createTestSuffix()}`,
+      meaning: '词根1',
+      userId: user2.id,
+    });
+    const root2 = await Root.create({
+      name: `mr2_${createTestSuffix()}`,
+      meaning: '词根2',
+      userId: user2.id,
+    });
+    const word1 = await Word.create({
+      name: `mw1_${createTestSuffix()}`,
+      meaning: '多词根单词',
+      userId: user2.id,
+    });
+    const word2 = await Word.create({
+      name: `mw2_${createTestSuffix()}`,
+      meaning: '单词2',
+      userId: user2.id,
+    });
+
+    await WordRoot.bulkCreate([
+      { wordId: word1.id, rootId: root1.id },
+      { wordId: word1.id, rootId: root2.id },
+      { wordId: word2.id, rootId: root1.id },
+    ]);
+    await Example.bulkCreate([
+      { wordId: word1.id, sentence: 'Sentence A.', translation: 'A' },
+      { wordId: word1.id, sentence: 'Sentence B.', translation: 'B' },
+    ]);
+    await WordReview.bulkCreate([
+      {
+        userId: user2.id,
+        wordId: word1.id,
+        status: 'new',
+        interval: 0,
+        easeFactor: 2.5,
+        dueDate: '2000-01-01',
+      },
+      {
+        userId: user2.id,
+        wordId: word2.id,
+        status: 'new',
+        interval: 0,
+        easeFactor: 2.5,
+        dueDate: '2000-01-01',
+      },
+    ]);
+
+    const res1 = await request(app2).get('/review/due?scope=all&limit=1');
+    const res2 = await request(app2).get('/review/due?scope=all&limit=2');
+
+    expect(res1.status).toBe(200);
+    expect(res2.status).toBe(200);
+    expect(res1.body.data.length).toBe(1);
+    expect(res2.body.data.length).toBe(2);
   });
 });

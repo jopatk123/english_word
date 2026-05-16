@@ -63,6 +63,34 @@ afterEach(async () => {
 });
 
 describe('学习计时 websocket', () => {
+  it('tokenVersion 失效后 WebSocket 连接被拒绝', async () => {
+    const user = await User.create({ username: `ws_exp_${suf()}`, password: 'x' });
+    const oldToken = generateToken(user);
+    await user.update({ tokenVersion: (user.tokenVersion || 0) + 1 });
+
+    const studyTimerHub = createStudyTimerHub();
+    const app = createApp({ studyTimerHub });
+    const server = http.createServer(app);
+    studyTimerHub.attach(server);
+    resources.push(async () => {
+      await studyTimerHub.close();
+      await closeServer(server);
+    });
+
+    const address = await listen(server);
+
+    const result = await new Promise((resolve) => {
+      const socket = new WebSocket(
+        `ws://127.0.0.1:${address.port}/ws/study-timer?token=${oldToken}`
+      );
+      socket.on('open', () => resolve('opened'));
+      socket.on('error', () => resolve('error'));
+      socket.on('close', () => resolve('closed'));
+    });
+
+    expect(result).not.toBe('opened');
+  });
+
   it('连接时收到权威快照，start/stop 后收到最新广播', async () => {
     const user = await User.create({ username: `ws_${suf()}`, password: 'x' });
     const token = generateToken(user);

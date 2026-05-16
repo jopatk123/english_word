@@ -24,8 +24,8 @@ router.get('/due', async (req, res) => {
     const today = todayStr(req.query.tz);
     const todayStartDate = todayStart(req.query.tz);
     const now = new Date();
-    const limit = parseInt(req.query.limit) || 0;
-    const offset = parseInt(req.query.offset) || 0;
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 0, 0), 1000);
+    const offset = Math.max(parseInt(req.query.offset) || 0, 0);
     const requestedScope = String(req.query.scope || 'due');
     const scope = [
       'due',
@@ -91,9 +91,32 @@ router.get('/due', async (req, res) => {
     };
 
     if (limit > 0) {
-      queryOpts.limit = limit;
-      queryOpts.offset = offset;
-      queryOpts.subQuery = false;
+      // Two-pass pagination: first get paginated review IDs, then fetch full data for those IDs.
+      // Direct LIMIT on a multi-table JOIN inflates row counts (a word with N roots × M examples
+      // produces N×M join rows), so LIMIT cuts off in the middle of a word's data.
+      const idRows = await WordReview.findAll({
+        where,
+        attributes: ['id'],
+        order,
+        limit,
+        offset,
+      });
+
+      if (idRows.length === 0) {
+        return success(res, []);
+      }
+
+      const paginatedIds = idRows.map((r) => r.id);
+      const reviews = await WordReview.findAll({
+        where: { id: { [Op.in]: paginatedIds } },
+        order,
+        include: queryOpts.include,
+      });
+
+      return success(
+        res,
+        reviews.filter((r) => r.word)
+      );
     }
 
     const reviews = await WordReview.findAll(queryOpts);

@@ -350,8 +350,14 @@ export function useWordDetail(wordId) {
     handleDeleteExample,
     handleRegenerateExample,
     // 仅供测试使用的内部状态设置器
-    setWordForTest: (value) => { word.value = value; },
-    setSelectedRootIdForTest: (value) => { selectedRootId.value = value; },
-    setSelectedDeleteRootIdForTest: (value) => { selectedDeleteRootId.value = value; },
+    setWordForTest: (value) => {
+      word.value = value;
+    },
+    setSelectedRootIdForTest: (value) => {
+      selectedRootId.value = value;
+    },
+    setSelectedDeleteRootIdForTest: (value) => {
+      selectedDeleteRootId.value = value;
+    },
   };
 }

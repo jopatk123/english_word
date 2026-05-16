@@ -9,6 +9,40 @@ const router = Router();
 
 const normalizeRootName = (name) => `${name || ''}`.trim().toLowerCase();
 
+const VALID_REVIEW_STATUSES = new Set(['new', 'learning', 'review', 'known']);
+
+/**
+ * 为新导入的单词恢复复习进度。
+ * 若导出数据包含有效的 status 和 dueDate，则还原完整进度；否则使用默认初始状态。
+ */
+async function restoreOrInitWordReview(userId, wordId, wordData, transaction) {
+  const status =
+    typeof wordData?.status === 'string' && VALID_REVIEW_STATUSES.has(wordData.status)
+      ? wordData.status
+      : null;
+
+  if (status && wordData.dueDate) {
+    return WordReview.findOrCreate({
+      where: { userId, wordId },
+      defaults: {
+        userId,
+        wordId,
+        status,
+        interval: Math.max(0, parseInt(wordData.interval, 10) || 0),
+        easeFactor: Math.max(1.3, parseFloat(wordData.easeFactor) || 2.5),
+        dueDate: wordData.dueDate,
+        dueAt: wordData.dueAt || null,
+        reviewCount: Math.max(0, parseInt(wordData.reviewCount, 10) || 0),
+        successCount: Math.max(0, parseInt(wordData.successCount, 10) || 0),
+        perfectStreakCount: Math.max(0, parseInt(wordData.perfectStreakCount, 10) || 0),
+      },
+      transaction,
+    });
+  }
+
+  return ensureWordReview(userId, wordId, { transaction });
+}
+
 // 全量导出：所有词根、单词、例句（结构化 JSON）
 router.get('/data/export', async (req, res) => {
   try {
@@ -32,7 +66,16 @@ router.get('/data/export', async (req, res) => {
               as: 'reviews',
               where: { userId: req.userId },
               required: false,
-              attributes: ['interval', 'perfectStreakCount'],
+              attributes: [
+                'status',
+                'interval',
+                'easeFactor',
+                'dueDate',
+                'dueAt',
+                'reviewCount',
+                'successCount',
+                'perfectStreakCount',
+              ],
             },
           ],
         },
@@ -57,7 +100,13 @@ router.get('/data/export', async (req, res) => {
             meaning: word.meaning,
             phonetic: word.phonetic || null,
             remark: word.remark || null,
+            status: word.reviews?.[0]?.status || 'new',
             interval: word.reviews?.[0]?.interval ?? 0,
+            easeFactor: word.reviews?.[0]?.easeFactor ?? 2.5,
+            dueDate: word.reviews?.[0]?.dueDate || null,
+            dueAt: word.reviews?.[0]?.dueAt || null,
+            reviewCount: word.reviews?.[0]?.reviewCount ?? 0,
+            successCount: word.reviews?.[0]?.successCount ?? 0,
             perfectStreakCount: word.reviews?.[0]?.perfectStreakCount ?? 0,
             rootNames: [],
             examples: (word.examples || []).map((e) => ({
@@ -163,9 +212,12 @@ router.post('/data/import', async (req, res) => {
         },
         transaction: t,
       });
-      if (wordCreated) stats.wordsAdded++;
-
-      await ensureWordReview(req.userId, word.id, { transaction: t });
+      if (wordCreated) {
+        stats.wordsAdded++;
+        await restoreOrInitWordReview(req.userId, word.id, wordData, t);
+      } else {
+        await ensureWordReview(req.userId, word.id, { transaction: t });
+      }
 
       // 步骤3：建立单词与该用户词根的关联
       const targetRootNames = (wordData.rootNames || [])

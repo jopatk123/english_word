@@ -103,6 +103,19 @@ describe('GET /review/data/export', () => {
     expect(word.examples[0].sentence).toBe('Test sentence.');
   });
 
+  it('导出包含完整复习进度字段', async () => {
+    const res = await request(app).get('/review/data/export');
+    const word = res.body.words.find((w) => w.name === 'exportword');
+    expect(word).toBeDefined();
+    expect(word.status).toBe('learning');
+    expect(word.interval).toBe(2);
+    expect(Number(word.easeFactor)).toBeCloseTo(2.5);
+    expect(word.dueDate).toBe('2099-01-01');
+    expect(word.reviewCount).toBe(1);
+    expect(word.successCount).toBe(0);
+    expect(word.perfectStreakCount).toBe(0);
+  });
+
   it('导出不会带出其他用户的单词', async () => {
     const otherUser = await User.create({
       username: 'data_export_other_' + Date.now(),
@@ -291,5 +304,84 @@ describe('POST /review/data/import', () => {
       .post('/review/data/import')
       .send({ version: '2.0', roots: [], words: [] });
     expect(res.status).toBe(400);
+  });
+
+  it('导入时恢复单词复习进度', async () => {
+    const progressData = {
+      version: '1.0',
+      exportedAt: '2026-01-01T00:00:00Z',
+      roots: [{ name: 'progressroot', meaning: '进度词根', isDefault: false }],
+      words: [
+        {
+          name: 'progressword',
+          meaning: '有进度的单词',
+          status: 'review',
+          interval: 10,
+          easeFactor: 2.8,
+          dueDate: '2099-12-31',
+          dueAt: null,
+          reviewCount: 5,
+          successCount: 4,
+          perfectStreakCount: 2,
+          rootNames: ['progressroot'],
+          examples: [],
+        },
+      ],
+    };
+
+    const res = await request(app).post('/review/data/import').send(progressData);
+    expect(res.status).toBe(200);
+    expect(res.body.data.wordsAdded).toBe(1);
+
+    const word = await Word.findOne({ where: { name: 'progressword', userId } });
+    const review = await WordReview.findOne({ where: { userId, wordId: word.id } });
+    expect(review).toBeTruthy();
+    expect(review.status).toBe('review');
+    expect(review.interval).toBe(10);
+    expect(Number(review.easeFactor)).toBeCloseTo(2.8);
+    expect(review.dueDate).toBe('2099-12-31');
+    expect(review.reviewCount).toBe(5);
+    expect(review.successCount).toBe(4);
+    expect(review.perfectStreakCount).toBe(2);
+  });
+
+  it('重复导入时不覆盖已有复习进度', async () => {
+    // progressword was imported in the previous test with status='review'
+    // Manually change the review state and re-import; it must not be overwritten
+    const word = await Word.findOne({ where: { name: 'progressword', userId } });
+    await WordReview.update(
+      { status: 'known', interval: 30 },
+      { where: { userId, wordId: word.id } }
+    );
+
+    const progressData = {
+      version: '1.0',
+      exportedAt: '2026-01-01T00:00:00Z',
+      roots: [{ name: 'progressroot', meaning: '进度词根', isDefault: false }],
+      words: [
+        {
+          name: 'progressword',
+          meaning: '有进度的单词',
+          status: 'review',
+          interval: 10,
+          easeFactor: 2.8,
+          dueDate: '2099-12-31',
+          dueAt: null,
+          reviewCount: 5,
+          successCount: 4,
+          perfectStreakCount: 2,
+          rootNames: ['progressroot'],
+          examples: [],
+        },
+      ],
+    };
+
+    const res = await request(app).post('/review/data/import').send(progressData);
+    expect(res.status).toBe(200);
+    expect(res.body.data.wordsAdded).toBe(0); // word already exists
+
+    const review = await WordReview.findOne({ where: { userId, wordId: word.id } });
+    expect(review.status).toBe('known'); // unchanged
+    expect(review.interval).toBe(30); // unchanged
   });
 });
