@@ -1,8 +1,10 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { authMiddleware } from './middleware/auth.js';
+import { authRateLimiter } from './middleware/rateLimiter.js';
 import authRouter from './routes/auth.js';
 import adminRouter from './routes/admin.js';
 import rootsRouter from './routes/roots.js';
@@ -11,6 +13,7 @@ import examplesRouter from './routes/examples.js';
 import aiRouter from './routes/ai.js';
 import reviewRouter from './routes/review.js';
 import { createStudySessionsRouter } from './routes/study-sessions.js';
+import { getAllowedOrigins } from './utils/env.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -18,7 +21,40 @@ export function createApp(options = {}) {
   const app = express();
   const studyTimerHub = options.studyTimerHub;
 
-  app.use(cors());
+  // 安全响应头（生产环境启用 CSP，静态资源与 SPA 需要放宽 script-src）
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'blob:'],
+          connectSrc: ["'self'", 'wss:', 'ws:'],
+          fontSrc: ["'self'", 'data:'],
+        },
+      },
+    })
+  );
+
+  // CORS：仅允许 ALLOWED_ORIGINS 中配置的来源；未配置则拒绝所有跨域请求
+  const allowedOrigins = getAllowedOrigins();
+  app.use(
+    cors({
+      origin: allowedOrigins.length
+        ? (origin, callback) => {
+            // 同源请求 origin 为 undefined，始终放行
+            if (!origin || allowedOrigins.includes(origin)) {
+              callback(null, true);
+            } else {
+              callback(new Error(`CORS: 来源 ${origin} 不在白名单中`));
+            }
+          }
+        : false,
+      credentials: true,
+    })
+  );
+
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -26,7 +62,7 @@ export function createApp(options = {}) {
     res.json({ code: 200, data: { status: 'ok' }, msg: 'success' });
   });
 
-  app.use('/api/auth', authRouter);
+  app.use('/api/auth', authRateLimiter, authRouter);
   app.use('/api/admin', adminRouter);
 
   app.use('/api/roots', authMiddleware, rootsRouter);

@@ -57,3 +57,16 @@ export const getServerPort = () => {
 
   return port;
 };
+
+/**
+ * 返回允许跨域的来源列表（逗号分隔），未配置时返回空数组（仅允许同源）。
+ * 本地开发可设置：ALLOWED_ORIGINS=http://localhost:5173
+ */
+export const getAllowedOrigins = () => {
+  const raw = readEnv('ALLOWED_ORIGINS');
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+};

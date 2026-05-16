@@ -165,6 +165,8 @@ export const validateAiConfig = (config = {}) => {
   };
 };
 
+const AI_REQUEST_TIMEOUT_MS = 60_000;
+
 const callOpenAICompatible = async ({
   apiKey,
   baseUrl,
@@ -173,21 +175,31 @@ const callOpenAICompatible = async ({
   systemPrompt,
   userPrompt,
 }) => {
-  const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      temperature: typeof temperature === 'number' ? temperature : 0.2,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-    }),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
+
+  let response;
+  try {
+    response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 1800,
+        temperature: typeof temperature === 'number' ? temperature : 0.2,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+      }),
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -200,21 +212,30 @@ const callOpenAICompatible = async ({
 };
 
 const callAnthropic = async ({ apiKey, baseUrl, model, temperature, systemPrompt, userPrompt }) => {
-  const response = await fetch(`${baseUrl}/messages`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 1800,
-      temperature: typeof temperature === 'number' ? temperature : 0.2,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-    }),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
+
+  let response;
+  try {
+    response = await fetch(`${baseUrl}/messages`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 1800,
+        temperature: typeof temperature === 'number' ? temperature : 0.2,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {

@@ -1,82 +1,22 @@
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { getReviewDue, submitReviewResult } from '../api/index.js';
-import { useSpeech } from '../utils/speech.js';
-import { createTabSyncChannel } from '../utils/tabSync.js';
+import { FOLLOW_UP_OFFSETS, MAX_FOLLOW_UP_INSERTIONS, insertFollowUpCard } from './studyQueue.js';
 import { useChoiceMode } from './useChoiceMode.js';
 import { useSpellingMode } from './useSpellingMode.js';
 import { useStudyKeyboard } from './useStudyKeyboard.js';
-import { FOLLOW_UP_OFFSETS, MAX_FOLLOW_UP_INSERTIONS, insertFollowUpCard } from './studyQueue.js';
-
-let studySessionSyncChannel;
-
-const getStudySessionSyncChannel = () => {
-  if (!studySessionSyncChannel) {
-    studySessionSyncChannel = createTabSyncChannel('study-session');
-  }
-
-  return studySessionSyncChannel;
-};
+import { seekToStudyCard, getStudySessionSyncChannel } from './studySessionHelpers.js';
+import { useAutoRead } from './useAutoRead.js';
+import { useSessionProgress } from './useSessionProgress.js';
 
 const refreshChoiceState = (choice, queue) => {
   choice.setQueueWords(queue.value.map((record) => record.word));
   choice.loadChoices();
 };
 
-export function seekToStudyCard({
-  targetIndex,
-  queue,
-  currentIndex,
-  finished,
-  showAnswer,
-  submitting,
-  studyMode,
-  resetModes,
-  initModeCard,
-  saveProgress,
-  incrementRevision,
-  stopAutoRead,
-}) {
-  if (submitting?.value) return false;
-  if (!Number.isFinite(targetIndex) || queue.value.length === 0) return false;
-
-  const nextIndex = Math.min(Math.max(Math.trunc(targetIndex), 0), queue.value.length - 1);
-  if (nextIndex === currentIndex.value) return false;
-
-  if (typeof stopAutoRead === 'function') {
-    stopAutoRead();
-  }
-
-  currentIndex.value = nextIndex;
-  finished.value = false;
-  showAnswer.value = false;
-  resetModes();
-
-  if (typeof incrementRevision === 'function') {
-    incrementRevision();
-  }
-
-  initModeCard(studyMode.value);
-  saveProgress();
-  return true;
-}
-
-export function buildAutoReadTexts(card) {
-  const word = card?.word?.name?.trim();
-  const sentences = (card?.word?.examples || [])
-    .map((example) => example?.sentence?.trim())
-    .filter(Boolean);
-  const texts = [];
-
-  if (word) {
-    texts.push(word, word);
-  }
-
-  texts.push(...sentences);
-
-  return texts;
-}
+export { seekToStudyCard } from './studySessionHelpers.js';
+export { buildAutoReadTexts } from './studySessionHelpers.js';
 
 export function useStudySession() {
   const route = useRoute();
@@ -95,9 +35,7 @@ export function useStudySession() {
   const resumeInfo = ref(null);
   const isReplay = ref(false);
   const sessionRevision = ref(0);
-  let autoReadToken = 0;
 
-  // 学习模式
   const studyMode = ref('flashcard');
   const modeSelected = ref(false);
   const modeNames = {
@@ -108,10 +46,7 @@ export function useStudySession() {
     autoRead: '自动朗读',
   };
 
-  const { speak, speakSequence, cancelSpeech, pauseSpeech, resumeSpeech, isPaused: isAutoReadPaused } = useSpeech();
-
   const getScope = () => (typeof route.query.scope === 'string' ? route.query.scope : '');
-
   const getQueueIds = () => queue.value.map((record) => record.wordId).join(',');
 
   const currentCard = computed(() => {
@@ -148,53 +83,46 @@ export function useStudySession() {
     queueFollowUpCard(wordId, FOLLOW_UP_OFFSETS.HARD);
   };
 
-  const stopAutoRead = () => {
-    autoReadToken += 1;
-    cancelSpeech();
+  // 初始化子模式 composable（依赖 currentCard、sessionStats、handleAgain、advanceCard）
+  // advanceCard 通过 getter 延迟绑定，在 useAutoRead 内部仅在 watch 回调中调用
+  const choice = useChoiceMode({ currentCard, sessionStats, handleAgain, advanceCard: () => advanceCard(), isReplay });
+  const spelling = useSpellingMode({
+    currentCard,
+    sessionStats,
+    handleAgain,
+    handleHard,
+    advanceCard: () => advanceCard(),
+    isReplay,
+  });
+
+  // ── 模式生命周期辅助 ──────────────────────────────────────────────
+  const resetAllModes = () => {
+    choice.resetChoice();
+    spelling.resetSpelling();
   };
 
-  const toggleAutoReadPause = () => {
-    if (isAutoReadPaused.value) {
-      resumeSpeech();
-      return;
+  const initModeCard = (mode) => {
+    if (mode === 'choice') {
+      refreshChoiceState(choice, queue);
     }
-
-    pauseSpeech();
   };
 
-  const playAutoReadCard = async (card) => {
-    const runToken = ++autoReadToken;
-    const word = card?.word?.name?.trim();
-    const sentences = (card?.word?.examples || [])
-      .map((example) => example?.sentence?.trim())
-      .filter(Boolean);
-    const wordTexts = word ? [word, word] : [];
-
-    if (wordTexts.length === 0 && sentences.length === 0) {
-      if (runToken === autoReadToken) {
-        sessionStats.value.total++;
-        advanceCard();
-      }
-      return;
-    }
-
-    if (wordTexts.length > 0) {
-      const readWords = await speakSequence(wordTexts, 'en-US');
-      if (!readWords || runToken !== autoReadToken) return;
-    }
-
-    if (sentences.length > 0) {
-      const readSentences = await speakSequence(sentences, 'en-US', 2000, true);
-      if (!readSentences || runToken !== autoReadToken) return;
-    }
-
-    if (runToken !== autoReadToken || studyMode.value !== 'autoRead' || !modeSelected.value) {
-      return;
-    }
-
-    sessionStats.value.total++;
-    advanceCard();
-  };
+  const { saveProgress, clearProgress, applyRemoteProgress, handleStudySessionSync } =
+    useSessionProgress({
+      getScope,
+      getQueueIds,
+      queue,
+      currentIndex,
+      studyMode,
+      modeSelected,
+      sessionStats,
+      againCountMap,
+      finished,
+      showAnswer,
+      resumeInfo,
+      resetAllModes,
+      initModeCard,
+    });
 
   // 推进到下一张卡片（通知各模式重置自身状态）
   const advanceCard = () => {
@@ -211,61 +139,13 @@ export function useStudySession() {
     }
   };
 
-  // 初始化子模式 composable（依赖 currentCard、sessionStats、handleAgain、advanceCard）
-  const choice = useChoiceMode({ currentCard, sessionStats, handleAgain, advanceCard, isReplay });
-  const spelling = useSpellingMode({
+  const { stopAutoRead, toggleAutoReadPause, isAutoReadPaused, speak } = useAutoRead({
     currentCard,
+    studyMode,
+    modeSelected,
     sessionStats,
-    handleAgain,
-    handleHard,
     advanceCard,
-    isReplay,
   });
-
-  // ── 模式生命周期辅助 ───────────────────────────────────────────
-  // 新增模式时：只需在这两个函数里各加一行，其余调用点不变。
-
-  /** 重置所有模式的局部状态（切卡、跳转、远端同步时调用）。 */
-  const resetAllModes = () => {
-    choice.resetChoice();
-    spelling.resetSpelling();
-  };
-
-  /**
-   * 按指定模式初始化新卡片（如加载选择题选项）。
-   * @param {string} mode
-   */
-  const initModeCard = (mode) => {
-    if (mode === 'choice') {
-      refreshChoiceState(choice, queue);
-    }
-  };
-
-  // 自动朗读：所有模式在新卡出现时朗读一次（闪卡翻牌时另由 flipCard 朗读）
-  watch(
-    [currentCard, studyMode, modeSelected],
-    ([card, mode, selected], previousValues = []) => {
-      const [prevCard, prevMode, prevSelected] = previousValues;
-
-      if (!card || !selected) return;
-
-      const isNewCard = card !== prevCard;
-      const justEnteredMode = mode !== prevMode;
-      const justStarted = selected && !prevSelected;
-
-      if (!(isNewCard || justEnteredMode || justStarted)) return;
-
-      if (mode === 'autoRead') {
-        void playAutoReadCard(card);
-        return;
-      }
-
-      nextTick(() => {
-        speak(card.word.name);
-      });
-    },
-    { immediate: true }
-  );
 
   const selectMode = (mode) => {
     stopAutoRead();
@@ -286,9 +166,7 @@ export function useStudySession() {
     try {
       const saved = localStorage.getItem('study-session-progress');
       const scope = typeof route.query.scope === 'string' ? route.query.scope : '';
-      const params = {
-        ...(scope ? { scope } : {}),
-      };
+      const params = { ...(scope ? { scope } : {}) };
       const res = await getReviewDue(params);
       queue.value = res.data || [];
       originalQueue.value = [...queue.value];
@@ -369,9 +247,6 @@ export function useStudySession() {
     resetSession();
   };
 
-  /**
-   * 继续复习：将未掌握词（again）排在最前，后跟全部原始词，开始新一轮正常复习。
-   */
   const continueReview = () => {
     const ids = new Set(againWordIds.value);
     const againWords = originalQueue.value.filter((item) => ids.has(item.wordId));
@@ -379,74 +254,6 @@ export function useStudySession() {
     queue.value = [...againWords, ...otherWords];
     originalQueue.value = [...queue.value];
     resetSession();
-  };
-
-  // 保存进度
-  const saveProgress = () => {
-    const data = {
-      index: currentIndex.value,
-      stats: sessionStats.value,
-      againMap: againCountMap.value,
-      mode: studyMode.value,
-      scope: getScope(),
-      queueIds: getQueueIds(),
-    };
-    localStorage.setItem('study-session-progress', JSON.stringify(data));
-    getStudySessionSyncChannel().publish({ type: 'progress', data });
-  };
-
-  const clearProgress = () => {
-    localStorage.removeItem('study-session-progress');
-    getStudySessionSyncChannel().publish({
-      type: 'cleared',
-      scope: getScope(),
-      queueIds: getQueueIds(),
-    });
-  };
-
-  const applyRemoteProgress = (progress) => {
-    if (!progress || progress.queueIds !== getQueueIds() || progress.scope !== getScope()) {
-      return;
-    }
-
-    studyMode.value = progress.mode || studyMode.value;
-    modeSelected.value = Boolean(progress.mode || modeSelected.value);
-    sessionStats.value = progress.stats || { total: 0, again: 0, hard: 0, good: 0, easy: 0 };
-    againCountMap.value = progress.againMap || {};
-    currentIndex.value = Math.min(
-      Math.max(Number.isFinite(progress.index) ? progress.index : 0, 0),
-      Math.max(queue.value.length - 1, 0)
-    );
-    finished.value = queue.value.length > 0 && progress.index >= queue.value.length;
-    showAnswer.value = false;
-    resetAllModes();
-    initModeCard(studyMode.value);
-  };
-
-  const handleStudySessionSync = (event) => {
-    if (!event) return;
-
-    if (event.type === 'mode') {
-      if (event.queueIds !== getQueueIds() || event.scope !== getScope()) return;
-
-      studyMode.value = event.mode || studyMode.value;
-      modeSelected.value = Boolean(event.mode || modeSelected.value);
-      initModeCard(studyMode.value);
-      return;
-    }
-
-    if (event.type === 'progress') {
-      applyRemoteProgress(event.data);
-      return;
-    }
-
-    if (
-      event.type === 'cleared' &&
-      event.queueIds === getQueueIds() &&
-      event.scope === getScope()
-    ) {
-      resumeInfo.value = null;
-    }
   };
 
   const flipCard = () => {
@@ -533,7 +340,6 @@ export function useStudySession() {
   });
 
   return {
-    // 状态
     loading,
     queue,
     originalQueue,
@@ -560,11 +366,9 @@ export function useStudySession() {
     spellingHint: spelling.spellingHint,
     spellingHintLevel: spelling.spellingHintLevel,
     isAutoReadPaused,
-    // 错误单词
     hasAgainWords,
     againWordCount,
     originalQueueLength,
-    // 方法
     selectMode,
     seekToIndex,
     applyResume,
