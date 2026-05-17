@@ -161,6 +161,8 @@
 
   let searchTimer = null;
 
+  const isSingleEnglishWord = (value) => /^[a-zA-Z-]+$/.test(value.trim());
+
   const selectedRootCount = computed(
     () => selectedRoots.value.filter((root) => !root?.isDefault).length
   );
@@ -188,14 +190,17 @@
   const searchWords = async (keyword) => {
     if (!keyword) {
       wordResults.value = [];
-      return;
+      return [];
     }
     try {
       const res = await getWords({ keyword });
-      wordResults.value = res.data;
+      const results = Array.isArray(res.data) ? res.data : [];
+      wordResults.value = results;
+      return results;
     } catch {
       wordResults.value = [];
       ElMessage.error('搜索单词失败，请稍后重试');
+      return null;
     }
   };
 
@@ -203,10 +208,14 @@
     if (!keyword) {
       roots.value = [];
       wordResults.value = [];
-      return;
+      return { roots: [], words: [] };
     }
 
-    await Promise.all([fetchRoots(keyword), searchWords(keyword)]);
+    const [_, words] = await Promise.all([fetchRoots(keyword), searchWords(keyword)]);
+    return {
+      roots: roots.value,
+      words,
+    };
   };
 
   const onSearch = () => {
@@ -216,11 +225,29 @@
     }, 300);
   };
 
-  const triggerSearch = () => {
+  const hasExactWordMatch = (keyword, words) => {
+    const target = keyword.trim().toLowerCase();
+    return (words || []).some((item) => item?.name?.trim?.().toLowerCase() === target);
+  };
+
+  const triggerSearch = async () => {
     const kw = searchKeyword.value.trim();
     if (!kw) return;
     clearTimeout(searchTimer);
-    void performSearch(kw);
+
+    if (!isSingleEnglishWord(kw)) {
+      await performSearch(kw);
+      return;
+    }
+
+    const rootsTask = fetchRoots(kw);
+    const words = await searchWords(kw);
+    if (words && !hasExactWordMatch(kw, words)) {
+      router.push({ path: '/search', query: { q: kw } });
+      return;
+    }
+
+    await rootsTask;
   };
 
   const router = useRouter();

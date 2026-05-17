@@ -113,6 +113,9 @@ describe('WordAnalysisResult', () => {
       expect(() => createWrapper(wordResult)).not.toThrow();
       const wrapper = createWrapper(wordResult);
       expect(wrapper.find('.el-alert-stub').exists()).toBe(true);
+      const text = wrapper.find('.el-alert-stub').text().replace(/\s+/g, '');
+      expect(text).toContain('单词run已存在点击查看详情');
+      expect(text).not.toContain('关联词根：');
     });
 
     it('单词不存在时不显示已存在提示', () => {

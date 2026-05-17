@@ -2,22 +2,24 @@ import { mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import HomeView from '../HomeView.vue';
 
-const { getRootsMock, getWordsMock, deleteRootMock, elMessage, elMessageBox } = vi.hoisted(() => ({
-  getRootsMock: vi.fn(),
-  getWordsMock: vi.fn(),
-  deleteRootMock: vi.fn(),
-  elMessage: {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-  },
-  elMessageBox: {
-    confirm: vi.fn(),
-  },
-}));
+const { getRootsMock, getWordsMock, deleteRootMock, elMessage, elMessageBox, routerPushMock } =
+  vi.hoisted(() => ({
+    getRootsMock: vi.fn(),
+    getWordsMock: vi.fn(),
+    deleteRootMock: vi.fn(),
+    elMessage: {
+      success: vi.fn(),
+      error: vi.fn(),
+      warning: vi.fn(),
+    },
+    elMessageBox: {
+      confirm: vi.fn(),
+    },
+    routerPushMock: vi.fn(),
+  }));
 
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: routerPushMock }),
 }));
 
 vi.mock('../../api/index.js', () => ({
@@ -132,6 +134,66 @@ describe('HomeView', () => {
 
     expect(getWordsMock).toHaveBeenCalledWith({ keyword: 'engine' });
     expect(elMessage.error).toHaveBeenCalledWith('搜索单词失败，请稍后重试');
+    expect(routerPushMock).not.toHaveBeenCalled();
+
+    wrapper.unmount();
+  });
+
+  it('explicit search falls back to AI search when no exact local word exists', async () => {
+    getWordsMock.mockResolvedValue({
+      data: [{ id: 1, name: 'tunneled', meaning: '挖隧道', roots: [] }],
+    });
+
+    const wrapper = mount(HomeView, {
+      global: {
+        stubs: globalStubs,
+        directives: {
+          loading: {
+            mounted() {},
+            updated() {},
+          },
+        },
+      },
+    });
+
+    await flushPromises();
+
+    const input = wrapper.find('input.el-input-inner');
+    await input.setValue('tunnel');
+    await wrapper.find('.el-input-append .el-button-stub').trigger('click');
+    await flushPromises();
+
+    expect(getWordsMock).toHaveBeenCalledWith({ keyword: 'tunnel' });
+    expect(routerPushMock).toHaveBeenCalledWith({ path: '/search', query: { q: 'tunnel' } });
+
+    wrapper.unmount();
+  });
+
+  it('explicit search stays on home when the exact local word exists', async () => {
+    getWordsMock.mockResolvedValue({
+      data: [{ id: 1, name: 'tunnel', meaning: '隧道', roots: [] }],
+    });
+
+    const wrapper = mount(HomeView, {
+      global: {
+        stubs: globalStubs,
+        directives: {
+          loading: {
+            mounted() {},
+            updated() {},
+          },
+        },
+      },
+    });
+
+    await flushPromises();
+
+    const input = wrapper.find('input.el-input-inner');
+    await input.setValue('tunnel');
+    await wrapper.find('.el-input-append .el-button-stub').trigger('click');
+    await flushPromises();
+
+    expect(routerPushMock).not.toHaveBeenCalled();
 
     wrapper.unmount();
   });

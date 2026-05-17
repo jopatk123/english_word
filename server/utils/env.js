@@ -12,7 +12,7 @@ const readEnv = (name) => {
 };
 
 const missingEnvMessage = (name) => `缺少环境变量 ${name}，请参考项目根目录 .env.example 完成配置`;
-const TEST_ADMIN_PASSWORD_HASH = '$2b$10$AVCABJrjHP7GZaizpnFmIOCQZdR6ak1.eVTXh835EERT9RMjOoM56';
+const TEST_ADMIN_PASSWORD_HASH = '$2b$10$zdBrxCT4mCv97LpDICclUuaYxm/us2VoE3mXH7VZgnHM28MPLuZSm';
 
 export const getJwtSecret = () => {
   const secret = readEnv('JWT_SECRET');

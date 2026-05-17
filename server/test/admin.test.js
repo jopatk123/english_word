@@ -6,7 +6,7 @@
  *   - PUT  /api/admin/users/:id/status
  *   - DELETE /api/admin/users/:id
  */
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
@@ -38,6 +38,7 @@ let app;
 let adminToken;
 let targetUser;
 const adminPassword = 'test-admin-password';
+let originalAdminPasswordHash;
 const suffix = () => Date.now() + Math.random().toString(36).slice(2, 6);
 const restoreEnv = (name, value) => {
   if (value === undefined) {
@@ -48,6 +49,9 @@ const restoreEnv = (name, value) => {
 };
 
 beforeAll(async () => {
+  originalAdminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
+  process.env.ADMIN_PASSWORD_HASH = await bcrypt.hash(adminPassword, 10);
+
   await initDB();
   app = buildApp();
 
@@ -59,6 +63,10 @@ beforeAll(async () => {
 
   const adminRes = await request(app).post('/api/admin/login').send({ password: adminPassword });
   adminToken = adminRes.body.data.token;
+});
+
+afterAll(() => {
+  restoreEnv('ADMIN_PASSWORD_HASH', originalAdminPasswordHash);
 });
 
 describe('POST /api/admin/login', () => {

@@ -3,14 +3,15 @@
   <el-card v-if="localExistingWord" class="ai-card" style="margin-top: 16px">
     <el-alert type="success" :closable="false" show-icon>
       <template #title>
-        单词 <strong>{{ localExistingWord.name }}</strong> 已存在，关联词根：
+        单词 <strong>{{ localExistingWord.name }}</strong> 已存在
+        <template v-if="localExistingWord.roots?.length"> ，关联词根： </template>
         <span v-for="(root, idx) in localExistingWord.roots || []" :key="root.id">
           <el-link type="primary" @click="$router.push(`/root/${root.id}`)">{{
             root.name
           }}</el-link>
           <span v-if="idx < localExistingWord.roots.length - 1">、</span>
         </span>
-        ，
+        <template v-if="localExistingWord.roots?.length">，</template>
         <el-link type="primary" @click="$router.push(`/word/${localExistingWord.id}`)">
           点击查看详情
         </el-link>
