@@ -319,7 +319,14 @@ async function m017_create_user_ai_settings() {
   if (tables.includes('user_ai_settings')) return;
   await qi.createTable('user_ai_settings', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    user_id: { type: DataTypes.INTEGER, allowNull: false, unique: true },
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      unique: true,
+      references: { model: 'users', key: 'id' },
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    },
     encrypted_payload: { type: DataTypes.TEXT, allowNull: false },
     iv: { type: DataTypes.STRING, allowNull: false },
     auth_tag: { type: DataTypes.STRING, allowNull: false },

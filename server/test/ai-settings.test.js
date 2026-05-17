@@ -1,11 +1,28 @@
+import crypto from 'crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import { initDB, User, UserAiSetting } from '../models/index.js';
 import aiSettingsRouter from '../routes/ai-settings.js';
 import { resolveUserAiConfig } from '../services/user-ai-settings.js';
+import { decryptAiSettingsPayload, encryptAiSettingsPayload } from '../utils/aiSettingsCrypto.js';
 
 const suffix = () => `${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+
+const buildLegacyEncryptedRecord = (payload, secret) => {
+  const iv = crypto.randomBytes(12);
+  const key = crypto.createHash('sha256').update(`ai-settings:${secret}`).digest();
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const plaintext = JSON.stringify(payload || {});
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+
+  return {
+    encryptedPayload: encrypted.toString('base64url'),
+    iv: iv.toString('base64url'),
+    authTag: authTag.toString('base64url'),
+  };
+};
 
 const buildApp = (userId) => {
   const app = express();
@@ -110,5 +127,52 @@ describe('resolveUserAiConfig', () => {
       providerMode: 'openai-compatible',
       temperature: 0.3,
     });
+  });
+});
+
+describe('AI settings crypto', () => {
+  it('可以解密旧 JWT 派生密钥加密的数据', () => {
+    const originalAiSecret = process.env.AI_SETTINGS_SECRET;
+    const originalJwtSecret = process.env.JWT_SECRET;
+
+    process.env.AI_SETTINGS_SECRET = 'new-ai-secret';
+    process.env.JWT_SECRET = 'legacy-jwt-secret';
+
+    try {
+      const legacyRecord = buildLegacyEncryptedRecord(
+        { openai: 'sk-legacy-12345' },
+        'legacy-jwt-secret'
+      );
+
+      expect(decryptAiSettingsPayload(legacyRecord)).toEqual({ openai: 'sk-legacy-12345' });
+    } finally {
+      if (originalAiSecret === undefined) {
+        delete process.env.AI_SETTINGS_SECRET;
+      } else {
+        process.env.AI_SETTINGS_SECRET = originalAiSecret;
+      }
+
+      if (originalJwtSecret === undefined) {
+        delete process.env.JWT_SECRET;
+      } else {
+        process.env.JWT_SECRET = originalJwtSecret;
+      }
+    }
+  });
+
+  it('使用独立 AI_SETTINGS_SECRET 加密后可正常往返', () => {
+    const originalAiSecret = process.env.AI_SETTINGS_SECRET;
+    process.env.AI_SETTINGS_SECRET = 'roundtrip-ai-secret';
+
+    try {
+      const encrypted = encryptAiSettingsPayload({ deepseek: 'sk-roundtrip-12345' });
+      expect(decryptAiSettingsPayload(encrypted)).toEqual({ deepseek: 'sk-roundtrip-12345' });
+    } finally {
+      if (originalAiSecret === undefined) {
+        delete process.env.AI_SETTINGS_SECRET;
+      } else {
+        process.env.AI_SETTINGS_SECRET = originalAiSecret;
+      }
+    }
   });
 });

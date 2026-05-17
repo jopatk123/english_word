@@ -52,6 +52,17 @@ export const getAdminPasswordHash = () => {
   throw new Error(missingEnvMessage('ADMIN_PASSWORD_HASH'));
 };
 
+export const getAiSettingsSecret = () => {
+  const secret = readEnv('AI_SETTINGS_SECRET');
+  if (secret) return secret;
+
+  if (process.env.NODE_ENV === 'test') {
+    return 'test-ai-settings-secret';
+  }
+
+  throw new Error(missingEnvMessage('AI_SETTINGS_SECRET'));
+};
+
 export const getDbPath = () => {
   const dbPath = readEnv('DB_PATH');
   if (dbPath) return dbPath;

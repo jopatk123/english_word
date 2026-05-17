@@ -156,8 +156,7 @@ export const createStudyTimerSocket = () => {
 
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const url = new URL('/ws/study-timer', `${protocol}//${window.location.host}`);
-  url.searchParams.set('token', token);
-  return new WebSocket(url.toString());
+  return new WebSocket(url.toString(), [token]);
 };
 
 export default api;

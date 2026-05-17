@@ -32,7 +32,7 @@
 
 ## 部署前必读
 
-- `PORT`、`DB_PATH`、`JWT_SECRET`、`ADMIN_JWT_SECRET`、`ADMIN_PASSWORD_HASH` 全部必填
+- `PORT`、`DB_PATH`、`JWT_SECRET`、`AI_SETTINGS_SECRET`、`ADMIN_JWT_SECRET`、`ADMIN_PASSWORD_HASH` 全部必填
 - 项目已移除运行时和 Docker 部署层的默认值；任一变量缺失或为空，部署会直接失败
 - 管理员登录密码只以 bcrypt 哈希形式配置，不再支持明文环境变量
 - Docker 部署时，`DB_PATH` 应填写容器内持久化目录，例如 `/app/data/words.db`
@@ -55,6 +55,7 @@ cp .env.example .env
 PORT=3010
 DB_PATH=/app/data/words.db
 JWT_SECRET=replace-with-a-long-random-secret
+AI_SETTINGS_SECRET=replace-with-another-long-random-secret
 ADMIN_JWT_SECRET=replace-with-another-long-random-secret
 ADMIN_PASSWORD_HASH=replace-with-bcrypt-hash
 ```
@@ -109,6 +110,7 @@ cp .env.example .env
 PORT=3010
 DB_PATH=./data/words.dev.db
 JWT_SECRET=replace-with-a-long-random-secret
+AI_SETTINGS_SECRET=replace-with-another-long-random-secret
 ADMIN_JWT_SECRET=replace-with-another-long-random-secret
 ADMIN_PASSWORD_HASH=replace-with-bcrypt-hash
 ```
@@ -158,6 +160,7 @@ npm run test:coverage
 | `PORT`                | 是       | 服务监听端口；Docker 对外映射也使用同一个端口                                     |
 | `DB_PATH`             | 是       | SQLite 文件路径；Docker 建议 `/app/data/words.db`，本地建议 `./data/words.dev.db` |
 | `JWT_SECRET`          | 是       | 普通用户 token 的签名密钥                                                         |
+| `AI_SETTINGS_SECRET`  | 是       | 服务端加密保存 AI Key 的独立密钥，建议与 `JWT_SECRET` 不同                        |
 | `ADMIN_JWT_SECRET`    | 是       | 超级管理员 token 的签名密钥，必须与 `JWT_SECRET` 不同                             |
 | `ADMIN_PASSWORD_HASH` | 是       | 超级管理员登录密码的 bcrypt 哈希，对应页面为 `/super-admin`                       |
 

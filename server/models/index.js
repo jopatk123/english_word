@@ -66,7 +66,7 @@ User.hasOne(UserAiSetting, {
   as: 'aiSetting',
   onDelete: 'CASCADE',
 });
-UserAiSetting.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+UserAiSetting.belongsTo(User, { foreignKey: 'user_id', as: 'user', onDelete: 'CASCADE' });
 
 const initDB = async () => {
   const qi = sequelize.getQueryInterface();

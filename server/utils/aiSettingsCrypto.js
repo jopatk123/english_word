@@ -1,15 +1,35 @@
 import crypto from 'crypto';
-import { getJwtSecret } from './env.js';
+import { getAiSettingsSecret, getJwtSecret } from './env.js';
 
 const IV_BYTES = 12;
 
-function getEncryptionKey() {
-  return crypto.createHash('sha256').update(`ai-settings:${getJwtSecret()}`).digest();
+function deriveEncryptionKey(secret) {
+  return crypto.createHash('sha256').update(`ai-settings:${secret}`).digest();
+}
+
+function getCurrentEncryptionKey() {
+  return deriveEncryptionKey(getAiSettingsSecret());
+}
+
+function getLegacyEncryptionKey() {
+  return deriveEncryptionKey(getJwtSecret());
+}
+
+function decryptWithKey(record, key) {
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(record.iv, 'base64url'));
+  decipher.setAuthTag(Buffer.from(record.authTag, 'base64url'));
+
+  const decrypted = Buffer.concat([
+    decipher.update(Buffer.from(record.encryptedPayload, 'base64url')),
+    decipher.final(),
+  ]);
+  const parsed = JSON.parse(decrypted.toString('utf8'));
+  return parsed && typeof parsed === 'object' ? parsed : {};
 }
 
 export function encryptAiSettingsPayload(payload) {
   const iv = crypto.randomBytes(IV_BYTES);
-  const cipher = crypto.createCipheriv('aes-256-gcm', getEncryptionKey(), iv);
+  const cipher = crypto.createCipheriv('aes-256-gcm', getCurrentEncryptionKey(), iv);
   const plaintext = JSON.stringify(payload || {});
   const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
   const authTag = cipher.getAuthTag();
@@ -26,17 +46,15 @@ export function decryptAiSettingsPayload(record) {
     return {};
   }
 
-  const decipher = crypto.createDecipheriv(
-    'aes-256-gcm',
-    getEncryptionKey(),
-    Buffer.from(record.iv, 'base64url')
-  );
-  decipher.setAuthTag(Buffer.from(record.authTag, 'base64url'));
+  const currentKey = getCurrentEncryptionKey();
+  try {
+    return decryptWithKey(record, currentKey);
+  } catch (currentError) {
+    const legacyKey = getLegacyEncryptionKey();
+    if (legacyKey.equals(currentKey)) {
+      throw currentError;
+    }
 
-  const decrypted = Buffer.concat([
-    decipher.update(Buffer.from(record.encryptedPayload, 'base64url')),
-    decipher.final(),
-  ]);
-  const parsed = JSON.parse(decrypted.toString('utf8'));
-  return parsed && typeof parsed === 'object' ? parsed : {};
+    return decryptWithKey(record, legacyKey);
+  }
 }

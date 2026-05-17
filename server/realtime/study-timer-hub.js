@@ -11,11 +11,26 @@ function sendJson(socket, payload) {
   socket.send(JSON.stringify(payload));
 }
 
-async function authenticateRequest(request) {
-  const host = request.headers.host || 'localhost';
-  const url = new URL(request.url, `http://${host}`);
-  const token = url.searchParams.get('token');
+function getStudyTimerToken(request) {
+  const header = request.headers['sec-websocket-protocol'];
+  if (typeof header === 'string') {
+    return header
+      .split(',')
+      .map((value) => value.trim())
+      .find(Boolean);
+  }
 
+  if (Array.isArray(header)) {
+    return header
+      .flatMap((value) => String(value).split(','))
+      .map((value) => value.trim())
+      .find(Boolean);
+  }
+
+  return '';
+}
+
+async function authenticateToken(token) {
   if (!token) return null;
 
   try {
@@ -117,7 +132,8 @@ export function createStudyTimerHub() {
         return;
       }
 
-      const user = await authenticateRequest(request);
+      const token = getStudyTimerToken(request);
+      const user = await authenticateToken(token);
       if (!user) {
         socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
         socket.destroy();

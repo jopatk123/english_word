@@ -80,9 +80,7 @@ describe('学习计时 websocket', () => {
     const address = await listen(server);
 
     const result = await new Promise((resolve) => {
-      const socket = new WebSocket(
-        `ws://127.0.0.1:${address.port}/ws/study-timer?token=${oldToken}`
-      );
+      const socket = new WebSocket(`ws://127.0.0.1:${address.port}/ws/study-timer`, [oldToken]);
       socket.on('open', () => resolve('opened'));
       socket.on('error', () => resolve('error'));
       socket.on('close', () => resolve('closed'));
@@ -105,7 +103,7 @@ describe('学习计时 websocket', () => {
     });
 
     const address = await listen(server);
-    const socket = new WebSocket(`ws://127.0.0.1:${address.port}/ws/study-timer?token=${token}`);
+    const socket = new WebSocket(`ws://127.0.0.1:${address.port}/ws/study-timer`, [token]);
     resources.push(
       () =>
         new Promise((resolve) => {
