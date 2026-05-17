@@ -9,6 +9,7 @@ RUN npm run build
 # 构建阶段 - 后端依赖
 FROM node:20-alpine AS backend-deps
 WORKDIR /app/server
+RUN apk add --no-cache python3 make g++
 COPY server/package*.json ./
 RUN npm ci --omit=dev
 
