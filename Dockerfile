@@ -17,6 +17,8 @@ RUN npm ci --omit=dev
 FROM node:20-alpine
 WORKDIR /app
 
+RUN apk add --no-cache su-exec
+
 # 复制后端
 COPY server/ ./server/
 COPY --from=backend-deps /app/server/node_modules ./server/node_modules
@@ -24,9 +26,12 @@ COPY --from=backend-deps /app/server/node_modules ./server/node_modules
 # 复制前端构建产物
 COPY --from=frontend-build /app/client/dist ./client/dist
 
+# 复制启动脚本
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # 创建数据目录
 RUN mkdir -p /app/data && chown -R node:node /app
 
-USER node
-
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "server/index.js"]
