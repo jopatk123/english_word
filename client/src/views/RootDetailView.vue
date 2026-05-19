@@ -3,6 +3,9 @@
     <!-- 面包屑导航 -->
     <el-breadcrumb separator="/">
       <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item v-if="showPreviousBreadcrumb" :to="previousBreadcrumbTo">
+        {{ previousBreadcrumbLabel }}
+      </el-breadcrumb-item>
       <el-breadcrumb-item>词根：{{ root?.name }}</el-breadcrumb-item>
     </el-breadcrumb>
 
@@ -145,6 +148,7 @@
     moveWord,
   } from '../api/index.js';
   import SpeakButton from '../components/SpeakButton.vue';
+  import { getRouteDisplayLabel, getRouteSource } from '../utils/navigationHistory.js';
 
   const props = defineProps({ id: String });
   const route = useRoute();
@@ -165,6 +169,12 @@
 
   const router = useRouter();
   const rootId = props.id || route.params.id;
+  const previousRoute = computed(() => getRouteSource(route.fullPath));
+  const showPreviousBreadcrumb = computed(
+    () => Boolean(previousRoute.value && previousRoute.value.name !== 'Home')
+  );
+  const previousBreadcrumbTo = computed(() => previousRoute.value?.fullPath || '/');
+  const previousBreadcrumbLabel = computed(() => getRouteDisplayLabel(previousRoute.value));
 
   // 移动单词
   const moveDialogVisible = ref(false);

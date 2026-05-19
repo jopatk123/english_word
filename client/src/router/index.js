@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { getAuthRedirectPath } from '../utils/authRouteAccess.js';
+import { rememberRouteSource } from '../utils/navigationHistory.js';
 
 const LoginView = () => import('../views/LoginView.vue');
 const HomeView = () => import('../views/HomeView.vue');
@@ -56,6 +57,10 @@ router.beforeEach((to, from, next) => {
   }
 
   next();
+});
+
+router.afterEach((to, from) => {
+  rememberRouteSource(to, from);
 });
 
 export default router;

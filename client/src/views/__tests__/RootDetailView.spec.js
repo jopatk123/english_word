@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import RootDetailView from '../RootDetailView.vue';
 
-const routeMock = { params: { id: '42' } };
+const routeMock = { params: { id: '42' }, fullPath: '/root/42' };
 
 const {
   getRootMock,
@@ -15,6 +15,8 @@ const {
   moveWordMock,
   elMessage,
   elMessageBox,
+  getRouteSourceMock,
+  getRouteDisplayLabelMock,
 } = vi.hoisted(() => ({
   getRootMock: vi.fn(),
   getRootsMock: vi.fn(),
@@ -31,6 +33,8 @@ const {
   elMessageBox: {
     confirm: vi.fn(),
   },
+  getRouteSourceMock: vi.fn(),
+  getRouteDisplayLabelMock: vi.fn((route) => (route?.name === 'Search' ? '搜索' : '上一步')),
 }));
 
 const routerMock = { push: vi.fn() };
@@ -55,6 +59,11 @@ vi.mock('element-plus', () => ({
   ElMessageBox: elMessageBox,
 }));
 
+vi.mock('../../utils/navigationHistory.js', () => ({
+  getRouteSource: (...args) => getRouteSourceMock(...args),
+  getRouteDisplayLabel: (...args) => getRouteDisplayLabelMock(...args),
+}));
+
 const globalStubs = {
   SpeakButton: {
     template: '<span class="speak-button-stub" />',
@@ -63,7 +72,9 @@ const globalStubs = {
     template: '<nav class="el-breadcrumb-stub"><slot /></nav>',
   },
   'el-breadcrumb-item': {
-    template: '<span class="el-breadcrumb-item-stub"><slot /></span>',
+    props: ['to'],
+    template:
+      '<a class="el-breadcrumb-item-stub" :data-path="typeof to === \'string\' ? to : to?.path"><slot /></a>',
   },
   'el-card': {
     template: '<section class="el-card-stub"><slot name="header" /><slot /></section>',
@@ -193,6 +204,8 @@ describe('RootDetailView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     routeMock.params.id = '42';
+    routeMock.fullPath = '/root/42';
+    getRouteSourceMock.mockReturnValue(null);
   });
 
   afterEach(() => {
@@ -230,5 +243,21 @@ describe('RootDetailView', () => {
     expect(wrapper.find('.root-toolbar').exists()).toBe(false);
 
     wrapper.unmount();
+  });
+
+  it('多入口词根详情页会把上一跳渲染成可点击面包屑', async () => {
+    getRouteSourceMock.mockReturnValue({
+      name: 'Search',
+      fullPath: '/search?keyword=state',
+      path: '/search',
+      query: { keyword: 'state' },
+    });
+
+    const wrapper = await createWrapper();
+    const breadcrumbItems = wrapper.findAll('.el-breadcrumb-item-stub');
+    const previousItem = breadcrumbItems.find((item) => item.text() === '搜索');
+
+    expect(previousItem).toBeTruthy();
+    expect(previousItem?.attributes('data-path')).toBe('/search?keyword=state');
   });
 });

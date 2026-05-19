@@ -2,6 +2,9 @@
   <div class="ai-page">
     <el-breadcrumb separator="/" class="page-breadcrumb">
       <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item v-if="showPreviousBreadcrumb" :to="previousBreadcrumbTo">
+        {{ previousBreadcrumbLabel }}
+      </el-breadcrumb-item>
       <el-breadcrumb-item>AI 配置</el-breadcrumb-item>
     </el-breadcrumb>
 
@@ -222,9 +225,11 @@
 
 <script setup>
   import { computed, onMounted, onUnmounted, ref } from 'vue';
+  import { useRoute } from 'vue-router';
   import { ElMessage, ElMessageBox } from 'element-plus';
   import { testAiConnection } from '../api/index.js';
   import { AI_PROVIDERS } from '../constants/aiProviders.js';
+  import { getRouteDisplayLabel, getRouteSource } from '../utils/navigationHistory.js';
   import {
     deleteProviderAiKey,
     loadAiSettings,
@@ -244,6 +249,14 @@
     deleteCustomModel,
     subscribeAiSettingsChanges,
   } from '../utils/aiSettings.js';
+
+  const route = useRoute();
+  const previousRoute = computed(() => getRouteSource(route.fullPath));
+  const showPreviousBreadcrumb = computed(
+    () => Boolean(previousRoute.value && previousRoute.value.name !== 'Home')
+  );
+  const previousBreadcrumbTo = computed(() => previousRoute.value?.fullPath || '/');
+  const previousBreadcrumbLabel = computed(() => getRouteDisplayLabel(previousRoute.value));
 
   // --- 响应式版本号，自定义数据变更时递增，用于强制 computed 重算 ---
   const settingsVersion = ref(0);

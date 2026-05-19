@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import WordDetailView from '../WordDetailView.vue';
 
-const routeMock = { params: { id: '1' } };
+const routeMock = { params: { id: '1' }, fullPath: '/word/1' };
 
 const {
   getWordMock,
@@ -21,6 +21,8 @@ const {
   refreshAiSettingsMock,
   isAiSettingsReadyMock,
   subscribeAiSettingsChangesMock,
+  getRouteSourceMock,
+  getRouteDisplayLabelMock,
 } = vi.hoisted(() => ({
   getWordMock: vi.fn(),
   getExamplesMock: vi.fn(),
@@ -44,6 +46,14 @@ const {
   refreshAiSettingsMock: vi.fn(),
   isAiSettingsReadyMock: vi.fn(),
   subscribeAiSettingsChangesMock: vi.fn(() => () => {}),
+  getRouteSourceMock: vi.fn(),
+  getRouteDisplayLabelMock: vi.fn((route, options) => {
+    if (route?.name === 'RootDetail' && options?.rootName) {
+      return `词根：${options.rootName}`;
+    }
+
+    return route?.name === 'Search' ? '搜索' : '上一步';
+  }),
 }));
 
 const routerMock = { push: vi.fn() };
@@ -78,6 +88,11 @@ vi.mock('../../utils/aiSettings.js', () => ({
   subscribeAiSettingsChanges: (...args) => subscribeAiSettingsChangesMock(...args),
 }));
 
+vi.mock('../../utils/navigationHistory.js', () => ({
+  getRouteSource: (...args) => getRouteSourceMock(...args),
+  getRouteDisplayLabel: (...args) => getRouteDisplayLabelMock(...args),
+}));
+
 const flushPromises = async () => {
   await Promise.resolve();
   await Promise.resolve();
@@ -86,7 +101,11 @@ const flushPromises = async () => {
 const globalStubs = {
   SpeakButton: { template: '<button class="speak-stub" />' },
   'el-breadcrumb': { template: '<div><slot /></div>' },
-  'el-breadcrumb-item': { template: '<div><slot /></div>' },
+  'el-breadcrumb-item': {
+    props: ['to'],
+    template:
+      '<a class="el-breadcrumb-item-stub" :data-path="typeof to === \'string\' ? to : to?.path"><slot /></a>',
+  },
   'el-card': { template: '<div><slot name="header" /><slot /></div>' },
   'el-link': { template: '<a><slot /></a>' },
   'el-tag': { template: '<span><slot /></span>' },
@@ -135,8 +154,8 @@ const baseExamples = [
   { id: 12, sentence: 'Prices remained stable.', translation: '价格保持稳定。', remark: '' },
 ];
 
-async function createWrapper() {
-  getWordMock.mockResolvedValue({ data: baseWord });
+async function createWrapper({ wordData = baseWord } = {}) {
+  getWordMock.mockResolvedValue({ data: wordData });
   getExamplesMock.mockResolvedValue({ data: baseExamples });
   getRootsMock.mockResolvedValue({
     data: [
@@ -178,6 +197,8 @@ describe('WordDetailView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     routeMock.params.id = '1';
+    routeMock.fullPath = '/word/1';
+    getRouteSourceMock.mockReturnValue(null);
   });
 
   afterEach(() => {
@@ -217,6 +238,30 @@ describe('WordDetailView', () => {
     });
     expect(getExamplesMock).toHaveBeenCalledTimes(2);
     expect(elMessage.success).toHaveBeenCalledWith('已重新生成该例句');
+  });
+  it('多入口单词详情页会把上一跳渲染成可点击面包屑', async () => {
+    getRouteSourceMock.mockReturnValue({
+      name: 'RootDetail',
+      fullPath: '/root/7',
+      path: '/root/7',
+      params: { id: '7' },
+    });
+
+    const wrapper = await createWrapper({
+      wordData: {
+        ...baseWord,
+        roots: [
+          { id: 5, name: 'ment', meaning: '行为或结果' },
+          { id: 7, name: 'sta', meaning: '站立' },
+        ],
+      },
+    });
+
+    const breadcrumbItems = wrapper.findAll('.el-breadcrumb-item-stub');
+    const previousItem = breadcrumbItems.find((item) => item.text().includes('词根：sta'));
+
+    expect(previousItem).toBeTruthy();
+    expect(previousItem?.attributes('data-path')).toBe('/root/7');
   });
 
   it('AI 首次返回重复例句时会自动重试并使用不重复结果', async () => {

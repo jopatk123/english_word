@@ -3,8 +3,11 @@
     <!-- 面包屑导航 -->
     <el-breadcrumb separator="/">
       <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item v-if="showPreviousBreadcrumb" :to="previousBreadcrumbTo">
+        {{ previousBreadcrumbLabel }}
+      </el-breadcrumb-item>
       <el-breadcrumb-item
-        v-if="word?.roots?.length === 1"
+        v-else-if="word?.roots?.length === 1"
         :to="{ path: `/root/${word.roots[0].id}` }"
       >
         词根：{{ word.roots[0].name }}
@@ -176,9 +179,11 @@
 </template>
 
 <script setup>
+  import { computed } from 'vue';
   import { useRoute } from 'vue-router';
   import SpeakButton from '../components/SpeakButton.vue';
   import { useWordDetail } from '../composables/useWordDetail.js';
+  import { getRouteDisplayLabel, getRouteSource } from '../utils/navigationHistory.js';
 
   const props = defineProps({ id: String });
   const route = useRoute();
@@ -216,6 +221,28 @@
     setSelectedRootIdForTest,
     setSelectedDeleteRootIdForTest,
   } = useWordDetail(wordId);
+
+  const previousRoute = computed(() => getRouteSource(route.fullPath));
+  const previousRoot = computed(() => {
+    if (previousRoute.value?.name !== 'RootDetail') {
+      return null;
+    }
+
+    return (
+      word.value?.roots?.find(
+        (rootItem) => String(rootItem.id) === String(previousRoute.value.params?.id)
+      ) || null
+    );
+  });
+  const showPreviousBreadcrumb = computed(
+    () => Boolean(previousRoute.value && previousRoute.value.name !== 'Home')
+  );
+  const previousBreadcrumbTo = computed(() => previousRoute.value?.fullPath || '/');
+  const previousBreadcrumbLabel = computed(() =>
+    getRouteDisplayLabel(previousRoute.value, {
+      rootName: previousRoot.value?.name,
+    })
+  );
 
   defineExpose({
     setWordForTest,
