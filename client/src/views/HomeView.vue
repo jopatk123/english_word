@@ -27,7 +27,9 @@
         <el-table-column prop="name" label="单词" min-width="120">
           <template #default="{ row }">
             <div class="cell-with-speak">
-              <span>{{ row.name }}</span>
+              <el-link type="primary" @click="goToWordDetail(row.id)">
+                {{ row.name }}
+              </el-link>
               <SpeakButton :text="row.name" />
             </div>
           </template>
@@ -36,7 +38,7 @@
         <el-table-column label="所属词根" min-width="120">
           <template #default="{ row }">
             <template v-for="(root, idx) in row.roots || []" :key="root.id">
-              <el-link type="primary" @click="$router.push(`/root/${root.id}`)">
+              <el-link type="primary" @click="goToRootDetail(root.id)">
                 {{ root.name }}
               </el-link>
               <span v-if="idx < row.roots.length - 1">、</span>
@@ -45,7 +47,7 @@
         </el-table-column>
         <el-table-column label="操作" width="80">
           <template #default="{ row }">
-            <el-button link type="primary" @click="$router.push(`/word/${row.id}`)">详情</el-button>
+            <el-button link type="primary" @click="goToWordDetail(row.id)">详情</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -56,7 +58,7 @@
       <div class="section-header">
         <h2>词根列表</h2>
         <div class="section-actions">
-          <el-button type="success" @click="$router.push('/ai/roots')">智能添加词根</el-button>
+          <el-button type="success" @click="goToAiRoots">智能添加词根</el-button>
           <el-button type="primary" @click="openRootDialog()">添加词根</el-button>
         </div>
       </div>
@@ -82,7 +84,7 @@
         <el-table-column prop="name" label="词根" min-width="120">
           <template #default="{ row }">
             <div class="cell-with-speak">
-              <el-link type="primary" @click="$router.push(`/root/${row.id}`)">
+              <el-link type="primary" @click="goToRootDetail(row.id)">
                 <strong>{{ row.name }}</strong>
               </el-link>
               <SpeakButton :text="row.name" />
@@ -251,6 +253,18 @@
   };
 
   const router = useRouter();
+
+  const goToWordDetail = (wordId) => {
+    router.push(`/word/${wordId}`);
+  };
+
+  const goToRootDetail = (rootId) => {
+    router.push(`/root/${rootId}`);
+  };
+
+  const goToAiRoots = () => {
+    router.push('/ai/roots');
+  };
 
   const handleRootSelectionChange = (rows) => {
     selectedRoots.value = rows;

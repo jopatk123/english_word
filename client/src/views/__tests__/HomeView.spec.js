@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils';
+import { computed, h, inject, provide } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import HomeView from '../HomeView.vue';
 
@@ -64,14 +65,49 @@ const globalStubs = {
     name: 'ElTableStub',
     props: ['data'],
     emits: ['selection-change'],
-    methods: {
-      clearSelection() {},
-      toggleAllSelection() {},
+    setup(props, { slots, expose }) {
+      provide('elTableData', computed(() => props.data ?? []));
+      expose({
+        clearSelection() {},
+        toggleAllSelection() {},
+      });
+      return () => h('div', { class: 'el-table-stub' }, slots.default?.());
     },
-    template: '<div class="el-table-stub"><slot /></div>',
   },
   'el-table-column': {
-    template: '<div class="el-table-column-stub" />',
+    props: ['prop', 'type'],
+    setup(props, { slots }) {
+      const elTableData = inject('elTableData', computed(() => []));
+      return () => {
+        if (props.type === 'selection') {
+          return null;
+        }
+
+        return h(
+          'div',
+          { class: 'el-table-column-stub' },
+          elTableData.value.map((row, index) => {
+            if (slots.default) {
+              return h(
+                'div',
+                { key: row?.id ?? row?.name ?? index, class: 'el-table-row-stub' },
+                slots.default({ row })
+              );
+            }
+
+            if (props.prop) {
+              return h(
+                'span',
+                { key: row?.id ?? row?.name ?? index, class: 'el-table-cell-text' },
+                row?.[props.prop]
+              );
+            }
+
+            return null;
+          })
+        );
+      };
+    },
   },
   'el-link': {
     emits: ['click'],
@@ -194,6 +230,45 @@ describe('HomeView', () => {
     await flushPromises();
 
     expect(routerPushMock).not.toHaveBeenCalled();
+
+    wrapper.unmount();
+  });
+
+  it('allows clicking the word name to open the word detail page', async () => {
+    getWordsMock.mockResolvedValue({
+      data: [{ id: 1, name: 'wallet', meaning: '钱包', roots: [] }],
+    });
+
+    const wrapper = mount(HomeView, {
+      global: {
+        stubs: globalStubs,
+        directives: {
+          loading: {
+            mounted() {},
+            updated() {},
+          },
+        },
+      },
+    });
+
+    await flushPromises();
+
+    const input = wrapper.find('input.el-input-inner');
+    await input.setValue('wallet');
+    await wrapper.find('.el-input-append .el-button-stub').trigger('click');
+    await flushPromises();
+
+    routerPushMock.mockClear();
+
+    const wordLink = wrapper
+      .findAll('.el-link-stub')
+      .find((node) => node.text().includes('wallet'));
+
+    expect(wordLink).toBeDefined();
+
+    await wordLink.trigger('click');
+
+    expect(routerPushMock).toHaveBeenCalledWith('/word/1');
 
     wrapper.unmount();
   });
