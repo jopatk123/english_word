@@ -1,4 +1,4 @@
-import { watch, nextTick } from 'vue';
+import { watch, nextTick, onBeforeUnmount } from 'vue';
 import { useSpeech } from '../utils/speech.js';
 
 /**
@@ -22,6 +22,70 @@ export function useAutoRead({ currentCard, studyMode, modeSelected, sessionStats
   } = useSpeech();
 
   let autoReadToken = 0;
+  let wakeLockSessionActive = false;
+  let wakeLockSentinel = null;
+
+  const supportsWakeLock = () =>
+    typeof navigator !== 'undefined' &&
+    !!navigator.wakeLock &&
+    typeof navigator.wakeLock.request === 'function';
+
+  const shouldHoldWakeLock = () =>
+    wakeLockSessionActive &&
+    studyMode.value === 'autoRead' &&
+    modeSelected.value &&
+    !!currentCard.value &&
+    !isAutoReadPaused.value &&
+    typeof document !== 'undefined' &&
+    document.visibilityState === 'visible';
+
+  function handleWakeLockRelease() {
+    wakeLockSentinel = null;
+
+    if (shouldHoldWakeLock()) {
+      void requestWakeLock();
+    }
+  }
+
+  const releaseWakeLock = async () => {
+    const sentinel = wakeLockSentinel;
+    wakeLockSentinel = null;
+
+    if (!sentinel) return;
+
+    sentinel.removeEventListener?.('release', handleWakeLockRelease);
+
+    try {
+      await sentinel.release?.();
+    } catch {
+      // Ignore wake lock release failures.
+    }
+  };
+
+  const requestWakeLock = async () => {
+    if (!supportsWakeLock() || !shouldHoldWakeLock() || wakeLockSentinel) return;
+
+    try {
+      const sentinel = await navigator.wakeLock.request('screen');
+      wakeLockSentinel = sentinel;
+      sentinel.addEventListener?.('release', handleWakeLockRelease);
+    } catch {
+      wakeLockSentinel = null;
+    }
+  };
+
+  const syncWakeLock = () => {
+    if (shouldHoldWakeLock()) {
+      void requestWakeLock();
+      return;
+    }
+
+    void releaseWakeLock();
+  };
+
+  const handleVisibilityChange = () => {
+    syncWakeLock();
+  };
 
   const stopAutoRead = () => {
     autoReadToken += 1;
@@ -76,7 +140,11 @@ export function useAutoRead({ currentCard, studyMode, modeSelected, sessionStats
     ([card, mode, selected], previousValues = []) => {
       const [prevCard, prevMode, prevSelected] = previousValues;
 
-      if (!card || !selected) return;
+      if (!card || !selected) {
+        wakeLockSessionActive = false;
+        void releaseWakeLock();
+        return;
+      }
 
       const isNewCard = card !== prevCard;
       const justEnteredMode = mode !== prevMode;
@@ -85,9 +153,14 @@ export function useAutoRead({ currentCard, studyMode, modeSelected, sessionStats
       if (!(isNewCard || justEnteredMode || justStarted)) return;
 
       if (mode === 'autoRead') {
+        wakeLockSessionActive = true;
+        syncWakeLock();
         void playAutoReadCard(card);
         return;
       }
+
+      wakeLockSessionActive = false;
+      void releaseWakeLock();
 
       nextTick(() => {
         speak(card.word.name);
@@ -95,6 +168,24 @@ export function useAutoRead({ currentCard, studyMode, modeSelected, sessionStats
     },
     { immediate: true }
   );
+
+  watch(isAutoReadPaused, () => {
+    syncWakeLock();
+  });
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+  }
+
+  onBeforeUnmount(() => {
+    wakeLockSessionActive = false;
+
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    void releaseWakeLock();
+  });
 
   return { stopAutoRead, toggleAutoReadPause, isAutoReadPaused, speak };
 }
