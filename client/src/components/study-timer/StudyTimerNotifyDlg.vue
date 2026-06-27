@@ -17,8 +17,10 @@
     </div>
     <template #footer>
       <div class="rest-footer">
-        <el-button @click="emit('continue')">继续学习</el-button>
-        <el-button type="primary" @click="emit('stop')">停止计时</el-button>
+        <el-button :disabled="actionPending" @click="emit('continue')">继续学习</el-button>
+        <el-button type="primary" :disabled="actionPending" @click="emit('stop')">
+          停止计时
+        </el-button>
       </div>
     </template>
   </el-dialog>
@@ -30,6 +32,7 @@
   const props = defineProps({
     visible: Boolean,
     alarmMinutes: { type: Number, default: 30 },
+    actionPending: Boolean,
   });
   const emit = defineEmits(['update:visible', 'continue', 'stop']);
 

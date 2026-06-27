@@ -218,4 +218,55 @@ describe('useStudyTimer', () => {
     expect(wrapper.vm.isRunning).toBe(false);
     wrapper.unmount();
   });
+
+  it('到达提醒时间后会自动停止当前计时，继续学习会重新开始', async () => {
+    apiMocks.getStudyTimerState.mockResolvedValueOnce({ data: makeState() });
+    apiMocks.endStudySession.mockResolvedValue({
+      data: makeState({
+        isRunning: false,
+        sessionId: null,
+        startedAt: null,
+        elapsedSeconds: 0,
+        stateChangedAtMs: Date.parse('2026-04-15T10:01:00.000Z'),
+        revision: '500:8:0',
+      }),
+    });
+    apiMocks.startStudySession.mockResolvedValue({
+      data: makeState({
+        isRunning: true,
+        sessionId: 13,
+        startedAt: '2026-04-15T10:01:30.000Z',
+        elapsedSeconds: 0,
+        stateChangedAtMs: Date.parse('2026-04-15T10:01:30.000Z'),
+        revision: '600:13:1',
+      }),
+    });
+
+    const wrapper = mountHarness();
+    await flush();
+    socket.open();
+    await flush();
+
+    wrapper.vm.alarmEnabled = true;
+    wrapper.vm.alarmMinutes = 1;
+    await nextTick();
+
+    vi.advanceTimersByTime(30000);
+    await flush();
+
+    expect(apiMocks.endStudySession).toHaveBeenCalledWith(8);
+    expect(wrapper.vm.isRunning).toBe(false);
+    expect(wrapper.vm.restNotifyVisible).toBe(true);
+    expect(wrapper.vm.alarmTriggered).toBe(true);
+
+    await wrapper.vm.startTimer();
+    await flush();
+
+    expect(apiMocks.startStudySession).toHaveBeenCalledTimes(1);
+    expect(wrapper.vm.isRunning).toBe(true);
+    expect(wrapper.vm.sessionId).toBe(13);
+    expect(wrapper.vm.restNotifyVisible).toBe(false);
+    expect(wrapper.vm.alarmTriggered).toBe(false);
+    wrapper.unmount();
+  });
 });

@@ -174,13 +174,16 @@ export function useStudyTimer() {
     return false;
   }
 
-  function clearRunningState() {
+  function clearRunningState(options = {}) {
+    const { preserveRestNotify = false } = options;
     isRunning.value = false;
     sessionId.value = null;
     elapsedSeconds.value = 0;
     _startedAtMs = 0;
-    alarmTriggered.value = false;
-    restNotifyVisible.value = false;
+    if (!preserveRestNotify) {
+      alarmTriggered.value = false;
+      restNotifyVisible.value = false;
+    }
     _stopTicker();
   }
 
@@ -211,7 +214,7 @@ export function useStudyTimer() {
 
     const startedAtMs = new Date(state.startedAt).getTime();
     if (!state.isRunning || !Number.isFinite(startedAtMs)) {
-      clearRunningState();
+      clearRunningState({ preserveRestNotify: options.preserveRestNotify });
       if (wasRunning) {
         void loadStats();
       }
@@ -318,7 +321,7 @@ export function useStudyTimer() {
     }
   }
 
-  async function stopTimer() {
+  async function stopTimer(options = {}) {
     if (!isRunning.value || actionPending.value) return;
 
     const duration = elapsedSeconds.value;
@@ -326,7 +329,10 @@ export function useStudyTimer() {
     try {
       if (sessionId.value) {
         const state = unwrapResponse(await endStudySession(sessionId.value));
-        applyAuthoritativeState(state, { force: true });
+        applyAuthoritativeState(state, {
+          force: true,
+          preserveRestNotify: Boolean(options.preserveRestNotify),
+        });
       }
       await loadStats();
     } catch {
@@ -376,6 +382,7 @@ export function useStudyTimer() {
     _playAlarmSound();
     _sendBrowserNotification();
     restNotifyVisible.value = true;
+    void stopTimer({ preserveRestNotify: true });
   }
 
   function _refreshStatsIfVisible() {

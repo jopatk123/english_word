@@ -43,7 +43,8 @@
     <StudyTimerNotifyDlg
       v-model:visible="restNotifyVisible"
       :alarm-minutes="alarmMinutes"
-      @continue="dismissRestAlarm"
+      :action-pending="actionPending"
+      @continue="handleContinueFromNotify"
       @stop="handleStopFromNotify"
     />
   </div>
@@ -89,8 +90,11 @@
   }
 
   async function handleStopFromNotify() {
-    restNotifyVisible.value = false;
-    await stopTimer();
+    dismissRestAlarm();
+  }
+
+  async function handleContinueFromNotify() {
+    await startTimer();
   }
 </script>
 
