@@ -6,6 +6,7 @@ const routeMock = { fullPath: '/ai/settings' };
 
 const {
   testAiConnectionMock,
+  fetchAiModelsMock,
   elMessage,
   elMessageBox,
   loadAiSettingsMock,
@@ -22,6 +23,7 @@ const {
   saveCustomProviderMock,
   deleteCustomProviderMock,
   addCustomModelMock,
+  batchAddCustomModelsMock,
   deleteCustomModelMock,
   subscribeAiSettingsChangesMock,
   maskApiKeyMock,
@@ -29,6 +31,7 @@ const {
   getRouteDisplayLabelMock,
 } = vi.hoisted(() => ({
   testAiConnectionMock: vi.fn(),
+  fetchAiModelsMock: vi.fn(),
   elMessage: {
     success: vi.fn(),
     error: vi.fn(),
@@ -51,6 +54,7 @@ const {
   saveCustomProviderMock: vi.fn(),
   deleteCustomProviderMock: vi.fn(),
   addCustomModelMock: vi.fn(),
+  batchAddCustomModelsMock: vi.fn(() => 0),
   deleteCustomModelMock: vi.fn(),
   subscribeAiSettingsChangesMock: vi.fn(() => () => {}),
   maskApiKeyMock: vi.fn((value) => value || '未配置'),
@@ -66,6 +70,7 @@ vi.mock('vue-router', () => ({
 
 vi.mock('../../api/index.js', () => ({
   testAiConnection: (...args) => testAiConnectionMock(...args),
+  fetchAiModels: (...args) => fetchAiModelsMock(...args),
 }));
 
 vi.mock('element-plus', () => ({
@@ -89,6 +94,7 @@ vi.mock('../../utils/aiSettings.js', () => ({
   saveCustomProvider: (...args) => saveCustomProviderMock(...args),
   deleteCustomProvider: (...args) => deleteCustomProviderMock(...args),
   addCustomModel: (...args) => addCustomModelMock(...args),
+  batchAddCustomModels: (...args) => batchAddCustomModelsMock(...args),
   deleteCustomModel: (...args) => deleteCustomModelMock(...args),
   subscribeAiSettingsChanges: (...args) => subscribeAiSettingsChangesMock(...args),
 }));
@@ -137,6 +143,9 @@ const globalStubs = {
   },
   'el-tag': { template: '<span><slot /></span>' },
   'el-dialog': { template: '<div><slot /><slot name="footer" /></div>' },
+  'el-checkbox-group': { template: '<div><slot /></div>' },
+  'el-checkbox': { props: ['value', 'label', 'disabled'], template: '<label><slot /></label>' },
+  'el-scrollbar': { template: '<div><slot /></div>' },
 };
 
 describe('AISettingsView', () => {
@@ -178,5 +187,72 @@ describe('AISettingsView', () => {
 
     expect(previousItem).toBeTruthy();
     expect(previousItem?.attributes('data-path')).toBe('/word/1/ai-examples');
+  });
+
+  describe('自动获取模型', () => {
+    const mountView = () =>
+      mount(AISettingsView, {
+        global: {
+          stubs: globalStubs,
+          mocks: { $router: { push: vi.fn() } },
+        },
+      });
+
+    const findFetchButton = (wrapper) =>
+      wrapper.findAll('.el-button-stub').find((b) => b.text().includes('自动获取模型'));
+
+    it('点击按钮调用 fetchAiModels 并打开对话框', async () => {
+      fetchAiModelsMock.mockResolvedValue({
+        data: { models: ['gpt-4o', 'gpt-4o-mini'] },
+      });
+
+      const wrapper = mountView();
+      await flushPromises();
+
+      const fetchBtn = findFetchButton(wrapper);
+      expect(fetchBtn).toBeTruthy();
+      await fetchBtn.trigger('click');
+      await flushPromises();
+
+      expect(fetchAiModelsMock).toHaveBeenCalled();
+      expect(fetchAiModelsMock.mock.calls[0][0]).toMatchObject({
+        providerId: 'openai',
+        baseUrl: 'https://api.openai.com/v1',
+      });
+    });
+
+    it('API 失败时调 ElMessage.error 并关闭对话框', async () => {
+      fetchAiModelsMock.mockRejectedValue({
+        response: { data: { msg: 'API Key 无效' } },
+      });
+
+      const wrapper = mountView();
+      await flushPromises();
+
+      const fetchBtn = findFetchButton(wrapper);
+      await fetchBtn.trigger('click');
+      await flushPromises();
+
+      expect(fetchAiModelsMock).toHaveBeenCalled();
+      expect(elMessage.error).toHaveBeenCalledWith(expect.stringContaining('API Key 无效'));
+    });
+
+    it('未配置 baseUrl 或 apiKey 时提示警告且不调用 API', async () => {
+      const noKeySettings = { ...baseSettings, apiKey: '', hasApiKey: false };
+      loadAiSettingsMock.mockReturnValue(noKeySettings);
+      refreshAiSettingsMock.mockResolvedValue(noKeySettings);
+
+      const wrapper = mountView();
+      await flushPromises();
+
+      const fetchBtn = findFetchButton(wrapper);
+      await fetchBtn.trigger('click');
+      await flushPromises();
+
+      expect(fetchAiModelsMock).not.toHaveBeenCalled();
+      expect(elMessage.warning).toHaveBeenCalledWith(
+        expect.stringContaining('请先填写 Base URL')
+      );
+    });
   });
 });

@@ -16,3 +16,6 @@ client/vitest.config.js
 server/vitest.config.js
 server/coverage/
 coverage/
+
+# Trae AI tool artifacts
+.trae/

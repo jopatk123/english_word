@@ -25,8 +25,15 @@ vi.mock('../utils/ai.js', async (importOriginal) => {
   };
 });
 
+// ── mock ai-models service（fetchProviderModels）──────────────
+vi.mock('../services/ai-models.js', () => ({
+  fetchProviderModels: vi.fn(),
+}));
+
 // 需要在 mock 之后 import，才能拿到 mock 版本
 const { requestAiJson } = await import('../utils/ai.js');
+const { fetchProviderModels } = await import('../services/ai-models.js');
+const { AiTimeoutError, AiUpstreamError } = await import('../utils/ai.js');
 
 // ── 有效的 AI 配置 ─────────────────────────────────────────────
 const validConfig = {
@@ -106,6 +113,56 @@ describe('POST /ai/test', () => {
   it('requestAiJson 抛出错误时返回 502', async () => {
     requestAiJson.mockRejectedValue(new Error('AI 调用失败'));
     const res = await request(app).post('/ai/test').send({ config: validConfig });
+    expect(res.status).toBe(502);
+  });
+});
+
+// ================================================================
+// POST /ai/fetch-models
+// ================================================================
+
+describe('POST /ai/fetch-models', () => {
+  it('成功获取模型列表', async () => {
+    fetchProviderModels.mockResolvedValue({
+      models: ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner'],
+      rawCount: 3,
+    });
+
+    const res = await request(app).post('/ai/fetch-models').send({ config: validConfig });
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data.models)).toBe(true);
+    expect(res.body.data.models).toHaveLength(3);
+    expect(res.body.data.models).toContain('deepseek-chat');
+    expect(res.body.msg).toContain('3');
+  });
+
+  it('配置不完整时返回 400（缺少 apiKey 且无服务端 Key）', async () => {
+    const res = await request(app)
+      .post('/ai/fetch-models')
+      .send({ config: { providerId: 'openai', baseUrl: 'https://api.openai.com/v1' } });
+    expect(res.status).toBe(400);
+    expect(fetchProviderModels).not.toHaveBeenCalled();
+  });
+
+  it('fetchProviderModels 抛出 AiUpstreamError(400) 时返回 400', async () => {
+    fetchProviderModels.mockRejectedValue(new AiUpstreamError('API Key 无效', 400));
+
+    const res = await request(app).post('/ai/fetch-models').send({ config: validConfig });
+    expect(res.status).toBe(400);
+    expect(res.body.msg).toContain('API Key 无效');
+  });
+
+  it('fetchProviderModels 抛出 AiTimeoutError 时返回 504', async () => {
+    fetchProviderModels.mockRejectedValue(new AiTimeoutError());
+
+    const res = await request(app).post('/ai/fetch-models').send({ config: validConfig });
+    expect(res.status).toBe(504);
+  });
+
+  it('fetchProviderModels 抛出未知错误时返回 502', async () => {
+    fetchProviderModels.mockRejectedValue(new Error('网络错误'));
+
+    const res = await request(app).post('/ai/fetch-models').send({ config: validConfig });
     expect(res.status).toBe(502);
   });
 });

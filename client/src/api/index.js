@@ -116,6 +116,7 @@ export const saveAiSettingsKey = (data) => api.put('/ai-settings', data);
 export const deleteAiSettingsProviderKey = (providerId) =>
   api.delete(`/ai-settings/providers/${encodeURIComponent(providerId)}`);
 export const testAiConnection = (config) => aiApi.post('/ai/test', { config });
+export const fetchAiModels = (config) => aiApi.post('/ai/fetch-models', { config });
 export const getAiRootSuggestions = (config) => aiApi.post('/ai/suggest-roots', { config });
 export const getAiWordSuggestions = (rootId, config, options = {}) =>
   aiApi.post('/ai/suggest-words', {

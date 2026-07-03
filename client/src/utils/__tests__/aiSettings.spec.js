@@ -15,6 +15,7 @@ vi.mock('../../api/index.js', () => ({
 
 import {
   addCustomModel,
+  batchAddCustomModels,
   clearAiSettingsServerState,
   deleteCustomModel,
   deleteCustomProvider,
@@ -114,6 +115,38 @@ describe('providers and models', () => {
     expect(getAllModels('deepseek').filter((model) => model === 'dup-model')).toHaveLength(1);
     deleteCustomModel('deepseek', 'dup-model');
     expect(getCustomModels('deepseek')).not.toContain('dup-model');
+  });
+});
+
+describe('batchAddCustomModels', () => {
+  it('批量添加多个新模型', () => {
+    const added = batchAddCustomModels('deepseek', ['model-a', 'model-b', 'model-c']);
+    expect(added).toBe(3);
+    expect(getCustomModels('deepseek')).toEqual(
+      expect.arrayContaining(['model-a', 'model-b', 'model-c'])
+    );
+  });
+
+  it('已存在的模型被跳过，返回实际新增数', () => {
+    addCustomModel('deepseek', 'existing-model');
+    const added = batchAddCustomModels('deepseek', ['existing-model', 'new-model']);
+    expect(added).toBe(1);
+    expect(getCustomModels('deepseek')).toContain('new-model');
+  });
+
+  it('空数组不写入且返回 0', () => {
+    const added = batchAddCustomModels('deepseek', []);
+    expect(added).toBe(0);
+  });
+
+  it('非数组参数安全处理', () => {
+    const added = batchAddCustomModels('deepseek', null);
+    expect(added).toBe(0);
+  });
+
+  it('会自动 trim 模型名', () => {
+    batchAddCustomModels('deepseek', ['  spaced-model  ']);
+    expect(getCustomModels('deepseek')).toContain('spaced-model');
   });
 });
 

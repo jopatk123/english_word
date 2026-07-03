@@ -17,7 +17,8 @@ import {
   sanitizeAnalyzeWordResult,
 } from '../utils/aiPrompts.js';
 import { success, error } from '../utils/response.js';
-import { resolveUserAiConfig } from '../services/user-ai-settings.js';
+import { fetchProviderModels } from '../services/ai-models.js';
+import { resolveUserAiConfig, resolveUserAiConfigForModels } from '../services/user-ai-settings.js';
 
 const router = Router();
 
@@ -96,6 +97,28 @@ router.post('/test', async (req, res) => {
     );
   } catch (e) {
     handleAiError(res, req, startedAt, 'test', e);
+  }
+});
+
+// ── 自动获取模型列表 ──────────────────────────────────────────
+
+router.post('/fetch-models', async (req, res) => {
+  const startedAt = Date.now();
+  try {
+    const config = await resolveUserAiConfigForModels(req.userId, req.body?.config || {});
+    const debugInfo = createDebugInfo(req, config, startedAt);
+    logAiInfo('fetch-models.start', debugInfo);
+
+    const { models } = await fetchProviderModels(config);
+
+    logAiInfo('fetch-models.success', debugInfo, { modelCount: models.length });
+    success(
+      res,
+      { models, debug: withDuration(debugInfo) },
+      `成功获取 ${models.length} 个可用模型`
+    );
+  } catch (e) {
+    handleAiError(res, req, startedAt, 'fetch-models', e);
   }
 });
 

@@ -1,6 +1,6 @@
 import { UserAiSetting } from '../models/index.js';
 import { decryptAiSettingsPayload, encryptAiSettingsPayload } from '../utils/aiSettingsCrypto.js';
-import { validateAiConfig } from '../utils/ai.js';
+import { validateAiBaseConfig, validateAiConfig } from '../utils/ai.js';
 
 function normalizeProviderId(providerId) {
   return typeof providerId === 'string' ? providerId.trim() : '';
@@ -121,6 +121,21 @@ export async function resolveUserAiConfig(userId, config = {}) {
   const providerId = normalizeProviderId(config.providerId);
   const keyMap = await getUserAiKeyMap(userId);
   return validateAiConfig({
+    ...config,
+    providerId,
+    apiKey: keyMap[providerId] || '',
+  });
+}
+
+export async function resolveUserAiConfigForModels(userId, config = {}) {
+  const normalizedApiKey = normalizeApiKey(config.apiKey);
+  if (normalizedApiKey) {
+    return validateAiBaseConfig(config);
+  }
+
+  const providerId = normalizeProviderId(config.providerId);
+  const keyMap = await getUserAiKeyMap(userId);
+  return validateAiBaseConfig({
     ...config,
     providerId,
     apiKey: keyMap[providerId] || '',

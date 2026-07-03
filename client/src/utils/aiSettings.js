@@ -362,6 +362,36 @@ export const addCustomModel = (providerId, modelName) => {
 };
 
 /**
+ * 批量添加自定义模型（去重，仅触发一次 saveAllAiSettings）。
+ * @returns {number} 实际新增的模型数量
+ */
+export const batchAddCustomModels = (providerId, modelNames) => {
+  const list = Array.isArray(modelNames) ? modelNames : [];
+  if (!list.length) return 0;
+
+  const allSettings = getAllAiSettings();
+  if (!allSettings.customModels[providerId]) {
+    allSettings.customModels[providerId] = [];
+  }
+  const existing = new Set(allSettings.customModels[providerId]);
+  let added = 0;
+
+  for (const name of list) {
+    const trimmed = name?.trim();
+    if (trimmed && !existing.has(trimmed)) {
+      allSettings.customModels[providerId].push(trimmed);
+      existing.add(trimmed);
+      added += 1;
+    }
+  }
+
+  if (added > 0) {
+    saveAllAiSettings(allSettings);
+  }
+  return added;
+};
+
+/**
  * 删除某厂商下的一个自定义模型
  */
 export const deleteCustomModel = (providerId, modelName) => {

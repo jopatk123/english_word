@@ -46,7 +46,7 @@ export class AiTimeoutError extends AiUpstreamError {
   }
 }
 
-const mapAiResponseStatus = (status) => {
+export const mapAiResponseStatus = (status) => {
   if ([400, 401, 403, 404].includes(status)) return 400;
   if (status === 408) return 504;
   if (status === 429) return 429;
@@ -145,7 +145,7 @@ const assertSafeBaseUrl = (rawUrl) => {
   }
 };
 
-const assertPublicResolvedHostname = async (rawUrl) => {
+export const assertPublicResolvedHostname = async (rawUrl) => {
   const parsed = new URL(rawUrl);
   let records;
 
@@ -267,6 +267,27 @@ export const validateAiConfig = (config = {}) => {
     providerType,
     providerMode: getProviderMode(providerId, providerType),
     temperature,
+  };
+};
+
+export const validateAiBaseConfig = (config = {}) => {
+  const apiKey = trimText(config.apiKey, 300);
+  const baseUrl = normalizeBaseUrl(config.baseUrl);
+  const providerId = trimText(config.providerId, 80);
+  const providerType = trimText(config.providerType, 80);
+
+  if (!apiKey || !baseUrl || !providerId) {
+    throw new AiConfigError('AI 配置不完整，请先填写厂商、Base URL 和 API Key');
+  }
+
+  assertSafeBaseUrl(baseUrl);
+
+  return {
+    apiKey,
+    baseUrl,
+    providerId,
+    providerType,
+    providerMode: getProviderMode(providerId, providerType),
   };
 };
 

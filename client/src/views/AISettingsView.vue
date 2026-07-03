@@ -80,6 +80,13 @@
               </el-option-group>
             </el-select>
             <el-button link type="primary" @click="showAddModel = true">+ 新增模型</el-button>
+            <el-button
+              link
+              type="primary"
+              :loading="fetchingModels"
+              @click="handleFetchModels"
+              >自动获取模型</el-button
+            >
           </div>
           <!-- 自定义模型标签（可删除） -->
           <div v-if="customModelsForProvider.length" class="custom-tags">
@@ -220,6 +227,46 @@
         <el-button type="primary" @click="handleAddModel">添加</el-button>
       </template>
     </el-dialog>
+
+    <!-- 自动获取模型对话框 -->
+    <el-dialog
+      v-model="showFetchModels"
+      title="自动获取模型"
+      width="520px"
+      @closed="resetFetchModelsState"
+    >
+      <el-input
+        v-model="fetchModelsSearch"
+        placeholder="搜索模型名称..."
+        clearable
+        style="margin-bottom: 12px"
+      />
+      <div v-if="fetchingModels" class="fetch-models-loading">正在拉取模型列表...</div>
+      <el-scrollbar v-else max-height="360px">
+        <el-checkbox-group v-model="selectedFetchedModels">
+          <div
+            v-for="model in filteredFetchedModels"
+            :key="model.name"
+            class="fetch-model-item"
+          >
+            <el-checkbox :value="model.name" :disabled="model.exists">
+              {{ model.name }}
+              <el-tag v-if="model.exists" size="small" type="info">已添加</el-tag>
+            </el-checkbox>
+          </div>
+        </el-checkbox-group>
+      </el-scrollbar>
+      <template #footer>
+        <el-button @click="showFetchModels = false">取消</el-button>
+        <el-button
+          type="primary"
+          :disabled="!selectedFetchedModels.length || fetchingModels"
+          @click="handleConfirmFetchModels"
+        >
+          导入({{ selectedFetchedModels.length }})
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -227,7 +274,7 @@
   import { computed, onMounted, onUnmounted, ref } from 'vue';
   import { useRoute } from 'vue-router';
   import { ElMessage, ElMessageBox } from 'element-plus';
-  import { testAiConnection } from '../api/index.js';
+  import { fetchAiModels, testAiConnection } from '../api/index.js';
   import { AI_PROVIDERS } from '../constants/aiProviders.js';
   import { getRouteDisplayLabel, getRouteSource } from '../utils/navigationHistory.js';
   import {
@@ -246,6 +293,7 @@
     saveCustomProvider,
     deleteCustomProvider,
     addCustomModel,
+    batchAddCustomModels,
     deleteCustomModel,
     subscribeAiSettingsChanges,
   } from '../utils/aiSettings.js';
@@ -312,6 +360,60 @@
   const savingProvider = ref(false);
   const showAddModel = ref(false);
   const newModelName = ref('');
+
+  // --- 自动获取模型 ---
+  const showFetchModels = ref(false);
+  const fetchingModels = ref(false);
+  const fetchedModels = ref([]);
+  const selectedFetchedModels = ref([]);
+  const fetchModelsSearch = ref('');
+
+  const filteredFetchedModels = computed(() => {
+    const existing = new Set(getCustomModels(form.value.providerId));
+    const keyword = fetchModelsSearch.value.trim().toLowerCase();
+    return fetchedModels.value
+      .filter((name) => !keyword || name.toLowerCase().includes(keyword))
+      .map((name) => ({ name, exists: existing.has(name) }));
+  });
+
+  const resetFetchModelsState = () => {
+    fetchedModels.value = [];
+    selectedFetchedModels.value = [];
+    fetchModelsSearch.value = '';
+  };
+
+  const handleFetchModels = async () => {
+    if (!form.value.baseUrl || (!form.value.apiKey && !form.value.hasApiKey)) {
+      return ElMessage.warning('请先填写 Base URL，并至少提供一个可用的 API Key');
+    }
+
+    fetchingModels.value = true;
+    showFetchModels.value = true;
+    try {
+      const res = await fetchAiModels(
+        form.value.apiKey ? form.value : { ...form.value, apiKey: undefined }
+      );
+      fetchedModels.value = res?.data?.models || [];
+      if (!fetchedModels.value.length) ElMessage.warning('未获取到任何模型');
+    } catch (e) {
+      ElMessage.error(
+        e?.response?.data?.msg ||
+          (e?.code === 'ECONNABORTED' ? '获取模型列表超时，请稍后重试' : '获取模型列表失败')
+      );
+      showFetchModels.value = false;
+    } finally {
+      fetchingModels.value = false;
+    }
+  };
+
+  const handleConfirmFetchModels = () => {
+    if (!selectedFetchedModels.value.length) return;
+    const added = batchAddCustomModels(form.value.providerId, selectedFetchedModels.value);
+    refreshSettings();
+    showFetchModels.value = false;
+    if (added > 0) ElMessage.success(`成功导入 ${added} 个模型`);
+    else ElMessage.info('所选模型均已存在，未新增');
+  };
 
   // --- 厂商切换 ---
   const handleProviderChange = (providerId) => {
@@ -473,5 +575,15 @@
     font-size: 12px;
     color: #909399;
     margin-top: 8px;
+  }
+
+  .fetch-models-loading {
+    text-align: center;
+    padding: 24px;
+    color: #909399;
+  }
+
+  .fetch-model-item {
+    padding: 4px 0;
   }
 </style>
