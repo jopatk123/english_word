@@ -77,7 +77,7 @@ describe('GET /review/stats', () => {
     expect(s.learning).toBeGreaterThan(0);
   });
 
-  it('今日稍后到期的短间隔单词不会提前计入 due', async () => {
+  it('今日稍后到期的短间隔单词不会提前计入 todayDue，但补足规则会抬升 due 总量', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-09T11:00:00Z'));
 
@@ -111,8 +111,10 @@ describe('GET /review/stats', () => {
 
       const res = await request(isolatedApp).get('/review/stats');
       expect(res.status).toBe(200);
+      // todayDue 仍按精确时间判断，未到点不计入
       expect(res.body.data.todayDue).toBe(0);
-      expect(res.body.data.due).toBe(0);
+      // 补足规则：learning=1，ceil(1/3)=1，故 due 抬升到 1
+      expect(res.body.data.due).toBe(1);
     } finally {
       vi.useRealTimers();
     }
