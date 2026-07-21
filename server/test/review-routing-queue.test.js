@@ -219,6 +219,99 @@ describe('GET /review/due', () => {
     expect(ids).not.toContain(learningWord.id);
   });
 
+  it('scope=known-review 仅返回已掌握单词且按 lastReviewedAt 升序排列', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-10T12:00:00Z'));
+    try {
+      const user = await User.create({
+        username: `kr_order_${createTestSuffix()}`,
+        password: 'x',
+      });
+      const app = buildReviewApp(user.id);
+      const root = await Root.create({
+        name: `kr_order_root_${createTestSuffix()}`,
+        meaning: '已掌握复习排序',
+        userId: user.id,
+      });
+
+      // A: 昨天复习，B: 前天复习，C: 从未复习
+      const mkKnownWord = async (label, lastReviewedAt) => {
+        const w = await Word.create({
+          name: `${label}_${createTestSuffix()}`,
+          meaning: label,
+          userId: user.id,
+        });
+        await WordRoot.create({ wordId: w.id, rootId: root.id });
+        await WordReview.create({
+          userId: user.id,
+          wordId: w.id,
+          status: 'known',
+          interval: 30,
+          easeFactor: 2.8,
+          dueDate: '2099-01-01',
+          reviewCount: 5,
+          lastReviewedAt,
+        });
+        return w;
+      };
+
+      const wordA = await mkKnownWord('yesterday', new Date('2026-04-09T10:00:00Z'));
+      const wordB = await mkKnownWord('dayBefore', new Date('2026-04-08T10:00:00Z'));
+      const wordC = await mkKnownWord('never', null);
+
+      // 3 个已掌握，10% = 0.3 → ceil = 1，但最少 1 个
+      // 排序：C(NULL) → B(前天) → A(昨天)，取前 1 个
+      const res = await request(app).get('/review/due?scope=known-review');
+      expect(res.status).toBe(200);
+      expect(res.body.data.length).toBe(1);
+      expect(res.body.data[0].wordId).toBe(wordC.id);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('scope=known-review 数量上限为 30 个', async () => {
+    const user = await User.create({
+      username: `kr_cap_${createTestSuffix()}`,
+      password: 'x',
+    });
+    const app = buildReviewApp(user.id);
+    const root = await Root.create({
+      name: `kr_cap_root_${createTestSuffix()}`,
+      meaning: '上限测试',
+      userId: user.id,
+    });
+
+    // 创建 400 个已掌握单词，10% = 40，但上限 30
+    for (let i = 0; i < 400; i++) {
+      const w = await Word.create({
+        name: `kr_cap_${i}_${createTestSuffix()}`,
+        meaning: `word-${i}`,
+        userId: user.id,
+      });
+      await WordRoot.create({ wordId: w.id, rootId: root.id });
+      await WordReview.create({
+        userId: user.id,
+        wordId: w.id,
+        status: 'known',
+        interval: 30,
+        easeFactor: 2.5,
+        dueDate: '2099-01-01',
+        reviewCount: 5,
+      });
+    }
+
+    const res = await request(app).get('/review/due?scope=known-review');
+    expect(res.status).toBe(200);
+    expect(res.body.data.length).toBe(30);
+  });
+
+  it('scope=known-review 无已掌握单词时返回空数组', async () => {
+    const res = await request(fixture.app).get('/review/due?scope=known-review');
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual([]);
+  });
+
   it('scope=today-reviewed 仅返回今日已复习单词', async () => {
     const reviewedWord = await Word.create({
       name: `reviewed_${createTestSuffix()}`,

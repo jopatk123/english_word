@@ -70,11 +70,49 @@ describe('GET /review/stats', () => {
     expect(typeof s.new).toBe('number');
     expect(typeof s.learning).toBe('number');
     expect(typeof s.known).toBe('number');
+    expect(typeof s.knownReviewCount).toBe('number');
     expect(typeof s.todayReviewed).toBe('number');
     expect(s).not.toHaveProperty('weekDue');
     expect(s.total).toBe(s.learning + s.known);
     expect(s.new).toBe(0);
     expect(s.learning).toBeGreaterThan(0);
+  });
+
+  it('knownReviewCount 按 10% 计算且最少 1 最多 30', async () => {
+    const user = await User.create({
+      username: `kr_stats_${createTestSuffix()}`,
+      password: 'x',
+    });
+    const app = buildReviewApp(user.id);
+    const root = await Root.create({
+      name: `kr_stats_root_${createTestSuffix()}`,
+      meaning: '统计',
+      userId: user.id,
+    });
+
+    // 创建 15 个已掌握单词，10% = 1.5 → ceil = 2
+    for (let i = 0; i < 15; i++) {
+      const w = await Word.create({
+        name: `kr_stats_${i}_${createTestSuffix()}`,
+        meaning: `word-${i}`,
+        userId: user.id,
+      });
+      await WordRoot.create({ wordId: w.id, rootId: root.id });
+      await WordReview.create({
+        userId: user.id,
+        wordId: w.id,
+        status: 'known',
+        interval: 30,
+        easeFactor: 2.5,
+        dueDate: '2099-01-01',
+        reviewCount: 5,
+      });
+    }
+
+    const res = await request(app).get('/review/stats');
+    expect(res.status).toBe(200);
+    expect(res.body.data.known).toBe(15);
+    expect(res.body.data.knownReviewCount).toBe(2);
   });
 
   it('今日稍后到期的短间隔单词不会提前计入 todayDue，但补足规则会抬升 due 总量', async () => {

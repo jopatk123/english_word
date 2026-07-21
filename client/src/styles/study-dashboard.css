@@ -49,18 +49,18 @@
   border-left: 4px solid #67c23a;
 }
 
-.stat-reminder {
+.stat-known-review {
   position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   text-align: left;
-  border-left: 4px solid #5b8cff;
-  background: linear-gradient(145deg, rgba(91, 140, 255, 0.11), rgba(255, 255, 255, 0.98)), #fff;
+  border-left: 4px solid #67c23a;
+  background: linear-gradient(145deg, rgba(103, 194, 58, 0.12), rgba(255, 255, 255, 0.98)), #fff;
 }
 
-.stat-reminder::after {
+.stat-known-review::after {
   content: '';
   position: absolute;
   top: -20px;
@@ -68,7 +68,7 @@
   width: 92px;
   height: 92px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(91, 140, 255, 0.18), rgba(91, 140, 255, 0));
+  background: radial-gradient(circle, rgba(103, 194, 58, 0.18), rgba(103, 194, 58, 0));
   pointer-events: none;
 }
 
@@ -114,30 +114,7 @@
   color: #909399;
 }
 
-.stat-reminder-kicker {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-self: flex-start;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(91, 140, 255, 0.12);
-  color: #2d6cdf;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.stat-reminder-title {
-  position: relative;
-  z-index: 1;
-  margin-top: 12px;
-  font-size: 20px;
-  font-weight: 700;
-  color: #303133;
-  line-height: 1.35;
-}
-
-.stat-reminder-detail {
+.stat-known-review-detail {
   position: relative;
   z-index: 1;
   margin-top: 10px;
@@ -146,7 +123,7 @@
   color: #606266;
 }
 
-.stat-reminder-footer {
+.stat-known-review-footer {
   position: relative;
   z-index: 1;
   display: flex;
@@ -157,18 +134,18 @@
   font-size: 12px;
 }
 
-.stat-reminder-badge {
+.stat-known-review-badge {
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(91, 140, 255, 0.14);
-  color: #2d6cdf;
+  background: rgba(103, 194, 58, 0.15);
+  color: #529b2e;
   font-weight: 600;
   white-space: nowrap;
 }
 
-.stat-reminder-action {
+.stat-known-review-action {
   color: #909399;
   white-space: nowrap;
 }
@@ -249,11 +226,7 @@
     font-size: 26px;
   }
 
-  .stat-reminder-title {
-    font-size: 17px;
-  }
-
-  .stat-reminder-detail {
+  .stat-known-review-detail {
     font-size: 12px;
   }
 
@@ -298,12 +271,7 @@
     font-size: 11px;
   }
 
-  .stat-reminder-title {
-    font-size: 15px;
-    margin-top: 8px;
-  }
-
-  .stat-reminder-footer {
+  .stat-known-review-footer {
     flex-direction: column;
     align-items: flex-start;
     gap: 6px;

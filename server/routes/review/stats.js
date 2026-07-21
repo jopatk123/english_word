@@ -41,6 +41,9 @@ router.get('/stats', async (req, res) => {
     // 与 /review/due 的补足规则保持一致：due 数量不少于 ceil(learning/3)
     // 让仪表盘"待复习"数字与实际进入复习队列的数量一致
     const filledDue = Math.max(rawDue, computeMinDueCount(learningCount));
+    // 已掌握复习：取已掌握单词的 10%（最少 1 个，最多 30 个）
+    const knownReviewCount =
+      knownCount > 0 ? Math.min(Math.max(Math.ceil(knownCount * 0.1), 1), 30) : 0;
 
     success(res, {
       total: totalCount,
@@ -50,6 +53,7 @@ router.get('/stats', async (req, res) => {
       new: 0,
       learning: learningCount,
       known: knownCount,
+      knownReviewCount,
       todayReviewed,
       overdue: overdueCount,
     });

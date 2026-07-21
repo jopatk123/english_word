@@ -59,6 +59,7 @@ router.get('/due', async (req, res) => {
       'today-reviewed',
       'learning',
       'known',
+      'known-review',
       'all',
       'continue',
     ].includes(requestedScope)
@@ -80,7 +81,7 @@ router.get('/due', async (req, res) => {
       where.lastReviewedAt = { [Op.gte]: todayStartDate };
     } else if (scope === 'learning') {
       where.status = { [Op.ne]: REVIEW_STATUS.KNOWN };
-    } else if (scope === 'known') {
+    } else if (scope === 'known' || scope === 'known-review') {
       where.status = REVIEW_STATUS.KNOWN;
     } else if (scope === 'due') {
       where[Op.or] = [{ dueDate: { [Op.lt]: today } }, { dueDate: today, ...dueNowForToday }];
@@ -89,6 +90,9 @@ router.get('/due', async (req, res) => {
     let order;
     if (scope === 'today-reviewed') {
       order = ORDER_BY_LAST_REVIEWED_DESC;
+    } else if (scope === 'known-review') {
+      // 已掌握复习：优先最久未复习的（lastReviewedAt ASC，NULL 视为最早）
+      order = ORDER_BY_FILLER;
     } else if (scope === 'all' || scope === 'continue') {
       order = ORDER_BY_LEARNING_FIRST;
     } else {
@@ -107,6 +111,29 @@ router.get('/due', async (req, res) => {
         offset,
       });
       return success(res, merged.filter((r) => r.word));
+    }
+
+    // scope=known-review：从已掌握单词中取 10%（最少 1 个，最多 30 个），
+    // 优先选取最久未复习的（lastReviewedAt ASC）。
+    if (scope === 'known-review') {
+      const knownCount = await WordReview.count({ where });
+      if (knownCount === 0) return success(res, []);
+
+      const reviewLimit = Math.min(Math.max(Math.ceil(knownCount * 0.1), 1), 30);
+      const idRows = await WordReview.findAll({
+        where,
+        attributes: ['id'],
+        order,
+        limit: reviewLimit,
+      });
+      if (idRows.length === 0) return success(res, []);
+
+      const reviews = await WordReview.findAll({
+        where: { id: { [Op.in]: idRows.map((r) => r.id) } },
+        order,
+        include: REVIEW_INCLUDE,
+      });
+      return success(res, reviews.filter((r) => r.word));
     }
 
     const queryOpts = {

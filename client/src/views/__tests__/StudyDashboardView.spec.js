@@ -58,6 +58,7 @@ async function createWrapper(statsOverrides = {}) {
       new: 0,
       learning: 5,
       known: 3,
+      knownReviewCount: 1,
       todayReviewed: 2,
       overdue: 1,
       ...statsOverrides,
@@ -107,7 +108,7 @@ describe('StudyDashboardView', () => {
     const wrapper = await createWrapper({ due: 0, total: 8 });
     expect(wrapper.text()).toContain('继续复习（8 个）');
     expect(wrapper.text()).toContain('总单词数');
-    expect(wrapper.text()).toContain('节奏稳定');
+    expect(wrapper.text()).toContain('已掌握复习');
   });
 
   it('词根区改为展示掌握进度而非手动加队列', async () => {
@@ -116,23 +117,27 @@ describe('StudyDashboardView', () => {
     expect(wrapper.text()).not.toContain('管理学习队列');
   });
 
-  it('有超期词时，提醒卡突出优先处理超期词', async () => {
-    const wrapper = await createWrapper({ due: 6, todayDue: 2, overdue: 4 });
-    expect(wrapper.text()).toContain('优先处理');
-    expect(wrapper.text()).toContain('超期 4 个 · 今日到期 2 个');
+  it('已掌握复习卡展示数量信息并跳转到 known-review scope', async () => {
+    const wrapper = await createWrapper({ known: 42, knownReviewCount: 5 });
+    expect(wrapper.text()).toContain('已掌握 42 个');
+    expect(wrapper.text()).toContain('本次复习 5 个');
+    expect(wrapper.text()).toContain('优先复习最久未回顾的单词');
 
     const cards = wrapper.findAll('.stat-card');
     await cards[5].trigger('click');
-    expect(pushMock).toHaveBeenCalledWith({ path: '/study/session', query: { scope: 'due' } });
+    expect(pushMock).toHaveBeenCalledWith({
+      path: '/study/session',
+      query: { scope: 'known-review' },
+    });
   });
 
-  it('无待复习时，提醒卡引导继续复习全部单词', async () => {
-    const wrapper = await createWrapper({ due: 0, total: 8 });
-    expect(wrapper.text()).toContain('今天没有待完成任务');
+  it('无已掌握单词时已掌握复习卡不可点击', async () => {
+    const wrapper = await createWrapper({ known: 0, knownReviewCount: 0 });
+    expect(wrapper.text()).toContain('暂无已掌握单词');
 
     const cards = wrapper.findAll('.stat-card');
     await cards[5].trigger('click');
-    expect(pushMock).toHaveBeenCalledWith({ path: '/study/session', query: { scope: 'continue' } });
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it('点击主按钮继续复习时跳转到 continue scope', async () => {

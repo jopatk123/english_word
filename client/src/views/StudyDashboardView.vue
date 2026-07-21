@@ -49,14 +49,21 @@
         <div class="stat-label">已掌握</div>
       </div>
       <div
-        class="stat-card stat-reminder"
-        :class="{ clickable: studyReminder.clickable }"
-        @click="openSessionFor(studyReminder.scope, studyReminder.count)"
+        class="stat-card stat-known-review"
+        :class="{ clickable: stats.known > 0 }"
+        @click="openSessionFor('known-review', stats.knownReviewCount)"
       >
-        <div class="stat-reminder-detail">{{ studyReminder.detail }}</div>
-        <div class="stat-reminder-footer">
-          <span class="stat-reminder-badge">{{ studyReminder.badge }}</span>
-          <span class="stat-reminder-action">{{ studyReminder.actionText }}</span>
+        <div class="stat-known-review-detail">
+          <template v-if="stats.known > 0">
+            已掌握 {{ stats.known }} 个 · 本次复习 {{ stats.knownReviewCount }} 个
+          </template>
+          <template v-else>暂无已掌握单词</template>
+        </div>
+        <div class="stat-known-review-footer">
+          <span class="stat-known-review-badge">已掌握复习</span>
+          <span class="stat-known-review-action">{{
+            stats.known > 0 ? '优先复习最久未回顾的单词' : '继续复习，逐步掌握后即可抽查'
+          }}</span>
         </div>
       </div>
     </div>
@@ -144,7 +151,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted, onUnmounted } from 'vue';
+  import { ref, onMounted, onUnmounted } from 'vue';
   import { useRouter } from 'vue-router';
   import { ElMessage } from 'element-plus';
   import {
@@ -164,6 +171,7 @@
     new: 0,
     learning: 0,
     known: 0,
+    knownReviewCount: 0,
     todayReviewed: 0,
     overdue: 0,
   });
@@ -177,47 +185,6 @@
   const totalReviews30d = ref(0);
   let statsRefreshTimer = null;
   let lastStatsDate = '';
-
-  const studyReminder = computed(() => {
-    const total = stats.value.total || 0;
-    const due = stats.value.due || 0;
-    const todayDue = stats.value.todayDue || 0;
-    const overdue = stats.value.overdue || 0;
-
-    if (total === 0) {
-      return {
-        clickable: false,
-        scope: null,
-        count: 0,
-        badge: '先建词库',
-        detail: '添加词根和单词后，系统会自动安排下一次复习',
-        actionText: '去添加词根',
-      };
-    }
-
-    if (due > 0) {
-      return {
-        clickable: true,
-        scope: 'due',
-        count: due,
-        badge: overdue > 0 ? '优先处理' : '今天就复习',
-        detail:
-          overdue > 0
-            ? `超期 ${overdue} 个 · 今日到期 ${todayDue} 个`
-            : `今日到期 ${todayDue} 个 · 现在复习最合适`,
-        actionText: `去复习（${due} 个）`,
-      };
-    }
-
-    return {
-      clickable: true,
-      scope: 'continue',
-      count: total,
-      badge: '节奏稳定',
-      detail: '今天没有待完成任务，可以继续复习全部单词巩固记忆',
-      actionText: `继续复习（${total} 个）`,
-    };
-  });
 
   const getLocalDateKey = () => new Date().toLocaleDateString('en-CA');
 
