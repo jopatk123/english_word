@@ -33,5 +33,9 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 # 创建数据目录
 RUN mkdir -p /app/data && chown -R node:node /app
 
+# 健康检查：每 30s 探测 /api/health，启动后给 10s 缓冲期
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -qO- "http://localhost:${PORT:-3000}/api/health" || exit 1
+
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "server/index.js"]

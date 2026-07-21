@@ -2,8 +2,15 @@ node_modules
 data
 .git
 .gitignore
+.github
 .env
 *.md
+start.sh
 coverage
 server/coverage
 client/coverage
+client/test.html
+.prettierrc
+.prettierignore
+eslint.config.mjs
+docker-compose.yml

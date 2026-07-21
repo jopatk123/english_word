@@ -170,8 +170,8 @@
   const router = useRouter();
   const rootId = props.id || route.params.id;
   const previousRoute = computed(() => getRouteSource(route.fullPath));
-  const showPreviousBreadcrumb = computed(
-    () => Boolean(previousRoute.value && previousRoute.value.name !== 'Home')
+  const showPreviousBreadcrumb = computed(() =>
+    Boolean(previousRoute.value && previousRoute.value.name !== 'Home')
   );
   const previousBreadcrumbTo = computed(() => previousRoute.value?.fullPath || '/');
   const previousBreadcrumbLabel = computed(() => getRouteDisplayLabel(previousRoute.value));

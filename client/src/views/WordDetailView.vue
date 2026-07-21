@@ -234,8 +234,8 @@
       ) || null
     );
   });
-  const showPreviousBreadcrumb = computed(
-    () => Boolean(previousRoute.value && previousRoute.value.name !== 'Home')
+  const showPreviousBreadcrumb = computed(() =>
+    Boolean(previousRoute.value && previousRoute.value.name !== 'Home')
   );
   const previousBreadcrumbTo = computed(() => previousRoute.value?.fullPath || '/');
   const previousBreadcrumbLabel = computed(() =>

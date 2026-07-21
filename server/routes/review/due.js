@@ -110,7 +110,10 @@ router.get('/due', async (req, res) => {
         limit,
         offset,
       });
-      return success(res, merged.filter((r) => r.word));
+      return success(
+        res,
+        merged.filter((r) => r.word)
+      );
     }
 
     // scope=known-review：从已掌握单词中取 10%（最少 1 个，最多 30 个），
@@ -133,7 +136,10 @@ router.get('/due', async (req, res) => {
         order,
         include: REVIEW_INCLUDE,
       });
-      return success(res, reviews.filter((r) => r.word));
+      return success(
+        res,
+        reviews.filter((r) => r.word)
+      );
     }
 
     const queryOpts = {

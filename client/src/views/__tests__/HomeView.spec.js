@@ -66,7 +66,10 @@ const globalStubs = {
     props: ['data'],
     emits: ['selection-change'],
     setup(props, { slots, expose }) {
-      provide('elTableData', computed(() => props.data ?? []));
+      provide(
+        'elTableData',
+        computed(() => props.data ?? [])
+      );
       expose({
         clearSelection() {},
         toggleAllSelection() {},
@@ -77,7 +80,10 @@ const globalStubs = {
   'el-table-column': {
     props: ['prop', 'type'],
     setup(props, { slots }) {
-      const elTableData = inject('elTableData', computed(() => []));
+      const elTableData = inject(
+        'elTableData',
+        computed(() => [])
+      );
       return () => {
         if (props.type === 'selection') {
           return null;

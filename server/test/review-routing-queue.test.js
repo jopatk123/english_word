@@ -255,8 +255,9 @@ describe('GET /review/due', () => {
         return w;
       };
 
-      const wordA = await mkKnownWord('yesterday', new Date('2026-04-09T10:00:00Z'));
-      const wordB = await mkKnownWord('dayBefore', new Date('2026-04-08T10:00:00Z'));
+      // A: 昨天复习，B: 前天复习，仅 C 参与断言
+      await mkKnownWord('yesterday', new Date('2026-04-09T10:00:00Z'));
+      await mkKnownWord('dayBefore', new Date('2026-04-08T10:00:00Z'));
       const wordC = await mkKnownWord('never', null);
 
       // 3 个已掌握，10% = 0.3 → ceil = 1，但最少 1 个

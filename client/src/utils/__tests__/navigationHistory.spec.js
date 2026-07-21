@@ -51,8 +51,6 @@ describe('navigationHistory', () => {
   });
 
   it('可以为词根详情生成带名称的面包屑标签', () => {
-    expect(getRouteDisplayLabel({ name: 'RootDetail' }, { rootName: 'state' })).toBe(
-      '词根：state'
-    );
+    expect(getRouteDisplayLabel({ name: 'RootDetail' }, { rootName: 'state' })).toBe('词根：state');
   });
 });
