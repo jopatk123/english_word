@@ -34,6 +34,10 @@ export function createApp(options = {}) {
           imgSrc: ["'self'", 'data:', 'blob:'],
           connectSrc: ["'self'", 'wss:', 'ws:'],
           fontSrc: ["'self'", 'data:'],
+          // 显式禁用 upgrade-insecure-requests：
+          // 该指令会让浏览器把 HTTP 子资源请求升级为 HTTPS，
+          // 在无 HTTPS 的直连部署（如 http://host:3010）下会导致 JS/CSS 加载失败、页面白屏。
+          upgradeInsecureRequests: null,
         },
       },
     })
