@@ -80,11 +80,7 @@
               </el-option-group>
             </el-select>
             <el-button link type="primary" @click="showAddModel = true">+ 新增模型</el-button>
-            <el-button
-              link
-              type="primary"
-              :loading="fetchingModels"
-              @click="handleFetchModels"
+            <el-button link type="primary" :loading="fetchingModels" @click="handleFetchModels"
               >自动获取模型</el-button
             >
           </div>
@@ -242,20 +238,19 @@
         style="margin-bottom: 12px"
       />
       <div v-if="fetchingModels" class="fetch-models-loading">正在拉取模型列表...</div>
-      <el-scrollbar v-else max-height="360px">
-        <el-checkbox-group v-model="selectedFetchedModels">
-          <div
-            v-for="model in filteredFetchedModels"
-            :key="model.name"
-            class="fetch-model-item"
-          >
-            <el-checkbox :value="model.name" :disabled="model.exists">
-              {{ model.name }}
-              <el-tag v-if="model.exists" size="small" type="info">已添加</el-tag>
-            </el-checkbox>
-          </div>
-        </el-checkbox-group>
-      </el-scrollbar>
+      <div v-else class="fetch-models-list">
+        <el-checkbox
+          v-for="model in filteredFetchedModels"
+          :key="model.name"
+          :model-value="selectedFetchedModels.includes(model.name)"
+          :disabled="model.exists"
+          class="fetch-model-item"
+          @change="(checked) => toggleFetchedModel(model.name, checked)"
+        >
+          {{ model.name }}
+          <el-tag v-if="model.exists" size="small" type="info">已添加</el-tag>
+        </el-checkbox>
+      </div>
       <template #footer>
         <el-button @click="showFetchModels = false">取消</el-button>
         <el-button
@@ -300,8 +295,8 @@
 
   const route = useRoute();
   const previousRoute = computed(() => getRouteSource(route.fullPath));
-  const showPreviousBreadcrumb = computed(
-    () => Boolean(previousRoute.value && previousRoute.value.name !== 'Home')
+  const showPreviousBreadcrumb = computed(() =>
+    Boolean(previousRoute.value && previousRoute.value.name !== 'Home')
   );
   const previousBreadcrumbTo = computed(() => previousRoute.value?.fullPath || '/');
   const previousBreadcrumbLabel = computed(() => getRouteDisplayLabel(previousRoute.value));
@@ -413,6 +408,16 @@
     showFetchModels.value = false;
     if (added > 0) ElMessage.success(`成功导入 ${added} 个模型`);
     else ElMessage.info('所选模型均已存在，未新增');
+  };
+
+  const toggleFetchedModel = (name, checked) => {
+    if (checked) {
+      if (!selectedFetchedModels.value.includes(name)) {
+        selectedFetchedModels.value = [...selectedFetchedModels.value, name];
+      }
+    } else {
+      selectedFetchedModels.value = selectedFetchedModels.value.filter((n) => n !== name);
+    }
   };
 
   // --- 厂商切换 ---
@@ -583,7 +588,13 @@
     color: #909399;
   }
 
+  .fetch-models-list {
+    max-height: 360px;
+    overflow-y: auto;
+  }
+
   .fetch-model-item {
+    display: block;
     padding: 4px 0;
   }
 </style>

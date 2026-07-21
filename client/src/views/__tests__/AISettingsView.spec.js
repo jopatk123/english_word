@@ -143,9 +143,11 @@ const globalStubs = {
   },
   'el-tag': { template: '<span><slot /></span>' },
   'el-dialog': { template: '<div><slot /><slot name="footer" /></div>' },
-  'el-checkbox-group': { template: '<div><slot /></div>' },
-  'el-checkbox': { props: ['value', 'label', 'disabled'], template: '<label><slot /></label>' },
-  'el-scrollbar': { template: '<div><slot /></div>' },
+  'el-checkbox': {
+    props: ['modelValue', 'label', 'value', 'disabled'],
+    emits: ['change', 'update:modelValue'],
+    template: '<label><slot /></label>',
+  },
 };
 
 describe('AISettingsView', () => {
@@ -250,9 +252,7 @@ describe('AISettingsView', () => {
       await flushPromises();
 
       expect(fetchAiModelsMock).not.toHaveBeenCalled();
-      expect(elMessage.warning).toHaveBeenCalledWith(
-        expect.stringContaining('请先填写 Base URL')
-      );
+      expect(elMessage.warning).toHaveBeenCalledWith(expect.stringContaining('请先填写 Base URL'));
     });
   });
 });
