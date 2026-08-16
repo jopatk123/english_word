@@ -94,6 +94,31 @@ describe('validateAiConfig', () => {
     const result = validateAiConfig({ ...validConfig, model: longModel });
     expect(result.model.length).toBe(120);
   });
+
+  it('skipThinking 默认为 false', () => {
+    const result = validateAiConfig(validConfig);
+    expect(result.skipThinking).toBe(false);
+  });
+
+  it('skipThinking=true 透传', () => {
+    const result = validateAiConfig({ ...validConfig, skipThinking: true });
+    expect(result.skipThinking).toBe(true);
+  });
+
+  it('skipThinking 字符串 "true" 归一化为 false', () => {
+    const result = validateAiConfig({ ...validConfig, skipThinking: 'true' });
+    expect(result.skipThinking).toBe(false);
+  });
+
+  it('skipThinking 数字 1 归一化为 false', () => {
+    const result = validateAiConfig({ ...validConfig, skipThinking: 1 });
+    expect(result.skipThinking).toBe(false);
+  });
+
+  it('skipThinking undefined 归一化为 false', () => {
+    const result = validateAiConfig({ ...validConfig, skipThinking: undefined });
+    expect(result.skipThinking).toBe(false);
+  });
 });
 
 describe('validateAiConfig SSRF 防护', () => {
@@ -308,5 +333,196 @@ describe('requestAiJson', () => {
 
     const result = await requestAiJson(anthropicConfig, validPrompts);
     expect(result.message).toBe('ok');
+  });
+});
+
+describe('requestAiJson skipThinking 请求体注入', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+    dnsLookupMock.mockResolvedValue([{ address: '203.0.113.10' }]);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const mockOk = () =>
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: '{"message":"ok","items":[]}' } }],
+      }),
+    });
+
+  const mockAnthropicOk = () =>
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        content: [{ type: 'text', text: '{"message":"ok","items":[]}' }],
+      }),
+    });
+
+  const getLastBody = () => JSON.parse(fetch.mock.calls[0][1].body);
+
+  it('DeepSeek-Reasoner + skipThinking=true：body 含 thinking disabled', async () => {
+    mockOk();
+    await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'deepseek',
+        providerType: 'openai-compatible',
+        baseUrl: 'https://api.deepseek.com/v1',
+        model: 'deepseek-reasoner',
+        skipThinking: true,
+      },
+      validPrompts
+    );
+    const body = getLastBody();
+    expect(body.thinking).toEqual({ type: 'disabled' });
+    expect(body).not.toHaveProperty('reasoning_effort');
+    expect(body).not.toHaveProperty('enable_thinking');
+  });
+
+  it('DeepSeek-Chat + skipThinking=true：body 不含 thinking（非思考模型）', async () => {
+    mockOk();
+    await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'deepseek',
+        providerType: 'openai-compatible',
+        baseUrl: 'https://api.deepseek.com/v1',
+        model: 'deepseek-chat',
+        skipThinking: true,
+      },
+      validPrompts
+    );
+    const body = getLastBody();
+    expect(body).not.toHaveProperty('thinking');
+    expect(body).not.toHaveProperty('reasoning_effort');
+    expect(body).not.toHaveProperty('enable_thinking');
+  });
+
+  it('Qwen3 + skipThinking=true：body 含 enable_thinking false', async () => {
+    mockOk();
+    await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'dashscope',
+        providerType: 'openai-compatible',
+        baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        model: 'qwen3-max',
+        skipThinking: true,
+      },
+      validPrompts
+    );
+    const body = getLastBody();
+    expect(body.enable_thinking).toBe(false);
+    expect(body).not.toHaveProperty('thinking');
+    expect(body).not.toHaveProperty('reasoning_effort');
+  });
+
+  it('OpenAI o1 + skipThinking=true：body 含 reasoning_effort low，不含 thinking', async () => {
+    mockOk();
+    await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'openai',
+        providerType: 'openai-compatible',
+        baseUrl: 'https://api.openai.com/v1',
+        model: 'o1',
+        skipThinking: true,
+      },
+      validPrompts
+    );
+    const body = getLastBody();
+    expect(body.reasoning_effort).toBe('low');
+    expect(body).not.toHaveProperty('thinking');
+    expect(body).not.toHaveProperty('enable_thinking');
+  });
+
+  it('Anthropic Claude Opus 4 + skipThinking=true：body 含 thinking disabled', async () => {
+    mockAnthropicOk();
+    await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'anthropic',
+        providerType: 'anthropic',
+        baseUrl: 'https://api.anthropic.com/v1',
+        model: 'claude-opus-4-20250514',
+        skipThinking: true,
+      },
+      validPrompts
+    );
+    const body = getLastBody();
+    expect(body.thinking).toEqual({ type: 'disabled' });
+  });
+
+  it('Anthropic Claude Opus 4.6 + skipThinking=true：body 不含 thinking（4.6+ 已废弃）', async () => {
+    mockAnthropicOk();
+    await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'anthropic',
+        providerType: 'anthropic',
+        baseUrl: 'https://api.anthropic.com/v1',
+        model: 'claude-opus-4-6',
+        skipThinking: true,
+      },
+      validPrompts
+    );
+    const body = getLastBody();
+    expect(body).not.toHaveProperty('thinking');
+  });
+
+  it('Anthropic Claude 3 Opus + skipThinking=true：body 不含 thinking（非思考模型）', async () => {
+    mockAnthropicOk();
+    await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'anthropic',
+        providerType: 'anthropic',
+        baseUrl: 'https://api.anthropic.com/v1',
+        model: 'claude-3-opus',
+        skipThinking: true,
+      },
+      validPrompts
+    );
+    const body = getLastBody();
+    expect(body).not.toHaveProperty('thinking');
+  });
+
+  it('skipThinking=false：任何模型 body 都不含思考相关字段', async () => {
+    mockOk();
+    await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'deepseek',
+        providerType: 'openai-compatible',
+        baseUrl: 'https://api.deepseek.com/v1',
+        model: 'deepseek-reasoner',
+        skipThinking: false,
+      },
+      validPrompts
+    );
+    const body = getLastBody();
+    expect(body).not.toHaveProperty('thinking');
+    expect(body).not.toHaveProperty('reasoning_effort');
+    expect(body).not.toHaveProperty('enable_thinking');
+  });
+
+  it('skipThinking 未传（默认 false）：body 不含思考相关字段', async () => {
+    mockOk();
+    const { skipThinking: _omit, ...configWithoutSkip } = baseAiConfig;
+    await requestAiJson(
+      {
+        ...configWithoutSkip,
+        providerId: 'openai',
+        model: 'o1',
+      },
+      validPrompts
+    );
+    const body = getLastBody();
+    expect(body).not.toHaveProperty('reasoning_effort');
+    expect(body).not.toHaveProperty('thinking');
   });
 });

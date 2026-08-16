@@ -1,5 +1,6 @@
 import dns from 'dns/promises';
 import net from 'net';
+import { buildThinkingDisableParams } from './aiThinking.js';
 
 const OPENAI_COMPATIBLE_PROVIDERS = new Set([
   'openai',
@@ -267,6 +268,7 @@ export const validateAiConfig = (config = {}) => {
     providerType,
     providerMode: getProviderMode(providerId, providerType),
     temperature,
+    skipThinking: config.skipThinking === true,
   };
 };
 
@@ -300,9 +302,21 @@ const callOpenAICompatible = async ({
   temperature,
   systemPrompt,
   userPrompt,
+  providerId,
+  providerType,
+  providerMode,
+  skipThinking,
 }) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
+
+  const thinkingParams = buildThinkingDisableParams({
+    providerId,
+    providerType,
+    providerMode,
+    model,
+    skipThinking,
+  });
 
   let response;
   try {
@@ -321,6 +335,7 @@ const callOpenAICompatible = async ({
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
+        ...thinkingParams,
       }),
     });
   } catch (e) {
@@ -342,9 +357,28 @@ const callOpenAICompatible = async ({
   return normalizeContentText(content);
 };
 
-const callAnthropic = async ({ apiKey, baseUrl, model, temperature, systemPrompt, userPrompt }) => {
+const callAnthropic = async ({
+  apiKey,
+  baseUrl,
+  model,
+  temperature,
+  systemPrompt,
+  userPrompt,
+  providerId,
+  providerType,
+  providerMode,
+  skipThinking,
+}) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
+
+  const thinkingParams = buildThinkingDisableParams({
+    providerId,
+    providerType,
+    providerMode,
+    model,
+    skipThinking,
+  });
 
   let response;
   try {
@@ -362,6 +396,7 @@ const callAnthropic = async ({ apiKey, baseUrl, model, temperature, systemPrompt
         temperature: typeof temperature === 'number' ? temperature : 0.2,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
+        ...thinkingParams,
       }),
     });
   } catch (e) {

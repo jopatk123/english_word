@@ -5,6 +5,7 @@ export const baseAiConfig = {
   providerId: 'openai',
   providerType: 'openai-compatible',
   temperature: 0.2,
+  skipThinking: false,
 };
 
 export const validPrompts = {
