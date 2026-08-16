@@ -27,6 +27,7 @@ const getEmptyAllSettings = () => ({
   providers: {},
   customProviders: [],
   customModels: {},
+  fetchedModels: {},
 });
 
 const getServerKeyMeta = (providerId) => {
@@ -52,9 +53,10 @@ export const createDefaultAiSettings = () => {
     providerId: provider.id,
     providerType: provider.providerType,
     baseUrl: provider.baseUrl,
-    model: provider.models[0],
+    model: '',
     apiKey: '',
     temperature: 0.2,
+    skipThinking: false,
   });
 };
 
@@ -77,6 +79,10 @@ const getAllAiSettings = () => {
       customModels:
         typeof parsed?.customModels === 'object' && parsed?.customModels !== null
           ? parsed.customModels
+          : {},
+      fetchedModels:
+        typeof parsed?.fetchedModels === 'object' && parsed?.fetchedModels !== null
+          ? parsed.fetchedModels
           : {},
     };
   } catch {
@@ -111,7 +117,7 @@ export const findAiProviderById = (providerId) =>
   getAllProviders().find((provider) => provider.id === providerId) || getProviderById(providerId);
 
 /**
- * 返回某厂商的自定义模型列表
+ * 返回某厂商的自定义模型列表（用户手动添加的，可单独删除）
  */
 export const getCustomModels = (providerId) => {
   const allSettings = getAllAiSettings();
@@ -120,23 +126,47 @@ export const getCustomModels = (providerId) => {
 };
 
 /**
- * 返回某厂商的所有模型（内置 + 自定义）
+ * 返回某厂商通过 /models 端点自动拉取的模型列表（不可单独删除，下次拉取覆盖）
+ */
+export const getFetchedModels = (providerId) => {
+  const allSettings = getAllAiSettings();
+  const list = allSettings.fetchedModels?.[providerId];
+  return Array.isArray(list) ? list : [];
+};
+
+/**
+ * 持久化某厂商的自动拉取模型列表（去重 + 排序）
+ */
+export const saveFetchedModels = (providerId, models) => {
+  const allSettings = getAllAiSettings();
+  if (!allSettings.fetchedModels) allSettings.fetchedModels = {};
+  const clean = (Array.isArray(models) ? models : [])
+    .map((m) => (typeof m === 'string' ? m.trim() : ''))
+    .filter(Boolean);
+  const unique = [...new Set(clean)].sort((a, b) => a.localeCompare(b));
+  allSettings.fetchedModels[providerId] = unique;
+  saveAllAiSettings(allSettings);
+};
+
+/**
+ * 返回某厂商的所有可选模型（自动拉取 + 自定义添加，去重）
  */
 export const getAllModels = (providerId) => {
-  const provider = getAllProviders().find((p) => p.id === providerId);
-  const builtIn = provider?.models || [];
-  return [...builtIn, ...getCustomModels(providerId)];
+  const fetched = getFetchedModels(providerId);
+  const custom = getCustomModels(providerId);
+  return [...new Set([...fetched, ...custom])];
 };
 
 // ── 规范化 ────────────────────────────────────────────────────────────────────
 
 /**
  * 规范化单个提供者的配置（兼容内置厂商和自定义厂商）
+ * 注意：保留 settings.model 原值，即使不在已知模型列表中也不回退到 allModels[0]，
+ * 以支持"已选模型在新拉取列表中不存在时仍保留显示"的需求。
  */
 const normalizeProviderSettings = (settings) => {
   const provider =
     getAllProviders().find((p) => p.id === settings.providerId) || getAllProviders()[0];
-  const allModels = getAllModels(provider.id);
   const rawTemp = parseFloat(settings.temperature);
   const temperature =
     !isNaN(rawTemp) && rawTemp >= 0 && rawTemp <= 2 ? Math.round(rawTemp * 10) / 10 : 0.2;
@@ -144,15 +174,15 @@ const normalizeProviderSettings = (settings) => {
     providerId: provider.id,
     providerType: provider.providerType,
     baseUrl: settings.baseUrl?.trim() || provider.baseUrl,
-    model: allModels.includes(settings.model) ? settings.model : allModels[0] || '',
+    model: typeof settings.model === 'string' ? settings.model.trim() : '',
     apiKey: settings.apiKey?.trim() || '',
     temperature,
+    skipThinking: settings.skipThinking === true,
   };
 };
 
 const getLocalProviderSettings = (providerId) => {
   const provider = getAllProviders().find((p) => p.id === providerId) || getAllProviders()[0];
-  const allModels = getAllModels(provider.id);
   const allSettings = getAllAiSettings();
   const saved = allSettings.providers[provider.id];
 
@@ -164,9 +194,10 @@ const getLocalProviderSettings = (providerId) => {
       providerId: provider.id,
       providerType: provider.providerType,
       baseUrl: saved.baseUrl || provider.baseUrl,
-      model: allModels.includes(saved.model) ? saved.model : allModels[0] || '',
+      model: typeof saved.model === 'string' ? saved.model : '',
       apiKey: '',
       temperature,
+      skipThinking: saved.skipThinking === true,
     };
   }
 
@@ -174,9 +205,10 @@ const getLocalProviderSettings = (providerId) => {
     providerId: provider.id,
     providerType: provider.providerType,
     baseUrl: provider.baseUrl,
-    model: allModels[0] || '',
+    model: '',
     apiKey: '',
     temperature: 0.2,
+    skipThinking: false,
   };
 };
 
@@ -224,6 +256,7 @@ export const saveAiSettingsLocally = (settings) => {
     baseUrl: normalized.baseUrl,
     model: normalized.model,
     temperature: normalized.temperature,
+    skipThinking: normalized.skipThinking,
   };
   allSettings.currentProviderId = normalized.providerId;
   saveAllAiSettings(allSettings);
@@ -330,13 +363,14 @@ export const saveCustomProvider = (name, baseUrl) => {
 };
 
 /**
- * 删除一个自定义厂商（同时清除其已保存的配置和自定义模型）
+ * 删除一个自定义厂商（同时清除其已保存的配置、自定义模型和自动拉取的模型）
  */
 export const deleteCustomProvider = (providerId) => {
   const allSettings = getAllAiSettings();
   allSettings.customProviders = allSettings.customProviders.filter((p) => p.id !== providerId);
   delete allSettings.providers[providerId];
   delete allSettings.customModels[providerId];
+  delete allSettings.fetchedModels?.[providerId];
   if (allSettings.currentProviderId === providerId) {
     allSettings.currentProviderId = DEFAULT_PROVIDER_ID;
   }

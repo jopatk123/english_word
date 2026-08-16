@@ -1,6 +1,6 @@
 /**
  * 测试：client/src/constants/aiProviders.js
- *   - AI_PROVIDERS 数据结构验证
+ *   - AI_PROVIDERS 数据结构验证（不再包含内置 models 字段，统一通过 /models 拉取）
  *   - DEFAULT_PROVIDER_ID 常量
  *   - getProviderById 查找函数
  */
@@ -13,13 +13,18 @@ describe('AI_PROVIDERS', () => {
     expect(AI_PROVIDERS.length).toBeGreaterThan(0);
   });
 
-  it('每个 provider 都有 id / name / providerType / baseUrl / models 字段', () => {
+  it('每个 provider 都有 id / name / providerType / baseUrl 字段', () => {
     for (const p of AI_PROVIDERS) {
       expect(p).toHaveProperty('id');
       expect(p).toHaveProperty('name');
       expect(p).toHaveProperty('providerType');
       expect(p).toHaveProperty('baseUrl');
-      expect(Array.isArray(p.models)).toBe(true);
+    }
+  });
+
+  it('每个 provider 不再包含内置 models 字段（统一通过 /models 拉取）', () => {
+    for (const p of AI_PROVIDERS) {
+      expect(p).not.toHaveProperty('models');
     }
   });
 
@@ -41,12 +46,6 @@ describe('AI_PROVIDERS', () => {
 
   it('包含 anthropic 厂商', () => {
     expect(AI_PROVIDERS.some((p) => p.id === 'anthropic')).toBe(true);
-  });
-
-  it('每个 provider 至少有一个 model', () => {
-    for (const p of AI_PROVIDERS) {
-      expect(p.models.length).toBeGreaterThan(0);
-    }
   });
 
   it('baseUrl 以 http 开头', () => {
@@ -89,11 +88,5 @@ describe('getProviderById', () => {
   it('传入 undefined 时返回第一个 provider', () => {
     const provider = getProviderById(undefined);
     expect(provider).toEqual(AI_PROVIDERS[0]);
-  });
-
-  it('返回的 provider 拥有 models 数组', () => {
-    const provider = getProviderById('openai');
-    expect(Array.isArray(provider.models)).toBe(true);
-    expect(provider.models.length).toBeGreaterThan(0);
   });
 });

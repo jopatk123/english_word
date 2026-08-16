@@ -25,6 +25,7 @@ import {
   getAllProviders,
   getCustomModels,
   getCustomProviders,
+  getFetchedModels,
   loadAiSettings,
   loadProviderSettings,
   maskApiKey,
@@ -32,6 +33,7 @@ import {
   saveAiSettings,
   saveAiSettingsLocally,
   saveCustomProvider,
+  saveFetchedModels,
   subscribeAiSettingsChanges,
 } from '../aiSettings.js';
 
@@ -118,6 +120,44 @@ describe('providers and models', () => {
   });
 });
 
+describe('fetchedModels (自动拉取模型持久化)', () => {
+  it('未拉取时返回空数组', () => {
+    expect(getFetchedModels('deepseek')).toEqual([]);
+  });
+
+  it('saveFetchedModels 持久化并去重排序', () => {
+    saveFetchedModels('deepseek', ['deepseek-chat', 'deepseek-reasoner', 'deepseek-chat']);
+    expect(getFetchedModels('deepseek')).toEqual(['deepseek-chat', 'deepseek-reasoner']);
+  });
+
+  it('会自动 trim 模型名并过滤空值', () => {
+    saveFetchedModels('deepseek', ['  model-a  ', '', 'model-b']);
+    expect(getFetchedModels('deepseek')).toEqual(['model-a', 'model-b']);
+  });
+
+  it('非数组参数安全处理', () => {
+    saveFetchedModels('deepseek', null);
+    expect(getFetchedModels('deepseek')).toEqual([]);
+  });
+
+  it('getAllModels 合并 fetchedModels + customModels 并去重', () => {
+    saveFetchedModels('deepseek', ['fetched-1', 'shared']);
+    addCustomModel('deepseek', 'custom-1');
+    addCustomModel('deepseek', 'shared');
+    const all = getAllModels('deepseek');
+    expect(all).toEqual(expect.arrayContaining(['fetched-1', 'custom-1', 'shared']));
+    expect(all.filter((m) => m === 'shared')).toHaveLength(1);
+  });
+
+  it('删除自定义厂商时同步清理 fetchedModels', () => {
+    const provider = saveCustomProvider('Tmp', 'https://tmp.example.com/v1');
+    saveFetchedModels(provider.id, ['m1', 'm2']);
+    expect(getFetchedModels(provider.id).length).toBe(2);
+    deleteCustomProvider(provider.id);
+    expect(getFetchedModels(provider.id)).toEqual([]);
+  });
+});
+
 describe('batchAddCustomModels', () => {
   it('批量添加多个新模型', () => {
     const added = batchAddCustomModels('deepseek', ['model-a', 'model-b', 'model-c']);
@@ -156,6 +196,8 @@ describe('local settings persistence', () => {
     expect(settings.providerId).toBe('deepseek');
     expect(settings.apiKey).toBe('');
     expect(settings.hasApiKey).toBe(false);
+    expect(settings.model).toBe('');
+    expect(settings.skipThinking).toBe(false);
   });
 
   it('只在本地保存非敏感配置', () => {
@@ -196,6 +238,64 @@ describe('local settings persistence', () => {
       apiKey: '',
       hasApiKey: false,
     });
+  });
+
+  it('skipThinking 默认为 false', () => {
+    saveAiSettingsLocally({
+      providerId: 'openai',
+      providerType: 'openai-compatible',
+      baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-4o',
+      temperature: 0.2,
+    });
+    expect(loadAiSettings().skipThinking).toBe(false);
+  });
+
+  it('skipThinking=true 按厂商保存并读取', () => {
+    saveAiSettingsLocally({
+      providerId: 'openai',
+      providerType: 'openai-compatible',
+      baseUrl: 'https://api.openai.com/v1',
+      model: 'o1',
+      temperature: 0.2,
+      skipThinking: true,
+    });
+    expect(loadProviderSettings('openai').skipThinking).toBe(true);
+
+    // 切换到其他厂商时仍是默认 false
+    saveAiSettingsLocally({
+      providerId: 'deepseek',
+      providerType: 'openai-compatible',
+      baseUrl: 'https://api.deepseek.com/v1',
+      model: 'deepseek-chat',
+      temperature: 0.2,
+    });
+    expect(loadProviderSettings('deepseek').skipThinking).toBe(false);
+    // openai 偏好不受影响
+    expect(loadProviderSettings('openai').skipThinking).toBe(true);
+  });
+
+  it('skipThinking 非布尔值归一化为 false', () => {
+    saveAiSettingsLocally({
+      providerId: 'openai',
+      providerType: 'openai-compatible',
+      baseUrl: 'https://api.openai.com/v1',
+      model: 'o1',
+      temperature: 0.2,
+      skipThinking: 'true',
+    });
+    expect(loadProviderSettings('openai').skipThinking).toBe(false);
+  });
+
+  it('已选 model 不在 fetched/custom 列表中也保留', () => {
+    saveAiSettingsLocally({
+      providerId: 'deepseek',
+      providerType: 'openai-compatible',
+      baseUrl: 'https://api.deepseek.com/v1',
+      model: 'orphan-model-not-in-any-list',
+      temperature: 0.2,
+    });
+    expect(loadProviderSettings('deepseek').model).toBe('orphan-model-not-in-any-list');
   });
 });
 
