@@ -355,7 +355,6 @@ export const saveCustomProvider = (name, baseUrl) => {
     name: name.trim(),
     baseUrl: baseUrl?.trim() || '',
     providerType: 'openai-compatible',
-    models: [],
   };
   allSettings.customProviders.push(newProvider);
   saveAllAiSettings(allSettings);

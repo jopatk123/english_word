@@ -61,10 +61,15 @@
         <!-- 模型选择 -->
         <el-form-item label="模型">
           <div class="field-row">
-            <el-select v-model="form.model" placeholder="请选择模型">
-              <el-option-group v-if="builtInModels.length" label="标准模型">
+            <el-select v-model="form.model" placeholder="请选择模型" filterable allow-create>
+              <el-option
+                v-if="orphanModel"
+                :label="`${orphanModel}（未匹配）`"
+                :value="orphanModel"
+              />
+              <el-option-group v-if="fetchedModelsForProvider.length" label="自动获取的模型">
                 <el-option
-                  v-for="model in builtInModels"
+                  v-for="model in fetchedModelsForProvider"
                   :key="model"
                   :label="model"
                   :value="model"
@@ -96,6 +101,10 @@
               >{{ model }}</el-tag
             >
           </div>
+          <div v-if="!fetchedModelsForProvider.length" class="temperature-hint">
+            尚未拉取到模型列表。填写 Base URL 与 API Key
+            后会自动拉取，或点击"自动获取模型"手动拉取。
+          </div>
         </el-form-item>
 
         <el-form-item label="API Key">
@@ -103,6 +112,7 @@
             v-model="form.apiKey"
             show-password
             placeholder="输入新的 API Key；留空则保留当前已保存 Key"
+            @blur="handleApiKeyBlur"
           />
           <div class="temperature-hint">
             <template v-if="hasCurrentProviderKey">
@@ -135,6 +145,22 @@
           </div>
           <div class="temperature-hint">
             较低值（如 0.2）输出更稳定；较高值（如 1.0）输出更有创意
+          </div>
+        </el-form-item>
+
+        <el-form-item label="跳过思考">
+          <div class="field-row">
+            <el-switch v-model="form.skipThinking" />
+            <el-tag
+              v-if="form.model"
+              :type="isCurrentModelThinking ? 'warning' : 'info'"
+              size="small"
+              >{{ isCurrentModelThinking ? '当前为思考模型' : '当前非思考模型' }}</el-tag
+            >
+          </div>
+          <div class="temperature-hint">
+            开启后，对思考模型（如 DeepSeek-Reasoner、Qwen3、Claude 3.7+/4、OpenAI o-series
+            等）会注入禁用思考的参数，减少 reasoning token 消耗。非思考模型不受影响。
           </div>
         </el-form-item>
 
@@ -175,6 +201,10 @@
         <div>
           <span class="summary-label">Temperature</span>
           <strong>{{ form.temperature ?? 0.2 }}</strong>
+        </div>
+        <div>
+          <span class="summary-label">跳过思考</span>
+          <strong>{{ form.skipThinking ? '是' : '否' }}</strong>
         </div>
       </div>
     </el-card>
@@ -225,43 +255,16 @@
     </el-dialog>
 
     <!-- 自动获取模型对话框 -->
-    <el-dialog
+    <AiFetchModelsDialog
       v-model="showFetchModels"
-      title="自动获取模型"
-      width="520px"
+      v-model:search="fetchModelsSearch"
+      :fetching="fetchingModels"
+      :models="filteredFetchedModels"
+      :selected="selectedFetchedModels"
+      @toggle="toggleFetchedModel"
+      @confirm="handleConfirmFetchModels"
       @closed="resetFetchModelsState"
-    >
-      <el-input
-        v-model="fetchModelsSearch"
-        placeholder="搜索模型名称..."
-        clearable
-        style="margin-bottom: 12px"
-      />
-      <div v-if="fetchingModels" class="fetch-models-loading">正在拉取模型列表...</div>
-      <div v-else class="fetch-models-list">
-        <el-checkbox
-          v-for="model in filteredFetchedModels"
-          :key="model.name"
-          :model-value="selectedFetchedModels.includes(model.name)"
-          :disabled="model.exists"
-          class="fetch-model-item"
-          @change="(checked) => toggleFetchedModel(model.name, checked)"
-        >
-          {{ model.name }}
-          <el-tag v-if="model.exists" size="small" type="info">已添加</el-tag>
-        </el-checkbox>
-      </div>
-      <template #footer>
-        <el-button @click="showFetchModels = false">取消</el-button>
-        <el-button
-          type="primary"
-          :disabled="!selectedFetchedModels.length || fetchingModels"
-          @click="handleConfirmFetchModels"
-        >
-          导入({{ selectedFetchedModels.length }})
-        </el-button>
-      </template>
-    </el-dialog>
+    />
   </div>
 </template>
 
@@ -269,8 +272,11 @@
   import { computed, onMounted, onUnmounted, ref } from 'vue';
   import { useRoute } from 'vue-router';
   import { ElMessage, ElMessageBox } from 'element-plus';
-  import { fetchAiModels, testAiConnection } from '../api/index.js';
+  import { testAiConnection } from '../api/index.js';
   import { AI_PROVIDERS } from '../constants/aiProviders.js';
+  import AiFetchModelsDialog from '../components/AiFetchModelsDialog.vue';
+  import { useAiModelFetch } from '../composables/useAiModelFetch.js';
+  import { isThinkingModel } from '../utils/aiThinking.js';
   import { getRouteDisplayLabel, getRouteSource } from '../utils/navigationHistory.js';
   import {
     deleteProviderAiKey,
@@ -285,10 +291,10 @@
     getAllModels,
     getCustomModels,
     getCustomProviders,
+    getFetchedModels,
     saveCustomProvider,
     deleteCustomProvider,
     addCustomModel,
-    batchAddCustomModels,
     deleteCustomModel,
     subscribeAiSettingsChanges,
   } from '../utils/aiSettings.js';
@@ -338,11 +344,28 @@
   );
 
   // --- 模型列表 ---
-  const builtInModels = computed(() => currentProvider.value?.models || []);
+  const fetchedModelsForProvider = computed(() => {
+    settingsVersion.value; // dependency
+    return getFetchedModels(form.value.providerId);
+  });
   const customModelsForProvider = computed(() => {
     settingsVersion.value; // dependency
     return getCustomModels(form.value.providerId);
   });
+  // 已选模型不在 fetched/custom 列表中时，作为 orphan 选项单独显示，避免下拉看不到当前值
+  const orphanModel = computed(() => {
+    const current = form.value.model;
+    if (!current) return '';
+    const all = [...fetchedModelsForProvider.value, ...customModelsForProvider.value];
+    return all.includes(current) ? '' : current;
+  });
+  const isCurrentModelThinking = computed(() =>
+    isThinkingModel({
+      providerId: form.value.providerId,
+      providerType: form.value.providerType,
+      model: form.value.model,
+    })
+  );
 
   const hasCurrentProviderKey = computed(() => Boolean(form.value.hasApiKey));
   const maskedKey = computed(() =>
@@ -356,74 +379,26 @@
   const showAddModel = ref(false);
   const newModelName = ref('');
 
-  // --- 自动获取模型 ---
-  const showFetchModels = ref(false);
-  const fetchingModels = ref(false);
-  const fetchedModels = ref([]);
-  const selectedFetchedModels = ref([]);
-  const fetchModelsSearch = ref('');
-
-  const filteredFetchedModels = computed(() => {
-    const existing = new Set(getCustomModels(form.value.providerId));
-    const keyword = fetchModelsSearch.value.trim().toLowerCase();
-    return fetchedModels.value
-      .filter((name) => !keyword || name.toLowerCase().includes(keyword))
-      .map((name) => ({ name, exists: existing.has(name) }));
-  });
-
-  const resetFetchModelsState = () => {
-    fetchedModels.value = [];
-    selectedFetchedModels.value = [];
-    fetchModelsSearch.value = '';
-  };
-
-  const handleFetchModels = async () => {
-    if (!form.value.baseUrl || (!form.value.apiKey && !form.value.hasApiKey)) {
-      return ElMessage.warning('请先填写 Base URL，并至少提供一个可用的 API Key');
-    }
-
-    fetchingModels.value = true;
-    showFetchModels.value = true;
-    try {
-      const res = await fetchAiModels(
-        form.value.apiKey ? form.value : { ...form.value, apiKey: undefined }
-      );
-      fetchedModels.value = res?.data?.models || [];
-      if (!fetchedModels.value.length) ElMessage.warning('未获取到任何模型');
-    } catch (e) {
-      ElMessage.error(
-        e?.response?.data?.msg ||
-          (e?.code === 'ECONNABORTED' ? '获取模型列表超时，请稍后重试' : '获取模型列表失败')
-      );
-      showFetchModels.value = false;
-    } finally {
-      fetchingModels.value = false;
-    }
-  };
-
-  const handleConfirmFetchModels = () => {
-    if (!selectedFetchedModels.value.length) return;
-    const added = batchAddCustomModels(form.value.providerId, selectedFetchedModels.value);
-    refreshSettings();
-    showFetchModels.value = false;
-    if (added > 0) ElMessage.success(`成功导入 ${added} 个模型`);
-    else ElMessage.info('所选模型均已存在，未新增');
-  };
-
-  const toggleFetchedModel = (name, checked) => {
-    if (checked) {
-      if (!selectedFetchedModels.value.includes(name)) {
-        selectedFetchedModels.value = [...selectedFetchedModels.value, name];
-      }
-    } else {
-      selectedFetchedModels.value = selectedFetchedModels.value.filter((n) => n !== name);
-    }
-  };
+  // --- 自动获取模型（静默拉取 + 显式拉取对话框，统一由 composable 管理）---
+  const {
+    fetchingModels,
+    showFetchModels,
+    selectedFetchedModels,
+    fetchModelsSearch,
+    filteredFetchedModels,
+    resetFetchModelsState,
+    autoFetchModels,
+    handleApiKeyBlur,
+    handleFetchModels,
+    handleConfirmFetchModels,
+    toggleFetchedModel,
+  } = useAiModelFetch({ form, refreshSettings });
 
   // --- 厂商切换 ---
   const handleProviderChange = (providerId) => {
     setCurrentProviderId(providerId);
     form.value = { ...loadProviderSettings(providerId), apiKey: '' };
+    void autoFetchModels();
   };
 
   // --- 保存配置 ---
@@ -523,13 +498,35 @@
   };
 
   // --- 新增自定义模型 ---
-  const handleAddModel = () => {
+  const handleAddModel = async () => {
     const modelName = newModelName.value.trim();
     if (!modelName) return ElMessage.warning('请输入模型名称');
+
+    // 已在自动获取列表中：直接选中，无需重复添加
+    if (fetchedModelsForProvider.value.includes(modelName)) {
+      form.value.model = modelName;
+      showAddModel.value = false;
+      newModelName.value = '';
+      ElMessage.success(`已选择模型「${modelName}」`);
+      return;
+    }
+
+    // 不在自动获取列表中：模型可能已过期或拼写错误，弹警告确认
+    try {
+      await ElMessageBox.confirm(
+        `模型「${modelName}」不在自动获取的模型列表中。该模型可能已过期、拼写有误，或厂商未通过 /models 端点返回。确认要添加吗？`,
+        '模型未匹配确认',
+        { confirmButtonText: '仍然添加', cancelButtonText: '取消', type: 'warning' }
+      );
+    } catch {
+      return; // 用户取消
+    }
+
     addCustomModel(form.value.providerId, modelName);
     refreshSettings();
     form.value.model = modelName;
     showAddModel.value = false;
+    newModelName.value = '';
     ElMessage.success(`模型「${modelName}」已添加`);
   };
 
@@ -547,6 +544,7 @@
   onMounted(async () => {
     stopAiSettingsSync = subscribeAiSettingsChanges(syncAiSettings);
     form.value = { ...(await refreshAiSettings()), apiKey: '' };
+    void autoFetchModels();
   });
 
   onUnmounted(() => {
@@ -580,21 +578,5 @@
     font-size: 12px;
     color: #909399;
     margin-top: 8px;
-  }
-
-  .fetch-models-loading {
-    text-align: center;
-    padding: 24px;
-    color: #909399;
-  }
-
-  .fetch-models-list {
-    max-height: 360px;
-    overflow-y: auto;
-  }
-
-  .fetch-model-item {
-    display: block;
-    padding: 4px 0;
   }
 </style>
