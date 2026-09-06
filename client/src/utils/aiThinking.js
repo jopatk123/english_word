@@ -28,6 +28,9 @@ const getPatternsKey = (providerId, providerType) => {
   return providerId;
 };
 
+const matchesAnyPattern = (patterns, model) =>
+  Array.isArray(patterns) && patterns.some((re) => re.test(model));
+
 /**
  * 判定某 provider+model 是否属于思考型模型。
  * 仅用于 UI 提示；不阻塞任何操作。
@@ -37,8 +40,12 @@ const getPatternsKey = (providerId, providerType) => {
  */
 export function isThinkingModel({ providerId, providerType, model } = {}) {
   if (typeof model !== 'string' || !model.trim()) return false;
+
   const key = getPatternsKey(providerId, providerType);
-  const patterns = THINKING_PATTERNS[key];
-  if (!Array.isArray(patterns)) return false;
-  return patterns.some((re) => re.test(model));
+  if (matchesAnyPattern(THINKING_PATTERNS[key], model)) {
+    return true;
+  }
+
+  // 聚合平台 / 自定义 OpenAI 兼容端点可能托管其他厂商的思考模型。
+  return Object.values(THINKING_PATTERNS).some((patterns) => matchesAnyPattern(patterns, model));
 }

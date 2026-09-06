@@ -19,6 +19,16 @@ const THINKING_PATTERNS = {
   anthropic: [/claude-3[-.]7/i, /claude-(opus|sonnet|haiku)-4([-.]5)?\b/i],
 };
 
+const MODEL_DISABLE_PARAMS = {
+  deepseek: { thinking: { type: 'disabled' } },
+  dashscope: { enable_thinking: false },
+  openai: { reasoning_effort: 'low' },
+  zhipu: { thinking: { type: 'disabled' } },
+  moonshot: { thinking: { type: 'disabled' } },
+  doubao: { thinking: { type: 'disabled' } },
+  anthropic: { thinking: { type: 'disabled' } },
+};
+
 // Anthropic 4.6+ 已废弃 thinking.type: enabled/disabled，命中即不注入。
 const ANTHROPIC_DISABLED_PATTERNS = [/claude-(opus|sonnet|haiku)-4[-.]6/i, /claude-4[-.]6/i];
 
@@ -27,6 +37,18 @@ const getPatternsKey = (providerId, providerType) => {
     return 'anthropic';
   }
   return providerId;
+};
+
+const matchesAnyPattern = (patterns, model) =>
+  Array.isArray(patterns) && patterns.some((re) => re.test(model));
+
+const matchThinkingPatternKey = (model) => {
+  for (const [key, patterns] of Object.entries(THINKING_PATTERNS)) {
+    if (matchesAnyPattern(patterns, model)) {
+      return key;
+    }
+  }
+  return null;
 };
 
 /**
@@ -38,10 +60,13 @@ const getPatternsKey = (providerId, providerType) => {
  */
 export function isThinkingModel({ providerId, providerType, model } = {}) {
   if (typeof model !== 'string' || !model.trim()) return false;
+
   const key = getPatternsKey(providerId, providerType);
-  const patterns = THINKING_PATTERNS[key];
-  if (!Array.isArray(patterns)) return false;
-  return patterns.some((re) => re.test(model));
+  if (matchesAnyPattern(THINKING_PATTERNS[key], model)) {
+    return true;
+  }
+
+  return Object.values(THINKING_PATTERNS).some((patterns) => matchesAnyPattern(patterns, model));
 }
 
 /**
@@ -52,6 +77,50 @@ export function isThinkingModel({ providerId, providerType, model } = {}) {
  */
 const isAnthropicThinkingParamDeprecated = (model) =>
   ANTHROPIC_DISABLED_PATTERNS.some((re) => re.test(model));
+
+const getProviderDisableParams = ({ providerId, providerMode, model }) => {
+  if (
+    (providerMode === 'anthropic' || providerId === 'anthropic') &&
+    isAnthropicThinkingParamDeprecated(model)
+  ) {
+    return {};
+  }
+
+  if (providerId === 'deepseek') {
+    return { thinking: { type: 'disabled' } };
+  }
+
+  if (providerId === 'dashscope') {
+    return { enable_thinking: false };
+  }
+
+  if (providerId === 'openai') {
+    return { reasoning_effort: 'low' };
+  }
+
+  if (
+    providerId === 'zhipu' ||
+    providerId === 'moonshot' ||
+    providerId === 'doubao' ||
+    providerMode === 'anthropic' ||
+    providerId === 'anthropic'
+  ) {
+    return { thinking: { type: 'disabled' } };
+  }
+
+  return {};
+};
+
+const getModelMatchedDisableParams = (model) => {
+  const matchedKey = matchThinkingPatternKey(model);
+  if (!matchedKey) return {};
+
+  if (matchedKey === 'anthropic' && isAnthropicThinkingParamDeprecated(model)) {
+    return {};
+  }
+
+  return MODEL_DISABLE_PARAMS[matchedKey] || {};
+};
 
 /**
  * 根据 skipThinking 与 provider/model 决定要 merge 到上游请求体的禁用参数。
@@ -70,39 +139,14 @@ export function buildThinkingDisableParams({
   if (skipThinking !== true) return {};
   if (!isThinkingModel({ providerId, providerType, model })) return {};
 
-  // Anthropic 4.6+ 已废弃 thinking.type 字段，传了会被拒绝。
-  if (
-    (providerMode === 'anthropic' || providerId === 'anthropic') &&
-    isAnthropicThinkingParamDeprecated(model)
-  ) {
-    return {};
+  const providerParams = getProviderDisableParams({
+    providerId,
+    providerMode,
+    model,
+  });
+  if (Object.keys(providerParams).length > 0) {
+    return providerParams;
   }
 
-  // DeepSeek 与 reasoning_effort 互斥，对 deepseek 只发 thinking 字段。
-  if (providerId === 'deepseek') {
-    return { thinking: { type: 'disabled' } };
-  }
-
-  // Qwen3 系列（DashScope OpenAI 兼容模式）使用 enable_thinking 顶层字段。
-  if (providerId === 'dashscope') {
-    return { enable_thinking: false };
-  }
-
-  // OpenAI o-series / gpt-5 使用 reasoning_effort；保守用 low，兼容老模型。
-  if (providerId === 'openai') {
-    return { reasoning_effort: 'low' };
-  }
-
-  // GLM-Z1 / Kimi / 豆包 / Claude 3.7+/4/4.5 都使用 thinking: disabled。
-  if (
-    providerId === 'zhipu' ||
-    providerId === 'moonshot' ||
-    providerId === 'doubao' ||
-    providerMode === 'anthropic' ||
-    providerId === 'anthropic'
-  ) {
-    return { thinking: { type: 'disabled' } };
-  }
-
-  return {};
+  return getModelMatchedDisableParams(model);
 }

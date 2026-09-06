@@ -94,4 +94,6 @@ export const AI_PROVIDERS = [
 export const DEFAULT_PROVIDER_ID = 'deepseek';
 
 export const getProviderById = (providerId) =>
-  AI_PROVIDERS.find((item) => item.id === providerId) || AI_PROVIDERS[0];
+  AI_PROVIDERS.find((item) => item.id === providerId) ||
+  AI_PROVIDERS.find((item) => item.id === DEFAULT_PROVIDER_ID) ||
+  AI_PROVIDERS[0];

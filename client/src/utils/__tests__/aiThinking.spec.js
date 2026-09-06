@@ -74,7 +74,8 @@ describe('isThinkingModel', () => {
     expect(isThinkingModel({ providerId: 'deepseek', model: null })).toBe(false);
   });
 
-  it('未知 provider 返回 false', () => {
+  it('未知 provider 按模型名识别思考模型', () => {
+    expect(isThinkingModel({ providerId: 'custom_proxy', model: 'deepseek-reasoner' })).toBe(true);
     expect(isThinkingModel({ providerId: 'unknown', model: 'whatever' })).toBe(false);
   });
 

@@ -55,13 +55,35 @@
         </el-form-item>
 
         <el-form-item label="Base URL">
-          <el-input v-model="form.baseUrl" placeholder="请输入 Base URL" />
+          <el-input
+            v-model="form.baseUrl"
+            placeholder="请输入公网可访问的 Base URL"
+            @blur="handleBaseUrlBlur"
+          />
+          <div class="temperature-hint">
+            出于安全考虑，服务端不允许 localhost 或局域网地址；本地 LLM 需通过公网反向代理接入。
+          </div>
+        </el-form-item>
+
+        <el-form-item label="API Key">
+          <el-input
+            v-model="form.apiKey"
+            show-password
+            placeholder="输入新的 API Key；留空则保留当前已保存 Key"
+            @blur="handleApiKeyBlur"
+          />
+          <div class="temperature-hint">
+            <template v-if="hasCurrentProviderKey">
+              当前厂商已保存服务端密钥：{{ form.maskedApiKey }}
+            </template>
+            <template v-else>当前厂商尚未保存 API Key</template>
+          </div>
         </el-form-item>
 
         <!-- 模型选择 -->
         <el-form-item label="模型">
           <div class="field-row">
-            <el-select v-model="form.model" placeholder="请选择模型" filterable allow-create>
+            <el-select v-model="form.model" placeholder="请选择模型" filterable>
               <el-option
                 v-if="orphanModel"
                 :label="`${orphanModel}（未匹配）`"
@@ -107,28 +129,13 @@
           </div>
         </el-form-item>
 
-        <el-form-item label="API Key">
-          <el-input
-            v-model="form.apiKey"
-            show-password
-            placeholder="输入新的 API Key；留空则保留当前已保存 Key"
-            @blur="handleApiKeyBlur"
-          />
-          <div class="temperature-hint">
-            <template v-if="hasCurrentProviderKey">
-              当前厂商已保存服务端密钥：{{ form.maskedApiKey }}
-            </template>
-            <template v-else>当前厂商尚未保存 API Key</template>
-          </div>
-        </el-form-item>
-
         <el-form-item label="Temperature">
           <div class="temperature-row">
             <el-slider
               v-model="form.temperature"
               :min="0"
               :max="2"
-              :step="0.1"
+              :step="0.01"
               :marks="{ 0: '0', 0.2: '0.2', 1: '1', 2: '2' }"
               show-stops
               style="flex: 1"
@@ -137,8 +144,8 @@
               v-model="form.temperature"
               :min="0"
               :max="2"
-              :step="0.1"
-              :precision="1"
+              :step="0.01"
+              :precision="2"
               controls-position="right"
               style="width: 100px; margin-left: 16px"
             />
@@ -221,9 +228,15 @@
           <el-input v-model="addProviderForm.name" placeholder="如：My LLM Server" />
         </el-form-item>
         <el-form-item label="Base URL" required>
-          <el-input v-model="addProviderForm.baseUrl" placeholder="如：http://localhost:11434/v1" />
+          <el-input
+            v-model="addProviderForm.baseUrl"
+            placeholder="如：https://api.example.com/v1"
+          />
         </el-form-item>
       </el-form>
+      <div class="temperature-hint dialog-hint">
+        请填写公网可访问的 OpenAI 兼容 API 地址；localhost 与局域网地址会被服务端拒绝。
+      </div>
       <template #footer>
         <el-button @click="showAddProvider = false">取消</el-button>
         <el-button type="primary" :loading="savingProvider" @click="handleAddProvider"
@@ -280,6 +293,8 @@
   import { getRouteDisplayLabel, getRouteSource } from '../utils/navigationHistory.js';
   import {
     deleteProviderAiKey,
+    getExclusiveCustomModels,
+    isBlockedAiBaseUrl,
     loadAiSettings,
     maskApiKey,
     refreshAiSettings,
@@ -289,7 +304,6 @@
     loadProviderSettings,
     getAllProviders,
     getAllModels,
-    getCustomModels,
     getCustomProviders,
     getFetchedModels,
     saveCustomProvider,
@@ -307,6 +321,11 @@
   const previousBreadcrumbTo = computed(() => previousRoute.value?.fullPath || '/');
   const previousBreadcrumbLabel = computed(() => getRouteDisplayLabel(previousRoute.value));
 
+  const getApiErrorMessage = (e, fallback) =>
+    e?.response?.data?.msg ||
+    e?.message ||
+    (e?.code === 'ECONNABORTED' ? 'AI 请求超时，请稍后重试' : fallback);
+
   // --- 响应式版本号，自定义数据变更时递增，用于强制 computed 重算 ---
   const settingsVersion = ref(0);
   const refreshSettings = () => {
@@ -316,7 +335,18 @@
 
   const syncAiSettings = (nextSettings) => {
     refreshSettings();
-    form.value = { ...(nextSettings || loadAiSettings()), apiKey: '' };
+    const incoming = nextSettings || loadAiSettings();
+
+    if (incoming.providerId !== form.value.providerId) {
+      form.value = { ...incoming, apiKey: '' };
+      return;
+    }
+
+    form.value = {
+      ...form.value,
+      hasApiKey: incoming.hasApiKey,
+      maskedApiKey: incoming.maskedApiKey,
+    };
   };
 
   // --- 厂商列表 ---
@@ -350,7 +380,7 @@
   });
   const customModelsForProvider = computed(() => {
     settingsVersion.value; // dependency
-    return getCustomModels(form.value.providerId);
+    return getExclusiveCustomModels(form.value.providerId);
   });
   // 已选模型不在 fetched/custom 列表中时，作为 orphan 选项单独显示，避免下拉看不到当前值
   const orphanModel = computed(() => {
@@ -389,6 +419,7 @@
     resetFetchModelsState,
     autoFetchModels,
     handleApiKeyBlur,
+    handleBaseUrlBlur,
     handleFetchModels,
     handleConfirmFetchModels,
     toggleFetchedModel,
@@ -396,6 +427,7 @@
 
   // --- 厂商切换 ---
   const handleProviderChange = (providerId) => {
+    saveAiSettingsLocally(form.value);
     setCurrentProviderId(providerId);
     form.value = { ...loadProviderSettings(providerId), apiKey: '' };
     void autoFetchModels();
@@ -403,6 +435,11 @@
 
   // --- 保存配置 ---
   const handleSave = async () => {
+    if (isBlockedAiBaseUrl(form.value.baseUrl)) {
+      return ElMessage.warning(
+        'Base URL 不允许指向本地或私有网络地址，请填写公网可访问的 API 地址'
+      );
+    }
     if (!form.value.baseUrl || !form.value.model || (!form.value.apiKey && !form.value.hasApiKey)) {
       return ElMessage.warning('请先完整填写 Base URL、模型，并至少提供一个可用的 API Key');
     }
@@ -413,6 +450,8 @@
       ElMessage.success(
         form.value.hasApiKey ? 'AI 配置已保存，密钥已加密写入服务端' : 'AI 配置已保存'
       );
+    } catch (e) {
+      ElMessage.error(getApiErrorMessage(e, 'AI 配置保存失败'));
     } finally {
       saving.value = false;
     }
@@ -420,20 +459,21 @@
 
   // --- 测试连接 ---
   const handleTest = async () => {
+    if (isBlockedAiBaseUrl(form.value.baseUrl)) {
+      return ElMessage.warning(
+        'Base URL 不允许指向本地或私有网络地址，请填写公网可访问的 API 地址'
+      );
+    }
     if (!form.value.baseUrl || !form.value.model || (!form.value.apiKey && !form.value.hasApiKey)) {
       return ElMessage.warning('请先完整填写 Base URL、模型，并至少提供一个可用的 API Key');
     }
 
     testing.value = true;
     try {
-      saveAiSettingsLocally(form.value);
       await testAiConnection(form.value.apiKey ? form.value : { ...form.value, apiKey: undefined });
       ElMessage.success('AI 连接测试成功');
     } catch (e) {
-      ElMessage.error(
-        e?.response?.data?.msg ||
-          (e?.code === 'ECONNABORTED' ? 'AI 请求超时，请稍后重试' : 'AI 连接测试失败')
-      );
+      ElMessage.error(getApiErrorMessage(e, 'AI 连接测试失败'));
     } finally {
       testing.value = false;
     }
@@ -449,6 +489,12 @@
     if (!name.trim() || !baseUrl.trim()) {
       return ElMessage.warning('请填写厂商名称和 Base URL');
     }
+    if (isBlockedAiBaseUrl(baseUrl)) {
+      return ElMessage.warning(
+        'Base URL 不允许指向本地或私有网络地址，请填写公网可访问的 API 地址'
+      );
+    }
+
     savingProvider.value = true;
     try {
       const newProvider = saveCustomProvider(name.trim(), baseUrl.trim());
@@ -456,6 +502,8 @@
       handleProviderChange(newProvider.id);
       showAddProvider.value = false;
       ElMessage.success(`自定义厂商「${newProvider.name}」已添加`);
+    } catch (e) {
+      ElMessage.error(getApiErrorMessage(e, '自定义厂商添加失败'));
     } finally {
       savingProvider.value = false;
     }
@@ -473,13 +521,18 @@
     } catch {
       return; // 用户取消
     }
-    if (hasCurrentProviderKey.value) {
-      await deleteProviderAiKey(form.value.providerId);
+
+    try {
+      if (hasCurrentProviderKey.value) {
+        await deleteProviderAiKey(form.value.providerId);
+      }
+      deleteCustomProvider(form.value.providerId);
+      refreshSettings();
+      form.value = { ...loadAiSettings(), apiKey: '' };
+      ElMessage.success(`厂商「${providerName}」已删除`);
+    } catch (e) {
+      ElMessage.error(getApiErrorMessage(e, '删除厂商失败'));
     }
-    deleteCustomProvider(form.value.providerId);
-    refreshSettings();
-    form.value = { ...loadAiSettings(), apiKey: '' };
-    ElMessage.success(`厂商「${providerName}」已删除`);
   };
 
   const handleDeleteStoredKey = async () => {
@@ -493,8 +546,12 @@
       return;
     }
 
-    form.value = { ...(await deleteProviderAiKey(form.value.providerId)), apiKey: '' };
-    ElMessage.success('已删除当前厂商的 API Key');
+    try {
+      form.value = { ...(await deleteProviderAiKey(form.value.providerId)), apiKey: '' };
+      ElMessage.success('已删除当前厂商的 API Key');
+    } catch (e) {
+      ElMessage.error(getApiErrorMessage(e, '删除 API Key 失败'));
+    }
   };
 
   // --- 新增自定义模型 ---
@@ -502,8 +559,10 @@
     const modelName = newModelName.value.trim();
     if (!modelName) return ElMessage.warning('请输入模型名称');
 
-    // 已在自动获取列表中：直接选中，无需重复添加
-    if (fetchedModelsForProvider.value.includes(modelName)) {
+    const knownModels = getAllModels(form.value.providerId);
+
+    // 已在已知列表中：直接选中，无需重复添加
+    if (knownModels.includes(modelName)) {
       form.value.model = modelName;
       showAddModel.value = false;
       newModelName.value = '';
@@ -578,5 +637,9 @@
     font-size: 12px;
     color: #909399;
     margin-top: 8px;
+  }
+
+  .dialog-hint {
+    margin: 0 0 8px;
   }
 </style>

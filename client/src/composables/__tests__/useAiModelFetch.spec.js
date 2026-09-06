@@ -3,12 +3,12 @@ import { ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAiModelFetch } from '../useAiModelFetch.js';
 
-const { fetchAiModelsMock, saveFetchedModelsMock, batchAddCustomModelsMock, getCustomModelsMock } =
+const { fetchAiModelsMock, saveFetchedModelsMock, batchAddCustomModelsMock, getAllModelsMock } =
   vi.hoisted(() => ({
     fetchAiModelsMock: vi.fn(),
     saveFetchedModelsMock: vi.fn(),
     batchAddCustomModelsMock: vi.fn(() => 0),
-    getCustomModelsMock: vi.fn(() => []),
+    getAllModelsMock: vi.fn(() => []),
   }));
 
 vi.mock('../../api/index.js', () => ({
@@ -27,7 +27,7 @@ vi.mock('element-plus', () => ({
 vi.mock('../../utils/aiSettings.js', () => ({
   saveFetchedModels: (...args) => saveFetchedModelsMock(...args),
   batchAddCustomModels: (...args) => batchAddCustomModelsMock(...args),
-  getCustomModels: (...args) => getCustomModelsMock(...args),
+  getAllModels: (...args) => getAllModelsMock(...args),
 }));
 
 const flushPromises = async () => {
@@ -52,7 +52,7 @@ const makeForm = (overrides = {}) =>
     providerId: 'openai',
     providerType: 'openai-compatible',
     baseUrl: 'https://api.openai.com/v1',
-    model: 'gpt-4o',
+    model: '',
     apiKey: '',
     hasApiKey: true,
     ...overrides,
@@ -62,6 +62,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
   fetchAiModelsMock.mockResolvedValue({ data: { models: [] } });
+  getAllModelsMock.mockReturnValue([]);
 });
 
 describe('useAiModelFetch', () => {
@@ -79,6 +80,17 @@ describe('useAiModelFetch', () => {
       );
       expect(saveFetchedModelsMock).toHaveBeenCalledWith('openai', ['gpt-4o', 'o1']);
       expect(refreshSettings).toHaveBeenCalled();
+    });
+
+    it('拉取成功后若 model 为空会自动选中第一个', async () => {
+      fetchAiModelsMock.mockResolvedValue({ data: { models: ['gpt-4o', 'o1'] } });
+      const form = makeForm({ model: '' });
+      const { result } = mountComposable(form);
+
+      await result.autoFetchModels();
+      await flushPromises();
+
+      expect(form.value.model).toBe('gpt-4o');
     });
 
     it('拉取失败时静默吞错，不抛出', async () => {
@@ -106,18 +118,26 @@ describe('useAiModelFetch', () => {
       expect(fetchAiModelsMock).not.toHaveBeenCalled();
     });
 
-    it('fetchingModels 锁定时跳过', async () => {
-      fetchAiModelsMock.mockResolvedValue({ data: { models: ['m1'] } });
-      const form = makeForm();
+    it('厂商切换后丢弃过期响应', async () => {
+      let resolveFetch;
+      fetchAiModelsMock.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveFetch = resolve;
+          })
+      );
+
+      const form = makeForm({ providerId: 'openai' });
       const { result } = mountComposable(form);
 
-      // 并发触发两次：第二次应被锁跳过
-      const p1 = result.autoFetchModels();
-      await result.autoFetchModels();
-      await p1;
+      const pending = result.autoFetchModels();
+      form.value.providerId = 'deepseek';
+      form.value.baseUrl = 'https://api.deepseek.com/v1';
+      resolveFetch({ data: { models: ['gpt-4o'] } });
+      await pending;
       await flushPromises();
 
-      expect(fetchAiModelsMock).toHaveBeenCalledTimes(1);
+      expect(saveFetchedModelsMock).not.toHaveBeenCalled();
     });
 
     it('拉取到空列表时不写 saveFetchedModels', async () => {
@@ -137,15 +157,14 @@ describe('useAiModelFetch', () => {
       await result.autoFetchModels();
       expect(fetchAiModelsMock.mock.calls[0][0]).toMatchObject({ apiKey: 'sk-real-key' });
 
-      // 切换到仅 hasApiKey 场景
       form.value.apiKey = '';
       await result.autoFetchModels();
       expect(fetchAiModelsMock.mock.calls[1][0].apiKey).toBeUndefined();
     });
   });
 
-  describe('handleApiKeyBlur (防抖)', () => {
-    it('500ms 后触发 autoFetchModels', async () => {
+  describe('handleApiKeyBlur / handleBaseUrlBlur (防抖)', () => {
+    it('API Key blur 500ms 后触发 autoFetchModels', async () => {
       fetchAiModelsMock.mockResolvedValue({ data: { models: ['m1'] } });
       const form = makeForm();
       const { result } = mountComposable(form);
@@ -153,6 +172,18 @@ describe('useAiModelFetch', () => {
       result.handleApiKeyBlur();
       expect(fetchAiModelsMock).not.toHaveBeenCalled();
 
+      vi.advanceTimersByTime(500);
+      await flushPromises();
+
+      expect(fetchAiModelsMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('Base URL blur 500ms 后触发 autoFetchModels', async () => {
+      fetchAiModelsMock.mockResolvedValue({ data: { models: ['m1'] } });
+      const form = makeForm();
+      const { result } = mountComposable(form);
+
+      result.handleBaseUrlBlur();
       vi.advanceTimersByTime(500);
       await flushPromises();
 
@@ -216,7 +247,8 @@ describe('useAiModelFetch', () => {
   describe('handleConfirmFetchModels', () => {
     it('选中模型后批量导入 customModels', async () => {
       batchAddCustomModelsMock.mockReturnValue(2);
-      const form = makeForm();
+      getAllModelsMock.mockReturnValue([]);
+      const form = makeForm({ model: '' });
       const { result, refreshSettings } = mountComposable(form);
 
       result.selectedFetchedModels.value = ['gpt-4o', 'o1'];
@@ -225,6 +257,18 @@ describe('useAiModelFetch', () => {
       expect(batchAddCustomModelsMock).toHaveBeenCalledWith('openai', ['gpt-4o', 'o1']);
       expect(refreshSettings).toHaveBeenCalled();
       expect(result.showFetchModels.value).toBe(false);
+      expect(form.value.model).toBe('gpt-4o');
+    });
+
+    it('已存在的模型不会重复导入', () => {
+      getAllModelsMock.mockReturnValue(['gpt-4o']);
+      const form = makeForm();
+      const { result } = mountComposable(form);
+
+      result.selectedFetchedModels.value = ['gpt-4o', 'o1'];
+      result.handleConfirmFetchModels();
+
+      expect(batchAddCustomModelsMock).toHaveBeenCalledWith('openai', ['o1']);
     });
 
     it('未选中模型时不调 batchAddCustomModels', () => {
@@ -238,37 +282,9 @@ describe('useAiModelFetch', () => {
     });
   });
 
-  describe('toggleFetchedModel', () => {
-    it('勾选时加入选中列表', () => {
-      const form = makeForm();
-      const { result } = mountComposable(form);
-
-      result.toggleFetchedModel('gpt-4o', true);
-      expect(result.selectedFetchedModels.value).toEqual(['gpt-4o']);
-    });
-
-    it('取消勾选时移除', () => {
-      const form = makeForm();
-      const { result } = mountComposable(form);
-
-      result.selectedFetchedModels.value = ['gpt-4o', 'o1'];
-      result.toggleFetchedModel('gpt-4o', false);
-      expect(result.selectedFetchedModels.value).toEqual(['o1']);
-    });
-
-    it('重复勾选同一模型不重复加入', () => {
-      const form = makeForm();
-      const { result } = mountComposable(form);
-
-      result.toggleFetchedModel('gpt-4o', true);
-      result.toggleFetchedModel('gpt-4o', true);
-      expect(result.selectedFetchedModels.value).toEqual(['gpt-4o']);
-    });
-  });
-
   describe('filteredFetchedModels', () => {
-    it('标记已在 customModels 中的模型为 exists', () => {
-      getCustomModelsMock.mockReturnValue(['gpt-4o']);
+    it('标记已在 allModels 中的模型为 exists', () => {
+      getAllModelsMock.mockReturnValue(['gpt-4o']);
       const form = makeForm();
       const { result } = mountComposable(form);
 

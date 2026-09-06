@@ -25,7 +25,9 @@ import {
   getAllProviders,
   getCustomModels,
   getCustomProviders,
+  getExclusiveCustomModels,
   getFetchedModels,
+  isBlockedAiBaseUrl,
   loadAiSettings,
   loadProviderSettings,
   maskApiKey,
@@ -104,11 +106,26 @@ describe('providers and models', () => {
   });
 
   it('删除自定义厂商时会同步清理模型', () => {
-    const provider = saveCustomProvider('Local', 'http://localhost:11434/v1');
+    const provider = saveCustomProvider('Remote', 'https://remote.example.com/v1');
     addCustomModel(provider.id, 'llama3');
     deleteCustomProvider(provider.id);
     expect(getCustomProviders()).toEqual([]);
     expect(getCustomModels(provider.id)).toEqual([]);
+  });
+
+  it('拒绝 localhost 等私有 Base URL', () => {
+    expect(isBlockedAiBaseUrl('http://localhost:11434/v1')).toBe(true);
+    expect(isBlockedAiBaseUrl('https://api.example.com/v1')).toBe(false);
+    expect(() => saveCustomProvider('Local', 'http://localhost:11434/v1')).toThrow(
+      '不允许指向本地或私有网络地址'
+    );
+  });
+
+  it('getExclusiveCustomModels 会排除 fetchedModels 中已有的模型', () => {
+    saveFetchedModels('deepseek', ['shared-model', 'fetched-only']);
+    addCustomModel('deepseek', 'shared-model');
+    addCustomModel('deepseek', 'custom-only');
+    expect(getExclusiveCustomModels('deepseek')).toEqual(['custom-only']);
   });
 
   it('自定义模型可增删且不会重复', () => {

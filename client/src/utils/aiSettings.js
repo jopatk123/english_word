@@ -22,6 +22,46 @@ const getAiSettingsSyncChannel = () => {
   return aiSettingsSyncChannel;
 };
 
+const PRIVATE_HOST_PATTERNS = [
+  /^localhost$/i,
+  /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/,
+  /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/,
+  /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/,
+  /^192\.168\.\d{1,3}\.\d{1,3}$/,
+  /^169\.254\.\d{1,3}\.\d{1,3}$/,
+  /^0\.0\.0\.0$/,
+  /^::1$/,
+  /^\[::1\]$/,
+  /^fc[0-9a-f]{2}:/i,
+  /^fd[0-9a-f]{2}:/i,
+  /^fe80:/i,
+];
+
+const normalizeTemperature = (value) => {
+  const rawTemp = parseFloat(value);
+  return !isNaN(rawTemp) && rawTemp >= 0 && rawTemp <= 2 ? Math.round(rawTemp * 100) / 100 : 0.2;
+};
+
+/**
+ * 客户端 Base URL 校验，与后端 SSRF 规则保持一致（仅字面 hostname 检查）。
+ */
+export const isBlockedAiBaseUrl = (baseUrl) => {
+  if (typeof baseUrl !== 'string' || !baseUrl.trim()) return true;
+
+  let parsed;
+  try {
+    parsed = new URL(baseUrl.trim());
+  } catch {
+    return true;
+  }
+
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    return true;
+  }
+
+  return PRIVATE_HOST_PATTERNS.some((pattern) => pattern.test(parsed.hostname));
+};
+
 const getEmptyAllSettings = () => ({
   currentProviderId: DEFAULT_PROVIDER_ID,
   providers: {},
@@ -91,11 +131,15 @@ const getAllAiSettings = () => {
 };
 
 /**
- * 保存完整的配置对象到localStorage
+ * 保存完整的配置对象到 localStorage。
+ * @param {object} allSettings
+ * @param {{ sync?: boolean }} [options]
  */
-const saveAllAiSettings = (allSettings) => {
+const saveAllAiSettings = (allSettings, options = {}) => {
   localStorage.setItem(AI_SETTINGS_STORAGE_KEY, JSON.stringify(allSettings));
-  getAiSettingsSyncChannel().publish({ updatedAt: Date.now() });
+  if (options.sync !== false) {
+    getAiSettingsSyncChannel().publish({ updatedAt: Date.now() });
+  }
 };
 
 // ── 自定义厂商 / 模型 公开读取函数（写操作在文件末尾）────────────────────────
@@ -126,6 +170,14 @@ export const getCustomModels = (providerId) => {
 };
 
 /**
+ * 返回仅出现在 customModels、且不在 fetchedModels 中的模型（避免下拉重复）。
+ */
+export const getExclusiveCustomModels = (providerId) => {
+  const fetched = new Set(getFetchedModels(providerId));
+  return getCustomModels(providerId).filter((model) => !fetched.has(model));
+};
+
+/**
  * 返回某厂商通过 /models 端点自动拉取的模型列表（不可单独删除，下次拉取覆盖）
  */
 export const getFetchedModels = (providerId) => {
@@ -145,7 +197,7 @@ export const saveFetchedModels = (providerId, models) => {
     .filter(Boolean);
   const unique = [...new Set(clean)].sort((a, b) => a.localeCompare(b));
   allSettings.fetchedModels[providerId] = unique;
-  saveAllAiSettings(allSettings);
+  saveAllAiSettings(allSettings, { sync: false });
 };
 
 /**
@@ -166,10 +218,10 @@ export const getAllModels = (providerId) => {
  */
 const normalizeProviderSettings = (settings) => {
   const provider =
-    getAllProviders().find((p) => p.id === settings.providerId) || getAllProviders()[0];
-  const rawTemp = parseFloat(settings.temperature);
-  const temperature =
-    !isNaN(rawTemp) && rawTemp >= 0 && rawTemp <= 2 ? Math.round(rawTemp * 10) / 10 : 0.2;
+    getAllProviders().find((p) => p.id === settings.providerId) ||
+    getProviderById(settings.providerId) ||
+    getAllProviders()[0];
+  const temperature = normalizeTemperature(settings.temperature);
   return {
     providerId: provider.id,
     providerType: provider.providerType,
@@ -182,14 +234,15 @@ const normalizeProviderSettings = (settings) => {
 };
 
 const getLocalProviderSettings = (providerId) => {
-  const provider = getAllProviders().find((p) => p.id === providerId) || getAllProviders()[0];
+  const provider =
+    getAllProviders().find((p) => p.id === providerId) ||
+    getProviderById(providerId) ||
+    getAllProviders()[0];
   const allSettings = getAllAiSettings();
   const saved = allSettings.providers[provider.id];
 
   if (saved) {
-    const rawTemp = parseFloat(saved.temperature);
-    const temperature =
-      !isNaN(rawTemp) && rawTemp >= 0 && rawTemp <= 2 ? Math.round(rawTemp * 10) / 10 : 0.2;
+    const temperature = normalizeTemperature(saved.temperature);
     return {
       providerId: provider.id,
       providerType: provider.providerType,
@@ -348,12 +401,17 @@ export const subscribeAiSettingsChanges = (handler) =>
  * 保存一个新的自定义厂商，返回新厂商对象
  */
 export const saveCustomProvider = (name, baseUrl) => {
+  const trimmedBaseUrl = baseUrl?.trim() || '';
+  if (isBlockedAiBaseUrl(trimmedBaseUrl)) {
+    throw new Error('Base URL 不允许指向本地或私有网络地址，请填写公网可访问的 API 地址');
+  }
+
   const allSettings = getAllAiSettings();
   const id = `custom_${Date.now()}`;
   const newProvider = {
     id,
     name: name.trim(),
-    baseUrl: baseUrl?.trim() || '',
+    baseUrl: trimmedBaseUrl,
     providerType: 'openai-compatible',
   };
   allSettings.customProviders.push(newProvider);

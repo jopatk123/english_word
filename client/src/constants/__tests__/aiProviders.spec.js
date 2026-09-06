@@ -73,10 +73,10 @@ describe('getProviderById', () => {
     expect(provider.id).toBe('deepseek');
   });
 
-  it('传入不存在的 id 时返回第一个 provider（兜底）', () => {
+  it('传入不存在的 id 时返回默认厂商 deepseek', () => {
     const provider = getProviderById('not-exist');
     expect(provider).toBeDefined();
-    expect(provider).toEqual(AI_PROVIDERS[0]);
+    expect(provider.id).toBe(DEFAULT_PROVIDER_ID);
   });
 
   it('传入 anthropic 返回 anthropic provider', () => {
@@ -85,8 +85,8 @@ describe('getProviderById', () => {
     expect(provider.providerType).toBe('anthropic');
   });
 
-  it('传入 undefined 时返回第一个 provider', () => {
+  it('传入 undefined 时返回默认厂商 deepseek', () => {
     const provider = getProviderById(undefined);
-    expect(provider).toEqual(AI_PROVIDERS[0]);
+    expect(provider.id).toBe(DEFAULT_PROVIDER_ID);
   });
 });

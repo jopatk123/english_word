@@ -114,7 +114,8 @@ describe('isThinkingModel', () => {
     expect(isThinkingModel({ providerId: 'deepseek', model: null })).toBe(false);
   });
 
-  it('未知 provider 返回 false', () => {
+  it('未知 provider 按模型名识别思考模型', () => {
+    expect(isThinkingModel({ providerId: 'custom_proxy', model: 'deepseek-reasoner' })).toBe(true);
     expect(isThinkingModel({ providerId: 'unknown', model: 'whatever' })).toBe(false);
   });
 
@@ -284,7 +285,19 @@ describe('buildThinkingDisableParams', () => {
     ).toEqual({ thinking: { type: 'disabled' } });
   });
 
-  it('未知 provider 不注入', () => {
+  it('自定义 provider 按模型名注入禁用参数', () => {
+    expect(
+      buildThinkingDisableParams({
+        providerId: 'custom_proxy',
+        providerType: 'openai-compatible',
+        providerMode: 'openai-compatible',
+        model: 'deepseek-reasoner',
+        skipThinking: true,
+      })
+    ).toEqual({ thinking: { type: 'disabled' } });
+  });
+
+  it('未知 provider 且非思考模型不注入', () => {
     expect(
       buildThinkingDisableParams({
         providerId: 'unknown',

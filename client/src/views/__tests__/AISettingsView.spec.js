@@ -19,6 +19,7 @@ const {
   getAllProvidersMock,
   getAllModelsMock,
   getCustomModelsMock,
+  getExclusiveCustomModelsMock,
   getCustomProvidersMock,
   getFetchedModelsMock,
   saveFetchedModelsMock,
@@ -30,6 +31,7 @@ const {
   subscribeAiSettingsChangesMock,
   maskApiKeyMock,
   isThinkingModelMock,
+  isBlockedAiBaseUrlMock,
   getRouteSourceMock,
   getRouteDisplayLabelMock,
 } = vi.hoisted(() => ({
@@ -53,7 +55,9 @@ const {
   getAllProvidersMock: vi.fn(),
   getAllModelsMock: vi.fn(),
   getCustomModelsMock: vi.fn(),
+  getExclusiveCustomModelsMock: vi.fn(() => []),
   getCustomProvidersMock: vi.fn(),
+  isBlockedAiBaseUrlMock: vi.fn(() => false),
   getFetchedModelsMock: vi.fn(),
   saveFetchedModelsMock: vi.fn(),
   saveCustomProviderMock: vi.fn(),
@@ -96,6 +100,8 @@ vi.mock('../../utils/aiSettings.js', () => ({
   getAllProviders: (...args) => getAllProvidersMock(...args),
   getAllModels: (...args) => getAllModelsMock(...args),
   getCustomModels: (...args) => getCustomModelsMock(...args),
+  getExclusiveCustomModels: (...args) => getExclusiveCustomModelsMock(...args),
+  isBlockedAiBaseUrl: (...args) => isBlockedAiBaseUrlMock(...args),
   getCustomProviders: (...args) => getCustomProvidersMock(...args),
   getFetchedModels: (...args) => getFetchedModelsMock(...args),
   saveFetchedModels: (...args) => saveFetchedModelsMock(...args),
@@ -189,6 +195,7 @@ describe('AISettingsView', () => {
     getAllProvidersMock.mockReturnValue([{ id: 'openai', name: 'OpenAI' }]);
     getAllModelsMock.mockReturnValue(['gpt-4o']);
     getCustomModelsMock.mockReturnValue([]);
+    getExclusiveCustomModelsMock.mockReturnValue([]);
     getCustomProvidersMock.mockReturnValue([]);
     getFetchedModelsMock.mockReturnValue([]);
     isThinkingModelMock.mockReturnValue(false);
@@ -431,6 +438,7 @@ describe('AISettingsView', () => {
     it('已选模型不在任何列表时仍渲染为 orphan 选项', async () => {
       getFetchedModelsMock.mockReturnValue([]);
       getCustomModelsMock.mockReturnValue([]);
+      getExclusiveCustomModelsMock.mockReturnValue([]);
 
       const wrapper = mountView();
       await flushPromises();
@@ -457,8 +465,9 @@ describe('AISettingsView', () => {
     const findAddModelButton = (wrapper) =>
       wrapper.findAll('.el-button-stub').find((b) => b.text() === '添加');
 
-    it('输入的模型在 fetchedModels 中时直接选中，不调 confirm', async () => {
+    it('输入的模型在已知列表中时直接选中，不调 confirm', async () => {
       getFetchedModelsMock.mockReturnValue(['gpt-4o', 'o1-mini']);
+      getAllModelsMock.mockReturnValue(['gpt-4o', 'o1-mini']);
 
       const wrapper = mountView();
       await flushPromises();
@@ -476,8 +485,9 @@ describe('AISettingsView', () => {
       expect(elMessage.success).toHaveBeenCalledWith(expect.stringContaining('已选择'));
     });
 
-    it('输入的模型不在 fetchedModels 中时弹 confirm 警告', async () => {
+    it('输入的模型不在已知列表中时弹 confirm 警告', async () => {
       getFetchedModelsMock.mockReturnValue(['gpt-4o']);
+      getAllModelsMock.mockReturnValue(['gpt-4o']);
       elMessageBox.confirm.mockResolvedValue('confirm');
 
       const wrapper = mountView();
