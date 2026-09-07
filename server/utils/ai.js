@@ -268,7 +268,6 @@ export const validateAiConfig = (config = {}) => {
     providerType,
     providerMode: getProviderMode(providerId, providerType),
     temperature,
-    skipThinking: config.skipThinking === true,
   };
 };
 
@@ -330,7 +329,6 @@ const callOpenAICompatible = async ({
   providerId,
   providerType,
   providerMode,
-  skipThinking,
 }) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
@@ -340,7 +338,6 @@ const callOpenAICompatible = async ({
     providerType,
     providerMode,
     model,
-    skipThinking,
   });
   const maxTokens = resolveMaxTokens({ providerId, providerType, providerMode, model });
 
@@ -399,7 +396,6 @@ const callAnthropic = async ({
   providerId,
   providerType,
   providerMode,
-  skipThinking,
 }) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
@@ -409,7 +405,6 @@ const callAnthropic = async ({
     providerType,
     providerMode,
     model,
-    skipThinking,
   });
   const maxTokens = resolveMaxTokens({ providerId, providerType, providerMode, model });
 

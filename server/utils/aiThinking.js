@@ -123,20 +123,15 @@ const getModelMatchedDisableParams = (model) => {
 };
 
 /**
- * 根据 skipThinking 与 provider/model 决定要 merge 到上游请求体的禁用参数。
+ * 根据 provider/model 构造要 merge 到上游请求体的禁用思考参数。
+ * 翻译与单词分析属于简单任务，思考模型一律自动禁用思考（原用户开关已移除）；
+ * thinking 参数已废弃的模型（Anthropic 4.6+，默认不思考）除外。
  * 返回 {} 表示不注入。
  *
- * @param {{ providerId?: string, providerType?: string, providerMode?: string, model?: string, skipThinking?: boolean }} ctx
+ * @param {{ providerId?: string, providerType?: string, providerMode?: string, model?: string }} ctx
  * @returns {Object}
  */
-export function buildThinkingDisableParams({
-  providerId,
-  providerType,
-  providerMode,
-  model,
-  skipThinking,
-} = {}) {
-  if (skipThinking !== true) return {};
+export function buildThinkingDisableParams({ providerId, providerType, providerMode, model } = {}) {
   if (!isThinkingModel({ providerId, providerType, model })) return {};
 
   const providerParams = getProviderDisableParams({

@@ -155,22 +155,6 @@
           </div>
         </el-form-item>
 
-        <el-form-item label="跳过思考">
-          <div class="field-row">
-            <el-switch v-model="form.skipThinking" />
-            <el-tag
-              v-if="form.model"
-              :type="isCurrentModelThinking ? 'warning' : 'info'"
-              size="small"
-              >{{ isCurrentModelThinking ? '当前为思考模型' : '当前非思考模型' }}</el-tag
-            >
-          </div>
-          <div class="temperature-hint">
-            开启后，对思考模型（如 DeepSeek-Reasoner/V4、Qwen3、Claude 3.7+/4、OpenAI o-series
-            等）会注入禁用思考的参数，减少 reasoning token 消耗。非思考模型不受影响。
-          </div>
-        </el-form-item>
-
         <el-form-item>
           <div class="page-actions">
             <el-button type="primary" :loading="saving" @click="handleSave">保存配置</el-button>
@@ -208,10 +192,6 @@
         <div>
           <span class="summary-label">Temperature</span>
           <strong>{{ form.temperature ?? 0.2 }}</strong>
-        </div>
-        <div>
-          <span class="summary-label">跳过思考</span>
-          <strong>{{ form.skipThinking ? '是' : '否' }}</strong>
         </div>
       </div>
     </el-card>
@@ -289,7 +269,6 @@
   import { AI_PROVIDERS } from '../constants/aiProviders.js';
   import AiFetchModelsDialog from '../components/AiFetchModelsDialog.vue';
   import { useAiModelFetch } from '../composables/useAiModelFetch.js';
-  import { isThinkingModel } from '../utils/aiThinking.js';
   import { getRouteDisplayLabel, getRouteSource } from '../utils/navigationHistory.js';
   import {
     deleteProviderAiKey,
@@ -389,13 +368,6 @@
     const all = [...fetchedModelsForProvider.value, ...customModelsForProvider.value];
     return all.includes(current) ? '' : current;
   });
-  const isCurrentModelThinking = computed(() =>
-    isThinkingModel({
-      providerId: form.value.providerId,
-      providerType: form.value.providerType,
-      model: form.value.model,
-    })
-  );
 
   const hasCurrentProviderKey = computed(() => Boolean(form.value.hasApiKey));
   const maskedKey = computed(() =>

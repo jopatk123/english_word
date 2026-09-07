@@ -96,7 +96,6 @@ export const createDefaultAiSettings = () => {
     model: '',
     apiKey: '',
     temperature: 0.2,
-    skipThinking: false,
   });
 };
 
@@ -229,7 +228,6 @@ const normalizeProviderSettings = (settings) => {
     model: typeof settings.model === 'string' ? settings.model.trim() : '',
     apiKey: settings.apiKey?.trim() || '',
     temperature,
-    skipThinking: settings.skipThinking === true,
   };
 };
 
@@ -250,7 +248,6 @@ const getLocalProviderSettings = (providerId) => {
       model: typeof saved.model === 'string' ? saved.model : '',
       apiKey: '',
       temperature,
-      skipThinking: saved.skipThinking === true,
     };
   }
 
@@ -261,7 +258,6 @@ const getLocalProviderSettings = (providerId) => {
     model: '',
     apiKey: '',
     temperature: 0.2,
-    skipThinking: false,
   };
 };
 
@@ -309,7 +305,6 @@ export const saveAiSettingsLocally = (settings) => {
     baseUrl: normalized.baseUrl,
     model: normalized.model,
     temperature: normalized.temperature,
-    skipThinking: normalized.skipThinking,
   };
   allSettings.currentProviderId = normalized.providerId;
   saveAllAiSettings(allSettings);

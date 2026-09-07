@@ -133,58 +133,20 @@ describe('isThinkingModel', () => {
 });
 
 describe('buildThinkingDisableParams', () => {
-  it('skipThinking=false 返回空对象', () => {
-    expect(
-      buildThinkingDisableParams({
-        providerId: 'deepseek',
-        model: 'deepseek-reasoner',
-        skipThinking: false,
-      })
-    ).toEqual({});
-  });
-
-  it('skipThinking 未传返回空对象', () => {
-    expect(
-      buildThinkingDisableParams({ providerId: 'deepseek', model: 'deepseek-reasoner' })
-    ).toEqual({});
-  });
-
-  it('skipThinking 字符串 "true" 视为 false', () => {
-    expect(
-      buildThinkingDisableParams({
-        providerId: 'deepseek',
-        model: 'deepseek-reasoner',
-        skipThinking: 'true',
-      })
-    ).toEqual({});
-  });
-
-  it('skipThinking=1 视为 false', () => {
-    expect(
-      buildThinkingDisableParams({
-        providerId: 'deepseek',
-        model: 'deepseek-reasoner',
-        skipThinking: 1,
-      })
-    ).toEqual({});
-  });
-
   it('DeepSeek 思考模型注入 thinking disabled', () => {
     expect(
       buildThinkingDisableParams({
         providerId: 'deepseek',
         model: 'deepseek-reasoner',
-        skipThinking: true,
       })
     ).toEqual({ thinking: { type: 'disabled' } });
   });
 
-  it('DeepSeek-V4-Flash + skipThinking=true 注入 thinking disabled', () => {
+  it('DeepSeek-V4-Flash 注入 thinking disabled', () => {
     expect(
       buildThinkingDisableParams({
         providerId: 'deepseek',
         model: 'deepseek-v4-flash',
-        skipThinking: true,
       })
     ).toEqual({ thinking: { type: 'disabled' } });
   });
@@ -194,7 +156,6 @@ describe('buildThinkingDisableParams', () => {
       buildThinkingDisableParams({
         providerId: 'deepseek',
         model: 'deepseek-chat',
-        skipThinking: true,
       })
     ).toEqual({});
   });
@@ -204,7 +165,6 @@ describe('buildThinkingDisableParams', () => {
       buildThinkingDisableParams({
         providerId: 'dashscope',
         model: 'qwen3-max',
-        skipThinking: true,
       })
     ).toEqual({ enable_thinking: false });
   });
@@ -214,7 +174,6 @@ describe('buildThinkingDisableParams', () => {
       buildThinkingDisableParams({
         providerId: 'openai',
         model: 'o1',
-        skipThinking: true,
       })
     ).toEqual({ reasoning_effort: 'low' });
   });
@@ -224,7 +183,6 @@ describe('buildThinkingDisableParams', () => {
       buildThinkingDisableParams({
         providerId: 'openai',
         model: 'gpt-4o',
-        skipThinking: true,
       })
     ).toEqual({});
   });
@@ -235,7 +193,6 @@ describe('buildThinkingDisableParams', () => {
         providerId: 'anthropic',
         providerMode: 'anthropic',
         model: 'claude-3-7-sonnet',
-        skipThinking: true,
       })
     ).toEqual({ thinking: { type: 'disabled' } });
   });
@@ -246,7 +203,6 @@ describe('buildThinkingDisableParams', () => {
         providerId: 'anthropic',
         providerMode: 'anthropic',
         model: 'claude-opus-4-20250514',
-        skipThinking: true,
       })
     ).toEqual({ thinking: { type: 'disabled' } });
   });
@@ -257,7 +213,6 @@ describe('buildThinkingDisableParams', () => {
         providerId: 'anthropic',
         providerMode: 'anthropic',
         model: 'claude-opus-4-6',
-        skipThinking: true,
       })
     ).toEqual({});
   });
@@ -268,7 +223,6 @@ describe('buildThinkingDisableParams', () => {
         providerId: 'anthropic',
         providerMode: 'anthropic',
         model: 'claude-3-opus',
-        skipThinking: true,
       })
     ).toEqual({});
   });
@@ -278,7 +232,6 @@ describe('buildThinkingDisableParams', () => {
       buildThinkingDisableParams({
         providerId: 'zhipu',
         model: 'glm-z1-air',
-        skipThinking: true,
       })
     ).toEqual({ thinking: { type: 'disabled' } });
   });
@@ -288,7 +241,6 @@ describe('buildThinkingDisableParams', () => {
       buildThinkingDisableParams({
         providerId: 'moonshot',
         model: 'kimi-k2',
-        skipThinking: true,
       })
     ).toEqual({ thinking: { type: 'disabled' } });
   });
@@ -298,7 +250,6 @@ describe('buildThinkingDisableParams', () => {
       buildThinkingDisableParams({
         providerId: 'doubao',
         model: 'doubao-seed-1-6',
-        skipThinking: true,
       })
     ).toEqual({ thinking: { type: 'disabled' } });
   });
@@ -310,7 +261,6 @@ describe('buildThinkingDisableParams', () => {
         providerType: 'openai-compatible',
         providerMode: 'openai-compatible',
         model: 'deepseek-reasoner',
-        skipThinking: true,
       })
     ).toEqual({ thinking: { type: 'disabled' } });
   });
@@ -320,7 +270,6 @@ describe('buildThinkingDisableParams', () => {
       buildThinkingDisableParams({
         providerId: 'unknown',
         model: 'whatever',
-        skipThinking: true,
       })
     ).toEqual({});
   });
@@ -329,7 +278,6 @@ describe('buildThinkingDisableParams', () => {
     const result = buildThinkingDisableParams({
       providerId: 'deepseek',
       model: 'deepseek-reasoner',
-      skipThinking: true,
     });
     expect(result).not.toHaveProperty('reasoning_effort');
     expect(result).not.toHaveProperty('enable_thinking');
@@ -339,7 +287,6 @@ describe('buildThinkingDisableParams', () => {
     const result = buildThinkingDisableParams({
       providerId: 'openai',
       model: 'o1',
-      skipThinking: true,
     });
     expect(result).not.toHaveProperty('thinking');
     expect(result).not.toHaveProperty('enable_thinking');

@@ -30,7 +30,6 @@ const {
   deleteCustomModelMock,
   subscribeAiSettingsChangesMock,
   maskApiKeyMock,
-  isThinkingModelMock,
   isBlockedAiBaseUrlMock,
   getRouteSourceMock,
   getRouteDisplayLabelMock,
@@ -67,7 +66,6 @@ const {
   deleteCustomModelMock: vi.fn(),
   subscribeAiSettingsChangesMock: vi.fn(() => () => {}),
   maskApiKeyMock: vi.fn((value) => value || '未配置'),
-  isThinkingModelMock: vi.fn(() => false),
   getRouteSourceMock: vi.fn(),
   getRouteDisplayLabelMock: vi.fn((route) =>
     route?.name === 'AIExampleSuggestion' ? '智能添加例句' : '上一步'
@@ -113,10 +111,6 @@ vi.mock('../../utils/aiSettings.js', () => ({
   subscribeAiSettingsChanges: (...args) => subscribeAiSettingsChangesMock(...args),
 }));
 
-vi.mock('../../utils/aiThinking.js', () => ({
-  isThinkingModel: (...args) => isThinkingModelMock(...args),
-}));
-
 vi.mock('../../utils/navigationHistory.js', () => ({
   getRouteSource: (...args) => getRouteSourceMock(...args),
   getRouteDisplayLabel: (...args) => getRouteDisplayLabelMock(...args),
@@ -136,7 +130,6 @@ const baseSettings = {
   maskedApiKey: 'sk-o****1234',
   hasApiKey: true,
   temperature: 0.2,
-  skipThinking: false,
 };
 
 const globalStubs = {
@@ -198,7 +191,6 @@ describe('AISettingsView', () => {
     getExclusiveCustomModelsMock.mockReturnValue([]);
     getCustomProvidersMock.mockReturnValue([]);
     getFetchedModelsMock.mockReturnValue([]);
-    isThinkingModelMock.mockReturnValue(false);
     // autoFetchModels 在 mount 时会调用 fetchAiModels，给个默认空响应避免未处理的 rejection
     fetchAiModelsMock.mockResolvedValue({ data: { models: [] } });
     saveAiSettingsMock.mockResolvedValue(baseSettings);
@@ -363,55 +355,6 @@ describe('AISettingsView', () => {
 
       await flushPromises();
       expect(fetchAiModelsMock.mock.calls.length).toBeGreaterThan(callsAfterMount);
-    });
-  });
-
-  describe('跳过思考开关', () => {
-    const mountView = () =>
-      mount(AISettingsView, {
-        global: {
-          stubs: globalStubs,
-          mocks: { $router: { push: vi.fn() } },
-        },
-      });
-
-    it('开关初始值与 form.skipThinking 绑定', async () => {
-      const wrapper = mountView();
-      await flushPromises();
-
-      const switchEl = wrapper.find('.switch-stub');
-      expect(switchEl.exists()).toBe(true);
-      expect(switchEl.attributes('data-checked')).toBe('false');
-    });
-
-    it('切换开关后 form.skipThinking 更新为 true', async () => {
-      const wrapper = mountView();
-      await flushPromises();
-
-      const switchEl = wrapper.find('.switch-stub');
-      await switchEl.trigger('click');
-
-      expect(switchEl.attributes('data-checked')).toBe('true');
-    });
-
-    it('思考模型时 tag 类型为 warning', async () => {
-      isThinkingModelMock.mockReturnValue(true);
-      mountView();
-      await flushPromises();
-
-      expect(isThinkingModelMock).toHaveBeenCalledWith(
-        expect.objectContaining({ providerId: 'openai', model: 'gpt-4o' })
-      );
-    });
-
-    it('非思考模型时 tag 类型为 info', async () => {
-      isThinkingModelMock.mockReturnValue(false);
-      mountView();
-      await flushPromises();
-
-      expect(isThinkingModelMock).toHaveBeenCalledWith(
-        expect.objectContaining({ providerId: 'openai', model: 'gpt-4o' })
-      );
     });
   });
 

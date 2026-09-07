@@ -214,7 +214,6 @@ describe('local settings persistence', () => {
     expect(settings.apiKey).toBe('');
     expect(settings.hasApiKey).toBe(false);
     expect(settings.model).toBe('');
-    expect(settings.skipThinking).toBe(false);
   });
 
   it('只在本地保存非敏感配置', () => {
@@ -255,53 +254,6 @@ describe('local settings persistence', () => {
       apiKey: '',
       hasApiKey: false,
     });
-  });
-
-  it('skipThinking 默认为 false', () => {
-    saveAiSettingsLocally({
-      providerId: 'openai',
-      providerType: 'openai-compatible',
-      baseUrl: 'https://api.openai.com/v1',
-      model: 'gpt-4o',
-      temperature: 0.2,
-    });
-    expect(loadAiSettings().skipThinking).toBe(false);
-  });
-
-  it('skipThinking=true 按厂商保存并读取', () => {
-    saveAiSettingsLocally({
-      providerId: 'openai',
-      providerType: 'openai-compatible',
-      baseUrl: 'https://api.openai.com/v1',
-      model: 'o1',
-      temperature: 0.2,
-      skipThinking: true,
-    });
-    expect(loadProviderSettings('openai').skipThinking).toBe(true);
-
-    // 切换到其他厂商时仍是默认 false
-    saveAiSettingsLocally({
-      providerId: 'deepseek',
-      providerType: 'openai-compatible',
-      baseUrl: 'https://api.deepseek.com/v1',
-      model: 'deepseek-chat',
-      temperature: 0.2,
-    });
-    expect(loadProviderSettings('deepseek').skipThinking).toBe(false);
-    // openai 偏好不受影响
-    expect(loadProviderSettings('openai').skipThinking).toBe(true);
-  });
-
-  it('skipThinking 非布尔值归一化为 false', () => {
-    saveAiSettingsLocally({
-      providerId: 'openai',
-      providerType: 'openai-compatible',
-      baseUrl: 'https://api.openai.com/v1',
-      model: 'o1',
-      temperature: 0.2,
-      skipThinking: 'true',
-    });
-    expect(loadProviderSettings('openai').skipThinking).toBe(false);
   });
 
   it('已选 model 不在 fetched/custom 列表中也保留', () => {
