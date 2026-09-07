@@ -526,3 +526,236 @@ describe('requestAiJson skipThinking 请求体注入', () => {
     expect(body).not.toHaveProperty('thinking');
   });
 });
+
+describe('requestAiJson max_tokens 输出预算', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+    dnsLookupMock.mockResolvedValue([{ address: '203.0.113.10' }]);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const mockOk = () =>
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: '{"message":"ok","items":[]}' }, finish_reason: 'stop' }],
+      }),
+    });
+
+  const getLastBody = () => JSON.parse(fetch.mock.calls[0][1].body);
+
+  it('思考模型（deepseek-v4-flash）使用放宽的输出预算 8192', async () => {
+    mockOk();
+    await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'deepseek',
+        providerType: 'openai-compatible',
+        baseUrl: 'https://api.deepseek.com/v1',
+        model: 'deepseek-v4-flash',
+      },
+      validPrompts
+    );
+    expect(getLastBody().max_tokens).toBe(8192);
+  });
+
+  it('思考模型（deepseek-reasoner）使用放宽的输出预算 8192', async () => {
+    mockOk();
+    await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'deepseek',
+        providerType: 'openai-compatible',
+        baseUrl: 'https://api.deepseek.com/v1',
+        model: 'deepseek-reasoner',
+      },
+      validPrompts
+    );
+    expect(getLastBody().max_tokens).toBe(8192);
+  });
+
+  it('思考模型 + skipThinking=true 仍使用放宽预算（max_tokens 仅为上限）', async () => {
+    mockOk();
+    await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'deepseek',
+        providerType: 'openai-compatible',
+        baseUrl: 'https://api.deepseek.com/v1',
+        model: 'deepseek-v4-flash',
+        skipThinking: true,
+      },
+      validPrompts
+    );
+    expect(getLastBody().max_tokens).toBe(8192);
+  });
+
+  it('非思考模型保持默认输出预算 1800', async () => {
+    mockOk();
+    await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'deepseek',
+        providerType: 'openai-compatible',
+        baseUrl: 'https://api.deepseek.com/v1',
+        model: 'deepseek-chat',
+      },
+      validPrompts
+    );
+    expect(getLastBody().max_tokens).toBe(1800);
+  });
+
+  it('Anthropic 思考模型使用放宽预算 8192', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        content: [{ type: 'text', text: '{"message":"ok","items":[]}' }],
+        stop_reason: 'end_turn',
+      }),
+    });
+    await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'anthropic',
+        providerType: 'anthropic',
+        baseUrl: 'https://api.anthropic.com/v1',
+        model: 'claude-3-7-sonnet',
+      },
+      validPrompts
+    );
+    expect(JSON.parse(fetch.mock.calls[0][1].body).max_tokens).toBe(8192);
+  });
+
+  it('Anthropic 非思考模型保持默认预算 1800', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        content: [{ type: 'text', text: '{"message":"ok","items":[]}' }],
+        stop_reason: 'end_turn',
+      }),
+    });
+    await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'anthropic',
+        providerType: 'anthropic',
+        baseUrl: 'https://api.anthropic.com/v1',
+        model: 'claude-3-opus',
+      },
+      validPrompts
+    );
+    expect(JSON.parse(fetch.mock.calls[0][1].body).max_tokens).toBe(1800);
+  });
+});
+
+describe('requestAiJson 输出截断错误提示', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+    dnsLookupMock.mockResolvedValue([{ address: '203.0.113.10' }]);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('OpenAI compatible: 正文为空且 finish_reason=length 时抛出截断提示', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [
+          { message: { content: null, reasoning_content: '...思考内容...' }, finish_reason: 'length' },
+        ],
+      }),
+    });
+
+    await expect(
+      requestAiJson(
+        {
+          ...baseAiConfig,
+          providerId: 'deepseek',
+          providerType: 'openai-compatible',
+          baseUrl: 'https://api.deepseek.com/v1',
+          model: 'deepseek-v4-flash',
+        },
+        validPrompts
+      )
+    ).rejects.toThrow('跳过思考');
+  });
+
+  it('OpenAI compatible: 正文为空但仅有思考内容（无 finish_reason=length）同样提示', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: null, reasoning_content: '...思考内容...' } }],
+      }),
+    });
+
+    await expect(
+      requestAiJson(
+        {
+          ...baseAiConfig,
+          providerId: 'deepseek',
+          providerType: 'openai-compatible',
+          baseUrl: 'https://api.deepseek.com/v1',
+          model: 'deepseek-v4-flash',
+        },
+        validPrompts
+      )
+    ).rejects.toThrow('跳过思考');
+  });
+
+  it('OpenAI compatible: 正文非空且带思考内容时不误报截断', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: '{"message":"ok","items":[]}',
+              reasoning_content: '...思考内容...',
+            },
+            finish_reason: 'stop',
+          },
+        ],
+      }),
+    });
+
+    const result = await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'deepseek',
+        providerType: 'openai-compatible',
+        baseUrl: 'https://api.deepseek.com/v1',
+        model: 'deepseek-v4-flash',
+      },
+      validPrompts
+    );
+    expect(result).toEqual({ message: 'ok', items: [] });
+  });
+
+  it('Anthropic: 正文为空且 stop_reason=max_tokens 时抛出截断提示', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        content: [],
+        stop_reason: 'max_tokens',
+      }),
+    });
+
+    await expect(
+      requestAiJson(
+        {
+          ...baseAiConfig,
+          providerId: 'anthropic',
+          providerType: 'anthropic',
+          baseUrl: 'https://api.anthropic.com/v1',
+          model: 'claude-3-7-sonnet',
+        },
+        validPrompts
+      )
+    ).rejects.toThrow('跳过思考');
+  });
+});

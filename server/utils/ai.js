@@ -1,6 +1,6 @@
 import dns from 'dns/promises';
 import net from 'net';
-import { buildThinkingDisableParams } from './aiThinking.js';
+import { buildThinkingDisableParams, isThinkingModel } from './aiThinking.js';
 
 const OPENAI_COMPATIBLE_PROVIDERS = new Set([
   'openai',
@@ -294,6 +294,31 @@ export const validateAiBaseConfig = (config = {}) => {
 };
 
 const AI_REQUEST_TIMEOUT_MS = 60_000;
+const AI_MAX_TOKENS = 1800;
+// 思考模型的 reasoning token 也计入输出额度（实测 deepseek-v4-flash 分析单词约需 7000），
+// 1800 会被思考耗尽导致正文为空，因此对思考模型统一放宽输出上限。
+const AI_THINKING_MAX_TOKENS = 8192;
+
+/**
+ * 根据模型是否为思考模型决定输出额度上限。
+ * max_tokens 只是上限而非目标值，思考被禁用时不会产生额外消耗。
+ */
+const resolveMaxTokens = ({ providerId, providerType, providerMode, model }) =>
+  isThinkingModel({ providerId, providerType, providerMode, model })
+    ? AI_THINKING_MAX_TOKENS
+    : AI_MAX_TOKENS;
+
+/**
+ * 正文为空且输出被截断 / 仅返回思考过程时，抛出带操作指引的错误提示。
+ * @param {string} content - 归一化后的正文
+ * @param {boolean} isTruncated - 截断或仅有思考内容的标记（OpenAI finish_reason==='length' 或存在 reasoning_content，Anthropic stop_reason==='max_tokens'）
+ */
+const assertNotTruncated = (content, isTruncated) => {
+  if (content || !isTruncated) return;
+  throw new AiUpstreamError(
+    'AI 输出被截断或仅返回思考过程：思考模型的推理也消耗输出额度，可在 AI 配置中开启「跳过思考」后重试'
+  );
+};
 
 const callOpenAICompatible = async ({
   apiKey,
@@ -317,6 +342,7 @@ const callOpenAICompatible = async ({
     model,
     skipThinking,
   });
+  const maxTokens = resolveMaxTokens({ providerId, providerType, providerMode, model });
 
   let response;
   try {
@@ -329,7 +355,7 @@ const callOpenAICompatible = async ({
       },
       body: JSON.stringify({
         model,
-        max_tokens: 1800,
+        max_tokens: maxTokens,
         temperature: typeof temperature === 'number' ? temperature : 0.2,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -353,8 +379,14 @@ const callOpenAICompatible = async ({
     throw new AiUpstreamError(errorMessage, mapAiResponseStatus(response.status));
   }
 
-  const content = payload?.choices?.[0]?.message?.content;
-  return normalizeContentText(content);
+  const message = payload?.choices?.[0]?.message;
+  const content = normalizeContentText(message?.content);
+  // 正文为空且存在思考内容 / 被截断时，提示用户开启「跳过思考」。
+  assertNotTruncated(
+    content,
+    payload?.choices?.[0]?.finish_reason === 'length' || Boolean(message?.reasoning_content)
+  );
+  return content;
 };
 
 const callAnthropic = async ({
@@ -379,6 +411,7 @@ const callAnthropic = async ({
     model,
     skipThinking,
   });
+  const maxTokens = resolveMaxTokens({ providerId, providerType, providerMode, model });
 
   let response;
   try {
@@ -392,7 +425,7 @@ const callAnthropic = async ({
       },
       body: JSON.stringify({
         model,
-        max_tokens: 1800,
+        max_tokens: maxTokens,
         temperature: typeof temperature === 'number' ? temperature : 0.2,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
@@ -414,7 +447,10 @@ const callAnthropic = async ({
     throw new AiUpstreamError(errorMessage, mapAiResponseStatus(response.status));
   }
 
-  return normalizeContentText(payload?.content);
+  const content = normalizeContentText(payload?.content);
+  // Anthropic 的截断 stop_reason 为 'max_tokens'，与 OpenAI 的 finish_reason: 'length' 区分。
+  assertNotTruncated(content, payload?.stop_reason === 'max_tokens');
+  return content;
 };
 
 export const requestAiJson = async (config, prompts) => {

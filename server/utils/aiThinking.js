@@ -10,7 +10,7 @@
 // Anthropic 模型 ID 同时存在 dot 与 dash 两种写法（claude-3.7-sonnet / claude-3-7-sonnet），
 // 字符类 [-.] 同时覆盖两种格式。
 const THINKING_PATTERNS = {
-  deepseek: [/deepseek-reasoner/i, /deepseek-r1/i, /deepseek-v4-pro/i],
+  deepseek: [/deepseek-reasoner/i, /deepseek-r1/i, /deepseek-v4/i],
   zhipu: [/glm-z1/i, /glm-4[-.]5/i, /glm-4[-.]6/i, /glm-4-?\w*thinking/i],
   moonshot: [/kimi-k1/i, /kimi-k2/i, /kimi-thinking/i],
   doubao: [/doubao-seed/i, /doubao-reasoning/i, /doubao-1[-.]5-thinking/i],

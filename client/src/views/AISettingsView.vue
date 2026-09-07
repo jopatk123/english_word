@@ -166,7 +166,7 @@
             >
           </div>
           <div class="temperature-hint">
-            开启后，对思考模型（如 DeepSeek-Reasoner、Qwen3、Claude 3.7+/4、OpenAI o-series
+            开启后，对思考模型（如 DeepSeek-Reasoner/V4、Qwen3、Claude 3.7+/4、OpenAI o-series
             等）会注入禁用思考的参数，减少 reasoning token 消耗。非思考模型不受影响。
           </div>
         </el-form-item>

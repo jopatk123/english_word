@@ -14,6 +14,14 @@ describe('isThinkingModel', () => {
     expect(isThinkingModel({ providerId: 'deepseek', model: 'deepseek-v4-pro' })).toBe(true);
   });
 
+  it('DeepSeek-V4-Flash 是思考模型', () => {
+    expect(isThinkingModel({ providerId: 'deepseek', model: 'deepseek-v4-flash' })).toBe(true);
+  });
+
+  it('DeepSeek-V4 基础型号是思考模型', () => {
+    expect(isThinkingModel({ providerId: 'deepseek', model: 'deepseek-v4' })).toBe(true);
+  });
+
   it('DeepSeek-Chat 非思考模型', () => {
     expect(isThinkingModel({ providerId: 'deepseek', model: 'deepseek-chat' })).toBe(false);
   });
@@ -166,6 +174,16 @@ describe('buildThinkingDisableParams', () => {
       buildThinkingDisableParams({
         providerId: 'deepseek',
         model: 'deepseek-reasoner',
+        skipThinking: true,
+      })
+    ).toEqual({ thinking: { type: 'disabled' } });
+  });
+
+  it('DeepSeek-V4-Flash + skipThinking=true 注入 thinking disabled', () => {
+    expect(
+      buildThinkingDisableParams({
+        providerId: 'deepseek',
+        model: 'deepseek-v4-flash',
         skipThinking: true,
       })
     ).toEqual({ thinking: { type: 'disabled' } });
