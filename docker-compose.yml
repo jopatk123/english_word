@@ -4,7 +4,7 @@ services:
     image: english_word-english-word:latest
     container_name: english-word-app
     ports:
-      - '${PORT:?PORT is required}:${PORT:?PORT is required}'
+      - '127.0.0.1:${PORT:?PORT is required}:${PORT:?PORT is required}'
     volumes:
       - english-word-db:/app/data
     environment:
@@ -14,7 +14,13 @@ services:
       AI_SETTINGS_SECRET: ${AI_SETTINGS_SECRET:?AI_SETTINGS_SECRET is required}
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:?ADMIN_JWT_SECRET is required}
       ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:?ADMIN_PASSWORD_HASH is required}
-    restart: always
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    mem_limit: 512m
 
 volumes:
   english-word-db:

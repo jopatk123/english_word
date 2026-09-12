@@ -69,6 +69,14 @@ npm --prefix server install
 cd server && node -e "import bcrypt from 'bcryptjs'; console.log(await bcrypt.hash('your-admin-password', 12));"
 ```
 
+**重要提示**：bcrypt 哈希中包含 `$` 字符。在 Docker Compose `.env` 文件中，每个 `$` 必须转义为 `$$`，否则 Docker Compose 会误将其解释为变量插值，导致哈希损坏、登录失败。
+
+示例：生成的哈希为 `$2a$12$AbCd...`，在 `.env` 中需写为：
+
+```env
+ADMIN_PASSWORD_HASH=$$2a$$12$$AbCd...
+```
+
 ### 2. 构建并启动
 
 ```bash
