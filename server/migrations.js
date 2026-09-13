@@ -336,6 +336,39 @@ async function m017_create_user_ai_settings() {
   console.log('[migration] M017: user_ai_settings 表已创建');
 }
 
+// M018：创建 api_tokens 表，用于用户级不透明 API Token
+async function m018_create_api_tokens() {
+  const tables = await qi.showAllTables().catch(() => []);
+  if (tables.includes('api_tokens')) return;
+  await qi.createTable('api_tokens', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: { model: 'users', key: 'id' },
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    },
+    name: { type: DataTypes.STRING(100), allowNull: true },
+    token_hash: { type: DataTypes.STRING(64), allowNull: false, unique: true },
+    token_prefix: { type: DataTypes.STRING(16), allowNull: false },
+    expires_at: { type: DataTypes.DATE, allowNull: true },
+    last_used_at: { type: DataTypes.DATE, allowNull: true },
+    create_time: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+    update_time: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+  });
+  await sequelize.query(
+    'CREATE INDEX IF NOT EXISTS idx_api_tokens_user_id ON api_tokens (user_id)'
+  );
+  await sequelize.query(
+    'CREATE INDEX IF NOT EXISTS idx_api_tokens_expires_at ON api_tokens (expires_at)'
+  );
+  await sequelize.query(
+    'CREATE INDEX IF NOT EXISTS idx_api_tokens_token_prefix ON api_tokens (token_prefix)'
+  );
+  console.log('[migration] M018: api_tokens 表已创建');
+}
+
 /**
  * 按顺序执行所有迁移。每个迁移函数都是幂等的，可以安全重复运行。
  */
@@ -357,4 +390,5 @@ export async function runMigrations() {
   await m015_users_add_token_version();
   await m016_unique_indexes_for_roots_and_words();
   await m017_create_user_ai_settings();
+  await m018_create_api_tokens();
 }

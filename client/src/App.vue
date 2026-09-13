@@ -14,6 +14,9 @@
           <el-button class="nav-btn" link @click="$router.push('/ai/settings')"
             >🤖 AI 配置</el-button
           >
+          <el-button class="nav-btn" link @click="$router.push('/settings/api-tokens')"
+            >🔑 Token</el-button
+          >
           <AlarmClock class="header-alarm" />
           <div class="header-user">
             <span class="username">{{ user.username }}</span>

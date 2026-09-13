@@ -21,6 +21,7 @@ import {
   ReviewHistory,
   StudySession,
   UserAiSetting,
+  ApiToken,
 } from '../models/index.js';
 import authRouter from '../routes/auth.js';
 import adminRouter from '../routes/admin.js';
@@ -247,6 +248,12 @@ describe('DELETE /api/admin/users/:id', () => {
       userId: deleteTargetUser.id,
       ...encryptAiSettingsPayload({ openai: 'sk-delete-ai-12345' }),
     });
+    await ApiToken.create({
+      userId: deleteTargetUser.id,
+      name: 'delete-target-token',
+      tokenHash: 'b'.repeat(64),
+      tokenPrefix: 'ewt_bbbbbbbbbbbb',
+    });
 
     survivorUser = await User.create({
       username: `admin_survivor_${suffix()}`,
@@ -281,6 +288,7 @@ describe('DELETE /api/admin/users/:id', () => {
       reviewHistories: 1,
       studySessions: 1,
       aiSettings: 1,
+      apiTokens: 1,
     });
 
     expect(await User.findByPk(deleteTargetUser.id)).toBeNull();
@@ -290,6 +298,7 @@ describe('DELETE /api/admin/users/:id', () => {
     expect(await ReviewHistory.count({ where: { userId: deleteTargetUser.id } })).toBe(0);
     expect(await StudySession.count({ where: { userId: deleteTargetUser.id } })).toBe(0);
     expect(await UserAiSetting.count({ where: { userId: deleteTargetUser.id } })).toBe(0);
+    expect(await ApiToken.count({ where: { userId: deleteTargetUser.id } })).toBe(0);
     expect(await WordRoot.count({ where: { rootId: deleteTargetRoot.id } })).toBe(0);
     expect(await WordRoot.count({ where: { wordId: deleteTargetWord.id } })).toBe(0);
     expect(await Example.count({ where: { wordId: deleteTargetWord.id } })).toBe(0);

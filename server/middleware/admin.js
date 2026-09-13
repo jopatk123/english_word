@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { error } from '../utils/response.js';
 import { getAdminJwtSecret, getAdminPasswordHash } from '../utils/env.js';
+import { API_TOKEN_PREFIX } from '../services/api-tokens.js';
 
 const getAdminCredentialVersion = () =>
   crypto.createHash('sha256').update(getAdminPasswordHash()).digest('hex');
@@ -24,7 +25,10 @@ export const adminAuthMiddleware = (req, res, next) => {
     return error(res, '未登录，请先登录', 401);
   }
 
-  const token = authHeader.slice(7);
+  const token = authHeader.slice(7).trim();
+  if (token.startsWith(API_TOKEN_PREFIX)) {
+    return error(res, 'API Token 不能用于超级管理员接口', 401);
+  }
   try {
     const decoded = jwt.verify(token, getAdminJwtSecret());
     if (

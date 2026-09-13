@@ -12,6 +12,7 @@ import {
   ReviewHistory,
   StudySession,
   UserAiSetting,
+  ApiToken,
 } from '../models/index.js';
 import { success, successList, error } from '../utils/response.js';
 import { getAdminPasswordHash } from '../utils/env.js';
@@ -143,6 +144,7 @@ router.delete('/users/:id', adminAuthMiddleware, async (req, res) => {
         reviewHistories: 0,
         studySessions: 0,
         aiSettings: 0,
+        apiTokens: 0,
       };
 
       if (rootIds.length) {
@@ -173,6 +175,10 @@ router.delete('/users/:id', adminAuthMiddleware, async (req, res) => {
         transaction,
       });
       counts.aiSettings += await UserAiSetting.destroy({
+        where: { userId: user.id },
+        transaction,
+      });
+      counts.apiTokens += await ApiToken.destroy({
         where: { userId: user.id },
         transaction,
       });

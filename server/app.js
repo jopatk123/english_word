@@ -3,12 +3,13 @@ import cors from 'cors';
 import helmet from 'helmet';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { authMiddleware } from './middleware/auth.js';
+import { authMiddleware, jwtAuthMiddleware } from './middleware/auth.js';
 import { aiRateLimiter, authRateLimiter } from './middleware/rateLimiter.js';
 import { requestLogger } from './utils/logger.js';
 import authRouter from './routes/auth.js';
 import adminRouter from './routes/admin.js';
 import aiSettingsRouter from './routes/ai-settings.js';
+import apiTokensRouter from './routes/api-tokens.js';
 import rootsRouter from './routes/roots.js';
 import wordsRouter from './routes/words.js';
 import examplesRouter from './routes/examples.js';
@@ -71,6 +72,7 @@ export function createApp(options = {}) {
 
   app.use('/api/auth', authRateLimiter, authRouter);
   app.use('/api/admin', adminRouter);
+  app.use('/api/api-tokens', jwtAuthMiddleware, apiTokensRouter);
   app.use('/api/ai-settings', authMiddleware, aiSettingsRouter);
 
   app.use('/api/roots', authMiddleware, rootsRouter);

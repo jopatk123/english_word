@@ -63,6 +63,22 @@ export const getAiSettingsSecret = () => {
   throw new Error(missingEnvMessage('AI_SETTINGS_SECRET'));
 };
 
+export const getApiTokenPepper = () => {
+  const pepper = readEnv('API_TOKEN_PEPPER');
+  if (pepper) {
+    if (pepper === getJwtSecret()) {
+      throw new Error('API_TOKEN_PEPPER 必须与 JWT_SECRET 使用不同的随机字符串');
+    }
+    return pepper;
+  }
+
+  if (process.env.NODE_ENV === 'test') {
+    return 'test-api-token-pepper';
+  }
+
+  throw new Error(missingEnvMessage('API_TOKEN_PEPPER'));
+};
+
 export const getDbPath = () => {
   const dbPath = readEnv('DB_PATH');
   if (dbPath) return dbPath;

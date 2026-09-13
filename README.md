@@ -11,6 +11,7 @@
 - 学习计时：服务端权威状态、WebSocket 实时同步、统计与导出
 - AI 辅助：词根建议、单词建议、例句建议、单词分析、句子分析、模型自动发现、思考模型自动禁用思考
 - AI 密钥安全：各厂商 API Key 以加密形式保存到服务端，浏览器仅保留非敏感偏好配置
+- 用户 API Token：可创建/列出/撤销不透明 Token（`ewt_` 前缀），供脚本或 Agent 访问普通业务 API
 - 全量数据导出/导入：导入时若目标账号尚未拥有“未分类”默认词根，会自动创建后再恢复关联
 - 超级管理员后台：前端路由为 `/super-admin`，可查看用户、重置密码、启停账号、删除用户
 
@@ -25,6 +26,7 @@
 
 - HTTP 页面与 API 由同一个 Express 服务提供
 - 用户接口统一挂在 `/api/*`
+- 用户 API Token 管理接口挂在 `/api/api-tokens`
 - 超级管理员接口挂在 `/api/admin/*`
 - 公开健康检查接口 `/api/health`，供本地启动脚本和容器探活使用
 - 学习计时实时通道为 `/ws/study-timer`
@@ -32,7 +34,7 @@
 
 ## 部署前必读
 
-- `PORT`、`DB_PATH`、`JWT_SECRET`、`AI_SETTINGS_SECRET`、`ADMIN_JWT_SECRET`、`ADMIN_PASSWORD_HASH` 全部必填
+- `PORT`、`DB_PATH`、`JWT_SECRET`、`AI_SETTINGS_SECRET`、`API_TOKEN_PEPPER`、`ADMIN_JWT_SECRET`、`ADMIN_PASSWORD_HASH` 全部必填
 - 项目已移除运行时和 Docker 部署层的默认值；任一变量缺失或为空，部署会直接失败
 - 管理员登录密码只以 bcrypt 哈希形式配置，不再支持明文环境变量
 - Docker 部署时，`DB_PATH` 应填写容器内持久化目录，例如 `/app/data/words.db`
@@ -56,6 +58,7 @@ PORT=3010
 DB_PATH=/app/data/words.db
 JWT_SECRET=replace-with-a-long-random-secret
 AI_SETTINGS_SECRET=replace-with-another-long-random-secret
+API_TOKEN_PEPPER=replace-with-another-long-random-secret
 ADMIN_JWT_SECRET=replace-with-another-long-random-secret
 ADMIN_PASSWORD_HASH=replace-with-bcrypt-hash
 ```
@@ -119,6 +122,7 @@ PORT=3010
 DB_PATH=./data/words.dev.db
 JWT_SECRET=replace-with-a-long-random-secret
 AI_SETTINGS_SECRET=replace-with-another-long-random-secret
+API_TOKEN_PEPPER=replace-with-another-long-random-secret
 ADMIN_JWT_SECRET=replace-with-another-long-random-secret
 ADMIN_PASSWORD_HASH=replace-with-bcrypt-hash
 ```
@@ -163,14 +167,15 @@ npm run test:coverage
 
 ## 环境变量说明
 
-| 变量名                | 是否必填 | 说明                                                                              |
-| --------------------- | -------- | --------------------------------------------------------------------------------- |
-| `PORT`                | 是       | 服务监听端口；Docker 对外映射也使用同一个端口                                     |
-| `DB_PATH`             | 是       | SQLite 文件路径；Docker 建议 `/app/data/words.db`，本地建议 `./data/words.dev.db` |
-| `JWT_SECRET`          | 是       | 普通用户 token 的签名密钥                                                         |
-| `AI_SETTINGS_SECRET`  | 是       | 服务端加密保存 AI Key 的独立密钥，建议与 `JWT_SECRET` 不同                        |
-| `ADMIN_JWT_SECRET`    | 是       | 超级管理员 token 的签名密钥，必须与 `JWT_SECRET` 不同                             |
-| `ADMIN_PASSWORD_HASH` | 是       | 超级管理员登录密码的 bcrypt 哈希，对应页面为 `/super-admin`                       |
+| 变量名                | 是否必填 | 说明                                                                                               |
+| --------------------- | -------- | -------------------------------------------------------------------------------------------------- |
+| `PORT`                | 是       | 服务监听端口；Docker 对外映射也使用同一个端口                                                      |
+| `DB_PATH`             | 是       | SQLite 文件路径；Docker 建议 `/app/data/words.db`，本地建议 `./data/words.dev.db`                  |
+| `JWT_SECRET`          | 是       | 普通用户登录 JWT 的签名密钥                                                                        |
+| `AI_SETTINGS_SECRET`  | 是       | 服务端加密保存 AI Key 的独立密钥，建议与 `JWT_SECRET` 不同                                         |
+| `API_TOKEN_PEPPER`    | 是       | 用户 API Token 的 HMAC pepper，必须与 `JWT_SECRET` 不同；改密或轮换 JWT 密钥不会撤销已有 API Token |
+| `ADMIN_JWT_SECRET`    | 是       | 超级管理员 token 的签名密钥，必须与 `JWT_SECRET` 不同                                              |
+| `ADMIN_PASSWORD_HASH` | 是       | 超级管理员登录密码的 bcrypt 哈希，对应页面为 `/super-admin`                                        |
 
 ## 运维审计命令
 
@@ -188,6 +193,23 @@ AI 配置页（`/ai/settings`）支持多厂商切换、模型选择与温度调
 - **服务端加密存储**：各厂商 API Key 使用 `AI_SETTINGS_SECRET` 加密后保存到数据库，浏览器仅持有掩码摘要，密钥明文不落 localStorage。
 - **浏览器本地存储**：厂商选择、Base URL、模型、温度、自动拉取的模型列表与手动添加的自定义模型等非敏感偏好，按厂商独立保存于 localStorage。
 - **Base URL 限制**：出于 SSRF 防护，服务端拒绝 localhost 与局域网地址；自定义厂商需填写公网可访问的 OpenAI 兼容 API 地址。
+
+## 用户 API Token
+
+登录后可在 `/settings/api-tokens`（顶栏「Token」或 AI 配置页入口）创建个人 API Token：
+
+- 明文格式为 `ewt_` + 64 位十六进制，只在创建时显示一次
+- 列表只展示前缀与元数据（名称、创建时间、最后使用、过期时间）
+- 请求普通业务 API 时使用 `Authorization: Bearer ewt_…`，权限与该用户登录 JWT 相同
+- 不能访问 `/api/admin/*`，也不能用 API Token 再创建/列出/撤销 Token（管理接口只接受登录 JWT）
+- 管理员修改用户密码或轮换 `JWT_SECRET` 不会撤销 API Token；轮换 `API_TOKEN_PEPPER` 会使已有 Token 全部失效
+- 学习计时 WebSocket 仍只接受登录 JWT，v1 不支持用 API Token 建立实时连接
+
+示例：
+
+```bash
+curl -H "Authorization: Bearer ewt_your_token" http://localhost:3010/api/roots
+```
 
 ### 模型自动获取
 

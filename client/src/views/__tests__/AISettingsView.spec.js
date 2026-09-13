@@ -33,6 +33,7 @@ const {
   isBlockedAiBaseUrlMock,
   getRouteSourceMock,
   getRouteDisplayLabelMock,
+  routerPushMock,
 } = vi.hoisted(() => ({
   testAiConnectionMock: vi.fn(),
   fetchAiModelsMock: vi.fn(),
@@ -70,10 +71,12 @@ const {
   getRouteDisplayLabelMock: vi.fn((route) =>
     route?.name === 'AIExampleSuggestion' ? '智能添加例句' : '上一步'
   ),
+  routerPushMock: vi.fn(),
 }));
 
 vi.mock('vue-router', () => ({
   useRoute: () => routeMock,
+  useRouter: () => ({ push: routerPushMock }),
 }));
 
 vi.mock('../../api/index.js', () => ({
@@ -220,6 +223,22 @@ describe('AISettingsView', () => {
 
     expect(previousItem).toBeTruthy();
     expect(previousItem?.attributes('data-path')).toBe('/word/1/ai-examples');
+  });
+
+  it('提供前往 API Token 管理页的入口', async () => {
+    const wrapper = mount(AISettingsView, {
+      global: {
+        stubs: globalStubs,
+      },
+    });
+    await flushPromises();
+
+    const tokenBtn = wrapper
+      .findAll('.el-button-stub')
+      .find((b) => b.text().includes('管理 API Token'));
+    expect(tokenBtn).toBeTruthy();
+    await tokenBtn.trigger('click');
+    expect(routerPushMock).toHaveBeenCalledWith('/settings/api-tokens');
   });
 
   describe('自动获取模型（显式按钮）', () => {

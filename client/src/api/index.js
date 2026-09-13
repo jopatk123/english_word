@@ -151,6 +151,10 @@ export const getStudyTimeReport = (days = 30) =>
 export const exportStudySessions = () =>
   api.get('/study-sessions/export', { responseType: 'blob' });
 
+export const createApiToken = (payload) => api.post('/api-tokens', payload);
+export const listApiTokens = () => api.get('/api-tokens');
+export const revokeApiToken = (id) => api.delete(`/api-tokens/${id}`);
+
 export const createStudyTimerSocket = () => {
   const token = localStorage.getItem('token');
   if (!token) return null;

@@ -10,7 +10,7 @@
 
     <el-card class="ai-card">
       <template #header>
-        <div class="page-heading">
+        <div class="page-heading page-heading-between">
           <div>
             <h2>AI 配置</h2>
             <p>
@@ -18,6 +18,7 @@
               浏览器仅保存厂商、模型和温度等非敏感偏好。
             </p>
           </div>
+          <el-button link type="primary" @click="goToApiTokens">管理 API Token</el-button>
         </div>
       </template>
 
@@ -263,7 +264,7 @@
 
 <script setup>
   import { computed, onMounted, onUnmounted, ref } from 'vue';
-  import { useRoute } from 'vue-router';
+  import { useRoute, useRouter } from 'vue-router';
   import { ElMessage, ElMessageBox } from 'element-plus';
   import { testAiConnection } from '../api/index.js';
   import { AI_PROVIDERS } from '../constants/aiProviders.js';
@@ -293,6 +294,8 @@
   } from '../utils/aiSettings.js';
 
   const route = useRoute();
+  const router = useRouter();
+  const goToApiTokens = () => router.push('/settings/api-tokens');
   const previousRoute = computed(() => getRouteSource(route.fullPath));
   const showPreviousBreadcrumb = computed(() =>
     Boolean(previousRoute.value && previousRoute.value.name !== 'Home')

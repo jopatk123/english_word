@@ -31,6 +31,8 @@ import {
   ElTableColumn,
   ElTabs,
   ElTag,
+  ElDatePicker,
+  ElPopconfirm,
 } from 'element-plus';
 import 'element-plus/dist/index.css';
 import App from './App.vue';
@@ -70,6 +72,8 @@ const app = createApp(App);
   ElTableColumn,
   ElTabs,
   ElTag,
+  ElDatePicker,
+  ElPopconfirm,
 ].forEach((component) => {
   app.component(component.name, component);
 });

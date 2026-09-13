@@ -9,6 +9,7 @@ import WordReview from './WordReview.js';
 import ReviewHistory from './ReviewHistory.js';
 import StudySession from './StudySession.js';
 import UserAiSetting from './UserAiSetting.js';
+import ApiToken from './ApiToken.js';
 
 // 用户 -> 词根 (一对多)
 User.hasMany(Root, { foreignKey: 'user_id', as: 'roots', onDelete: 'CASCADE' });
@@ -68,6 +69,9 @@ User.hasOne(UserAiSetting, {
 });
 UserAiSetting.belongsTo(User, { foreignKey: 'user_id', as: 'user', onDelete: 'CASCADE' });
 
+User.hasMany(ApiToken, { foreignKey: 'user_id', as: 'apiTokens', onDelete: 'CASCADE' });
+ApiToken.belongsTo(User, { foreignKey: 'user_id', as: 'user', onDelete: 'CASCADE' });
+
 const initDB = async () => {
   const qi = sequelize.getQueryInterface();
   const existingTables = await qi.showAllTables().catch(() => []);
@@ -97,5 +101,6 @@ export {
   ReviewHistory,
   StudySession,
   UserAiSetting,
+  ApiToken,
   initDB,
 };

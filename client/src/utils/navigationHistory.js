@@ -7,6 +7,7 @@ const ROUTE_LABELS = {
   Login: '登录',
   Home: '首页',
   AISettings: 'AI 配置',
+  ApiTokens: 'API Token',
   AIRootSuggestion: '智能添加词根',
   AIWordSuggestion: '智能添加单词',
   AIExampleSuggestion: '智能添加例句',

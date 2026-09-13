@@ -621,7 +621,10 @@ describe('requestAiJson 输出截断错误提示', () => {
       ok: true,
       json: async () => ({
         choices: [
-          { message: { content: null, reasoning_content: '...思考内容...' }, finish_reason: 'length' },
+          {
+            message: { content: null, reasoning_content: '...思考内容...' },
+            finish_reason: 'length',
+          },
         ],
       }),
     });

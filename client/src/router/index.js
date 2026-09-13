@@ -7,6 +7,7 @@ const HomeView = () => import('../views/HomeView.vue');
 const RootDetailView = () => import('../views/RootDetailView.vue');
 const WordDetailView = () => import('../views/WordDetailView.vue');
 const AISettingsView = () => import('../views/AISettingsView.vue');
+const ApiTokensView = () => import('../views/ApiTokensView.vue');
 const AIRootSuggestionView = () => import('../views/AIRootSuggestionView.vue');
 const AIWordSuggestionView = () => import('../views/AIWordSuggestionView.vue');
 const AIExampleSuggestionView = () => import('../views/AIExampleSuggestionView.vue');
@@ -20,6 +21,7 @@ const routes = [
   { path: '/login', name: 'Login', component: LoginView, meta: { guest: true } },
   { path: '/', name: 'Home', component: HomeView },
   { path: '/ai/settings', name: 'AISettings', component: AISettingsView },
+  { path: '/settings/api-tokens', name: 'ApiTokens', component: ApiTokensView },
   { path: '/ai/roots', name: 'AIRootSuggestion', component: AIRootSuggestionView },
   {
     path: '/root/:id/ai-words',
