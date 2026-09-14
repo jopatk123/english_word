@@ -35,6 +35,12 @@ const StudySession = sequelize.define(
       allowNull: true,
       comment: '备注标签，用户可选填',
     },
+    endReason: {
+      type: DataTypes.STRING(32),
+      allowNull: true,
+      field: 'end_reason',
+      comment: '结束原因：manual / rest_alarm / max_duration / disconnect_grace / page_close',
+    },
   },
   {
     tableName: 'study_sessions',

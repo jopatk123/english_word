@@ -369,6 +369,17 @@ async function m018_create_api_tokens() {
   console.log('[migration] M018: api_tokens 表已创建');
 }
 
+// M019：study_sessions 增加 end_reason，用于区分手动/自动结束原因
+async function m019_study_sessions_add_end_reason() {
+  const info = await qi.describeTable('study_sessions').catch(() => ({}));
+  if (info.end_reason !== undefined || Object.keys(info).length === 0) return;
+  await qi.addColumn('study_sessions', 'end_reason', {
+    type: DataTypes.STRING(32),
+    allowNull: true,
+  });
+  console.log('[migration] M019: study_sessions.end_reason 已添加');
+}
+
 /**
  * 按顺序执行所有迁移。每个迁移函数都是幂等的，可以安全重复运行。
  */
@@ -391,4 +402,5 @@ export async function runMigrations() {
   await m016_unique_indexes_for_roots_and_words();
   await m017_create_user_ai_settings();
   await m018_create_api_tokens();
+  await m019_study_sessions_add_end_reason();
 }

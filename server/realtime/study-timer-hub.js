@@ -1,7 +1,16 @@
 import jwt from 'jsonwebtoken';
 import { WebSocketServer } from 'ws';
 import { User } from '../models/index.js';
+import {
+  DISCONNECT_GRACE_MS,
+  MAX_DURATION_SWEEP_INTERVAL_MS,
+  STUDY_SESSION_END_REASONS,
+} from '../constants/study-session.js';
 import { getJwtSecret } from '../utils/env.js';
+import {
+  endActiveStudySessionForUser,
+  sweepOverMaxDurationActiveSessions,
+} from '../services/study-session-lifecycle.js';
 import { getStudyTimerState } from '../services/study-timer-state.js';
 
 const HEARTBEAT_INTERVAL_MS = 30000;
@@ -44,32 +53,19 @@ async function authenticateToken(token) {
   }
 }
 
-export function createStudyTimerHub() {
+export function createStudyTimerHub(options = {}) {
+  const disconnectGraceMs = options.disconnectGraceMs ?? DISCONNECT_GRACE_MS;
+  const maxDurationSweepIntervalMs =
+    options.maxDurationSweepIntervalMs ?? MAX_DURATION_SWEEP_INTERVAL_MS;
+
   const clientsByUserId = new Map();
+  const disconnectGraceTimersByUserId = new Map();
   const wss = new WebSocketServer({ noServer: true });
   let heartbeatTimer = null;
-
-  const removeClient = (userId, socket) => {
-    const sockets = clientsByUserId.get(userId);
-    if (!sockets) return;
-
-    sockets.delete(socket);
-    if (!sockets.size) {
-      clientsByUserId.delete(userId);
-    }
-  };
-
-  const addClient = (userId, socket) => {
-    let sockets = clientsByUserId.get(userId);
-    if (!sockets) {
-      sockets = new Set();
-      clientsByUserId.set(userId, sockets);
-    }
-    sockets.add(socket);
-  };
+  let maxDurationSweepTimer = null;
 
   const publishTimerState = async (userId) => {
-    const state = await getStudyTimerState(userId);
+    const state = await getStudyTimerState(userId, { publishTimerState });
     const sockets = clientsByUserId.get(userId);
 
     if (sockets) {
@@ -79,6 +75,56 @@ export function createStudyTimerHub() {
     }
 
     return state;
+  };
+
+  const clearDisconnectGraceTimer = (userId) => {
+    const timer = disconnectGraceTimersByUserId.get(userId);
+    if (!timer) return;
+    clearTimeout(timer);
+    disconnectGraceTimersByUserId.delete(userId);
+  };
+
+  const scheduleDisconnectGraceStop = (userId) => {
+    clearDisconnectGraceTimer(userId);
+
+    const timer = setTimeout(() => {
+      disconnectGraceTimersByUserId.delete(userId);
+      if (clientsByUserId.has(userId)) return;
+
+      void endActiveStudySessionForUser(userId, {
+        reason: STUDY_SESSION_END_REASONS.DISCONNECT_GRACE,
+        endedAt: new Date(),
+        publishTimerState,
+      });
+    }, disconnectGraceMs);
+
+    if (typeof timer.unref === 'function') {
+      timer.unref();
+    }
+
+    disconnectGraceTimersByUserId.set(userId, timer);
+  };
+
+  const removeClient = (userId, socket) => {
+    const sockets = clientsByUserId.get(userId);
+    if (!sockets) return;
+
+    sockets.delete(socket);
+    if (!sockets.size) {
+      clientsByUserId.delete(userId);
+      scheduleDisconnectGraceStop(userId);
+    }
+  };
+
+  const addClient = (userId, socket) => {
+    clearDisconnectGraceTimer(userId);
+
+    let sockets = clientsByUserId.get(userId);
+    if (!sockets) {
+      sockets = new Set();
+      clientsByUserId.set(userId, sockets);
+    }
+    sockets.add(socket);
   };
 
   const startHeartbeat = () => {
@@ -101,6 +147,24 @@ export function createStudyTimerHub() {
     if (!heartbeatTimer) return;
     clearInterval(heartbeatTimer);
     heartbeatTimer = null;
+  };
+
+  const startMaxDurationSweep = () => {
+    if (maxDurationSweepTimer) return;
+
+    maxDurationSweepTimer = setInterval(() => {
+      void sweepOverMaxDurationActiveSessions({ publishTimerState });
+    }, maxDurationSweepIntervalMs);
+
+    if (typeof maxDurationSweepTimer.unref === 'function') {
+      maxDurationSweepTimer.unref();
+    }
+  };
+
+  const stopMaxDurationSweep = () => {
+    if (!maxDurationSweepTimer) return;
+    clearInterval(maxDurationSweepTimer);
+    maxDurationSweepTimer = null;
   };
 
   wss.on('connection', (socket, _request, user) => {
@@ -146,10 +210,17 @@ export function createStudyTimerHub() {
     });
 
     startHeartbeat();
+    startMaxDurationSweep();
+    void sweepOverMaxDurationActiveSessions({ publishTimerState });
   };
 
   const close = async () => {
     stopHeartbeat();
+    stopMaxDurationSweep();
+
+    for (const userId of disconnectGraceTimersByUserId.keys()) {
+      clearDisconnectGraceTimer(userId);
+    }
 
     for (const socket of wss.clients) {
       socket.terminate();

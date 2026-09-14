@@ -6,6 +6,7 @@ import { useStudyTimer } from '../useStudyTimer.js';
 const apiMocks = vi.hoisted(() => ({
   createStudyTimerSocket: vi.fn(),
   endStudySession: vi.fn(),
+  endStudySessionKeepalive: vi.fn(),
   getStudySessionStats: vi.fn(),
   getStudyTimerState: vi.fn(),
   startStudySession: vi.fn(),
@@ -214,7 +215,7 @@ describe('useStudyTimer', () => {
     await wrapper.vm.stopTimer();
     await flush();
 
-    expect(apiMocks.endStudySession).toHaveBeenCalledWith(12);
+    expect(apiMocks.endStudySession).toHaveBeenCalledWith(12, { reason: 'manual' });
     expect(wrapper.vm.isRunning).toBe(false);
     wrapper.unmount();
   });
@@ -254,7 +255,7 @@ describe('useStudyTimer', () => {
     vi.advanceTimersByTime(30000);
     await flush();
 
-    expect(apiMocks.endStudySession).toHaveBeenCalledWith(8);
+    expect(apiMocks.endStudySession).toHaveBeenCalledWith(8, { reason: 'rest_alarm' });
     expect(wrapper.vm.isRunning).toBe(false);
     expect(wrapper.vm.restNotifyVisible).toBe(true);
     expect(wrapper.vm.alarmTriggered).toBe(true);
@@ -267,6 +268,18 @@ describe('useStudyTimer', () => {
     expect(wrapper.vm.sessionId).toBe(13);
     expect(wrapper.vm.restNotifyVisible).toBe(false);
     expect(wrapper.vm.alarmTriggered).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('pagehide 时通过 keepalive 尽力结束进行中的会话', async () => {
+    const wrapper = mountHarness();
+    await flush();
+    socket.open();
+    await flush();
+
+    window.dispatchEvent(new Event('pagehide'));
+    expect(apiMocks.endStudySessionKeepalive).toHaveBeenCalledWith(8, 'page_close');
+
     wrapper.unmount();
   });
 });

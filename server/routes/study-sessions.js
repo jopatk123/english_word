@@ -4,6 +4,14 @@ import { StudySession } from '../models/index.js';
 import { success, error } from '../utils/response.js';
 import { todayStart, tomorrowStart, dateStrAt, addDays, startOfDay } from '../utils/srs.js';
 import {
+  STUDY_SESSION_END_REASONS,
+  normalizeStudySessionEndReason,
+} from '../constants/study-session.js';
+import {
+  finalizeStudySession,
+  settleActiveSessionIfNeeded,
+} from '../services/study-session-lifecycle.js';
+import {
   closeOtherActiveStudySessions,
   findActiveStudySession,
   getStudyTimerState,
@@ -46,7 +54,12 @@ export function createStudySessionsRouter(options = {}) {
    */
   router.get('/current', async (req, res) => {
     try {
-      success(res, await getStudyTimerState(req.userId));
+      success(
+        res,
+        await getStudyTimerState(req.userId, {
+          publishTimerState,
+        })
+      );
     } catch (e) {
       error(res, e.message);
     }
@@ -117,7 +130,7 @@ export function createStudySessionsRouter(options = {}) {
     try {
       const activeSession = await findActiveStudySession(req.userId);
       if (!activeSession) {
-        return success(res, await getStudyTimerState(req.userId));
+        return success(res, await getStudyTimerState(req.userId, { publishTimerState }));
       }
 
       await closeOtherActiveStudySessions(req.userId, activeSession.id);
@@ -132,15 +145,26 @@ export function createStudySessionsRouter(options = {}) {
         );
       }
 
-      const endedAt = new Date();
-      const durationSeconds = Math.max(
-        0,
-        Math.floor((endedAt.getTime() - new Date(activeSession.startedAt).getTime()) / 1000)
+      await settleActiveSessionIfNeeded(req.userId, {
+        publishTimerState,
+        activeSession,
+      });
+
+      const refreshedActive = await findActiveStudySession(req.userId);
+      if (!refreshedActive || String(refreshedActive.id) !== String(req.params.id)) {
+        return success(res, await getStudyTimerState(req.userId, { publishTimerState }));
+      }
+
+      const endReason = normalizeStudySessionEndReason(
+        req.body?.reason,
+        STUDY_SESSION_END_REASONS.MANUAL
       );
+      await finalizeStudySession(refreshedActive, {
+        reason: endReason,
+        endedAt: new Date(),
+      });
 
-      await activeSession.update({ endedAt, durationSeconds });
-
-      const state = await getStudyTimerState(req.userId);
+      const state = await getStudyTimerState(req.userId, { publishTimerState });
       await publishTimerState(req.userId);
       return success(res, state);
     } catch (e) {
@@ -185,7 +209,7 @@ export function createStudySessionsRouter(options = {}) {
       // 最近 30 条，由数据库直接排序和截断
       const recentRows = await StudySession.findAll({
         where: { userId, endedAt: { [Op.ne]: null } },
-        attributes: ['id', 'startedAt', 'endedAt', 'durationSeconds', 'note'],
+        attributes: ['id', 'startedAt', 'endedAt', 'durationSeconds', 'note', 'endReason'],
         order: [['startedAt', 'DESC']],
         limit: 30,
       });
@@ -195,6 +219,7 @@ export function createStudySessionsRouter(options = {}) {
         endedAt: s.endedAt,
         durationSeconds: s.durationSeconds,
         note: s.note,
+        endReason: s.endReason,
       }));
 
       success(res, { totalSeconds, todaySeconds, recentSessions });
@@ -245,7 +270,7 @@ export function createStudySessionsRouter(options = {}) {
       const windowStart = startOfDay(windowStartDate, tz);
       const windowSessions = await StudySession.findAll({
         where: { userId, endedAt: { [Op.ne]: null }, startedAt: { [Op.gte]: windowStart } },
-        attributes: ['id', 'startedAt', 'endedAt', 'durationSeconds', 'note'],
+        attributes: ['id', 'startedAt', 'endedAt', 'durationSeconds', 'note', 'endReason'],
         order: [['startedAt', 'ASC']],
       });
 
@@ -299,6 +324,7 @@ export function createStudySessionsRouter(options = {}) {
           endedAt: s.endedAt,
           durationSeconds: s.durationSeconds,
           note: s.note || null,
+          endReason: s.endReason || null,
         }));
 
       success(res, {
@@ -326,7 +352,15 @@ export function createStudySessionsRouter(options = {}) {
     try {
       const sessions = await StudySession.findAll({
         where: { userId: req.userId, endedAt: { [Op.ne]: null } },
-        attributes: ['id', 'startedAt', 'endedAt', 'durationSeconds', 'note', 'created_at'],
+        attributes: [
+          'id',
+          'startedAt',
+          'endedAt',
+          'durationSeconds',
+          'note',
+          'endReason',
+          'created_at',
+        ],
         order: [['startedAt', 'DESC']],
       });
 
@@ -339,6 +373,7 @@ export function createStudySessionsRouter(options = {}) {
           durationSeconds: s.durationSeconds,
           durationMinutes: Math.round(s.durationSeconds / 60),
           note: s.note || '',
+          endReason: s.endReason || '',
         })),
       };
 

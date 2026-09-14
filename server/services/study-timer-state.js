@@ -1,5 +1,7 @@
 import { Op } from 'sequelize';
 import { StudySession } from '../models/index.js';
+import { MAX_SESSION_DURATION_SECONDS } from '../constants/study-session.js';
+import { settleActiveSessionIfNeeded } from './study-session-lifecycle.js';
 
 export async function findActiveStudySession(userId) {
   return StudySession.findOne({
@@ -65,7 +67,10 @@ export function buildStudyTimerState({
   const startedAtMs = isRunning ? new Date(activeSession.startedAt).getTime() : NaN;
   const elapsedSeconds =
     isRunning && Number.isFinite(startedAtMs)
-      ? Math.max(0, Math.floor((serverNow.getTime() - startedAtMs) / 1000))
+      ? Math.min(
+          MAX_SESSION_DURATION_SECONDS,
+          Math.max(0, Math.floor((serverNow.getTime() - startedAtMs) / 1000))
+        )
       : 0;
 
   return {
@@ -80,12 +85,24 @@ export function buildStudyTimerState({
 }
 
 export async function getStudyTimerState(userId, options = {}) {
-  const activeSession = options.activeSession ?? (await findActiveStudySession(userId));
+  const settlement = await settleActiveSessionIfNeeded(userId, {
+    serverNow: options.serverNow,
+    publishTimerState: options.publishTimerState,
+    activeSession: options.activeSession,
+  });
+
+  const activeSession =
+    settlement.session ??
+    (settlement.settled ? null : (options.activeSession ?? (await findActiveStudySession(userId))));
   const lastSession =
-    options.lastSession ?? (activeSession ? activeSession : await findLatestStudySession(userId));
+    options.lastSession ??
+    (activeSession
+      ? activeSession
+      : (settlement.endedSession ?? (await findLatestStudySession(userId))));
 
   return buildStudyTimerState({
     activeSession,
     lastSession,
+    serverNow: options.serverNow,
   });
 }
