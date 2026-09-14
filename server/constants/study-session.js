@@ -17,7 +17,10 @@ export const STUDY_SESSION_END_REASONS = Object.freeze({
 
 const ALLOWED_END_REASONS = new Set(Object.values(STUDY_SESSION_END_REASONS));
 
-export function normalizeStudySessionEndReason(reason, fallback = STUDY_SESSION_END_REASONS.MANUAL) {
+export function normalizeStudySessionEndReason(
+  reason,
+  fallback = STUDY_SESSION_END_REASONS.MANUAL
+) {
   if (typeof reason === 'string' && ALLOWED_END_REASONS.has(reason)) {
     return reason;
   }

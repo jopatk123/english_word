@@ -93,12 +93,12 @@ export async function getStudyTimerState(userId, options = {}) {
 
   const activeSession =
     settlement.session ??
-    (settlement.settled ? null : options.activeSession ?? (await findActiveStudySession(userId)));
+    (settlement.settled ? null : (options.activeSession ?? (await findActiveStudySession(userId))));
   const lastSession =
     options.lastSession ??
     (activeSession
       ? activeSession
-      : settlement.endedSession ?? (await findLatestStudySession(userId)));
+      : (settlement.endedSession ?? (await findLatestStudySession(userId))));
 
   return buildStudyTimerState({
     activeSession,

@@ -7,7 +7,10 @@ import {
   STUDY_SESSION_END_REASONS,
 } from '../constants/study-session.js';
 import { getJwtSecret } from '../utils/env.js';
-import { endActiveStudySessionForUser, sweepOverMaxDurationActiveSessions } from '../services/study-session-lifecycle.js';
+import {
+  endActiveStudySessionForUser,
+  sweepOverMaxDurationActiveSessions,
+} from '../services/study-session-lifecycle.js';
 import { getStudyTimerState } from '../services/study-timer-state.js';
 
 const HEARTBEAT_INTERVAL_MS = 30000;

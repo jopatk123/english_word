@@ -9,7 +9,10 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../app.js';
 import { generateToken } from '../middleware/auth.js';
 import { initDB, User, StudySession } from '../models/index.js';
-import { MAX_SESSION_DURATION_SECONDS, STUDY_SESSION_END_REASONS } from '../constants/study-session.js';
+import {
+  MAX_SESSION_DURATION_SECONDS,
+  STUDY_SESSION_END_REASONS,
+} from '../constants/study-session.js';
 import { createStudySessionsRouter } from '../routes/study-sessions.js';
 import { createStudyTimerHub } from '../realtime/study-timer-hub.js';
 import { getStudyTimerState } from '../services/study-timer-state.js';
