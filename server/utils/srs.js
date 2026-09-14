@@ -174,11 +174,18 @@ function getTimeZoneParts(date, timezone) {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-    hour12: false,
     hourCycle: 'h23',
   });
 
-  return Object.fromEntries(formatter.formatToParts(date).map((part) => [part.type, part.value]));
+  const parts = Object.fromEntries(
+    formatter.formatToParts(date).map((part) => [part.type, part.value])
+  );
+  // 部分 ICU 在同时设置 hour12:false 时会忽略 hourCycle，把午夜格式化成 24。
+  // 这里只使用 hourCycle:'h23'，并兜底把 24 归一成 00，避免 Date.UTC(..., 24) 错一天。
+  if (parts.hour === '24') {
+    parts.hour = '00';
+  }
+  return parts;
 }
 
 function getTimeZoneOffsetMs(date, timezone) {
