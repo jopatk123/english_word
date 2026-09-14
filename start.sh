@@ -34,9 +34,24 @@ ensure_port_available() {
   pids="$(lsof -ti tcp:"$port" -sTCP:LISTEN 2>/dev/null || true)"
 
   if [ -n "$pids" ]; then
-    echo "端口 $port 已被其他进程占用: $pids"
-    echo "为避免误伤共享环境中的进程，start.sh 不会自动清理非本脚本启动的端口占用。"
-    echo "请手动释放端口，或设置 PORT/CLIENT_PORT 使用其他端口后重试。"
+    echo "端口 $port 已被进程占用: $pids"
+    echo "本地开发模式：主动结束占用进程并释放端口..."
+    for pid in $pids; do
+      kill "$pid" >/dev/null 2>&1 || true
+    done
+
+    # 等待进程退出、端口真正释放（最多约 5 秒）
+    local remaining
+    for _ in 1 2 3 4 5; do
+      if ! lsof -ti tcp:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+        echo "端口 $port 已释放"
+        return 0
+      fi
+      sleep 1
+    done
+
+    remaining="$(lsof -ti tcp:"$port" -sTCP:LISTEN 2>/dev/null | tr '\n' ' ')"
+    echo "端口 $port 仍有进程未退出: $remaining，请手动处理。"
     exit 1
   fi
 }
