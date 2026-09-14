@@ -50,6 +50,7 @@ describe('POST/GET/DELETE /api/api-tokens', () => {
     expect(listed.status).toBe(200);
     const row = listed.body.data.find((item) => item.id === created.body.data.id);
     expect(row.tokenPrefix).toBe(created.body.data.tokenPrefix);
+    expect(row.createdAt).toBeTruthy();
     expect(row).not.toHaveProperty('token');
     expect(JSON.stringify(listed.body)).not.toContain(created.body.data.token);
   });

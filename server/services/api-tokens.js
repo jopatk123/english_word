@@ -67,9 +67,9 @@ const toPublicToken = (record) => ({
   id: record.id,
   name: record.name,
   tokenPrefix: record.tokenPrefix,
-  expiresAt: record.expiresAt,
-  lastUsedAt: record.lastUsedAt,
-  createdAt: record.createdAt,
+  expiresAt: record.expiresAt ?? null,
+  lastUsedAt: record.lastUsedAt ?? null,
+  createdAt: record.createdAt || record.create_time || null,
 });
 
 export const createToken = async (userId, options = {}) => {

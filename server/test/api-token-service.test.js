@@ -118,6 +118,7 @@ describe('API Token 生命周期', () => {
       name: '脚本',
       tokenPrefix: created.tokenPrefix,
     });
+    expect(row.createdAt).toBeTruthy();
     expect(row).not.toHaveProperty('token');
     expect(row).not.toHaveProperty('tokenHash');
   });
