@@ -23,6 +23,8 @@ let user;
 let jwtToken;
 
 beforeAll(async () => {
+  // 与本文件生成管理员 Token 的用例保持一致：覆盖为合法 bcrypt 哈希，避免受本地 .env 影响。
+  process.env.ADMIN_PASSWORD_HASH = await bcrypt.hash('test-admin-password', 10);
   await initDB();
   app = createApp();
   user = await User.create({
