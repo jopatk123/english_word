@@ -28,7 +28,7 @@ export const error = (res, msg = '服务器内部错误', code = 500) => {
  * - err.status：http-errors 约定；
  * - err.code：路由内临时抛出的普通 Error（如 404 词根不存在）。
  */
-const resolveClientErrorStatus = (e) => {
+export const resolveClientErrorStatus = (e) => {
   const candidates = [e?.statusCode, e?.status, e?.code];
   return candidates.find((value) => Number.isInteger(value) && value >= 400 && value <= 499);
 };

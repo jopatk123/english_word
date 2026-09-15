@@ -115,6 +115,18 @@ describe('POST /ai/test', () => {
     const res = await request(app).post('/ai/test').send({ config: validConfig });
     expect(res.status).toBe(502);
   });
+
+  it('上游/内部错误信息不泄漏到响应，但保留 requestId', async () => {
+    requestAiJson.mockRejectedValue(
+      new AiUpstreamError('{"error":{"message":"Invalid API key sk-secret"}}', 502)
+    );
+    const res = await request(app).post('/ai/test').send({ config: validConfig });
+    expect(res.status).toBe(502);
+    expect(res.body.msg).toContain('requestId=');
+    expect(res.body.msg).toContain('AI 服务暂时不可用');
+    expect(res.body.msg).not.toContain('Invalid API key');
+    expect(res.body.msg).not.toContain('sk-secret');
+  });
 });
 
 // ================================================================
@@ -149,7 +161,7 @@ describe('POST /ai/fetch-models', () => {
 
     const res = await request(app).post('/ai/fetch-models').send({ config: validConfig });
     expect(res.status).toBe(400);
-    expect(res.body.msg).toContain('API Key 无效');
+    expect(res.body.msg).toBe('API Key 无效');
   });
 
   it('fetchProviderModels 抛出 AiTimeoutError 时返回 504', async () => {
@@ -157,6 +169,8 @@ describe('POST /ai/fetch-models', () => {
 
     const res = await request(app).post('/ai/fetch-models').send({ config: validConfig });
     expect(res.status).toBe(504);
+    expect(res.body.msg).toContain('requestId=');
+    expect(res.body.msg).not.toContain('AI 服务调用超时');
   });
 
   it('fetchProviderModels 抛出未知错误时返回 502', async () => {
@@ -164,6 +178,7 @@ describe('POST /ai/fetch-models', () => {
 
     const res = await request(app).post('/ai/fetch-models').send({ config: validConfig });
     expect(res.status).toBe(502);
+    expect(res.body.msg).not.toContain('网络错误');
   });
 });
 
@@ -454,5 +469,18 @@ describe('POST /ai/analyze-sentence', () => {
       .post('/ai/analyze-sentence')
       .send({ config: validConfig, sentence: 'She reads every day.' });
     expect(res.status).toBe(502);
+  });
+
+  it('例句再生（singleExample）失败时不泄漏上游错误详情', async () => {
+    requestAiJson.mockRejectedValue(
+      new AiUpstreamError('upstream: model `gpt-4` does not exist', 502)
+    );
+    const res = await request(app)
+      .post('/ai/analyze-word')
+      .send({ config: validConfig, word: 'regenerate', singleExample: true });
+    expect(res.status).toBe(502);
+    expect(res.body.msg).toMatch(/requestId=[\d-]+/);
+    expect(res.body.msg).not.toContain('does not exist');
+    expect(res.body.msg).not.toContain('gpt-4');
   });
 });
