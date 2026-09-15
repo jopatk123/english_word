@@ -4,7 +4,9 @@ export const globalStubs = {
   'el-button': {
     props: ['loading'],
     emits: ['click'],
-    template: '<button class="el-btn" @click="$emit(\'click\')"><slot /></button>',
+    // 与真实 el-button 一致，把原生事件透传给 $emit，供 .stop 等修饰符使用
+    template:
+      '<button class="el-btn" :data-loading="loading" @click="$emit(\'click\', $event)"><slot /></button>',
   },
   'el-input': {
     props: ['modelValue', 'size', 'placeholder', 'type', 'showPassword', 'disabled'],

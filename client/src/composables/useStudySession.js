@@ -1,7 +1,17 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { getReviewDue, submitReviewResult } from '../api/index.js';
+import { getReviewDue, submitReviewResult, updateExample } from '../api/index.js';
+import {
+  isAiSettingsReady,
+  loadAiSettings,
+  refreshAiSettings,
+  subscribeAiSettingsChanges,
+} from '../utils/aiSettings.js';
+import {
+  collectExcludedSentences,
+  requestReplacementExample,
+} from '../utils/exampleRegeneration.js';
 import { FOLLOW_UP_OFFSETS, MAX_FOLLOW_UP_INSERTIONS, insertFollowUpCard } from './studyQueue.js';
 import { useChoiceMode } from './useChoiceMode.js';
 import { useSpellingMode } from './useSpellingMode.js';
@@ -21,6 +31,7 @@ export { buildAutoReadTexts } from './studySessionHelpers.js';
 export function useStudySession() {
   const route = useRoute();
   let stopSessionSync = () => {};
+  let stopAiSettingsSync = () => {};
 
   const loading = ref(true);
   const queue = ref([]);
@@ -35,6 +46,8 @@ export function useStudySession() {
   const resumeInfo = ref(null);
   const isReplay = ref(false);
   const sessionRevision = ref(0);
+  const aiSettings = ref(loadAiSettings());
+  const regeneratingExampleId = ref(null);
 
   const studyMode = ref('flashcard');
   const modeSelected = ref(false);
@@ -308,6 +321,65 @@ export function useStudySession() {
     }
   };
 
+  const syncAiSettings = (nextSettings) => {
+    aiSettings.value = nextSettings || loadAiSettings();
+  };
+
+  // 把重新生成的例句同步到队列（含原始队列，避免「再来一遍」时又出现旧句子）
+  const applyRegeneratedExample = (exampleId, nextExample) => {
+    for (const list of [queue.value, originalQueue.value]) {
+      for (const record of list) {
+        const examples = record?.word?.examples;
+        const target = Array.isArray(examples)
+          ? examples.find((item) => item.id === exampleId)
+          : null;
+        if (target) {
+          target.sentence = nextExample.sentence;
+          target.translation = nextExample.translation;
+        }
+      }
+    }
+  };
+
+  const regenerateExample = async (example) => {
+    if (!isAiSettingsReady(aiSettings.value)) {
+      return ElMessage.warning('请先完成 AI 配置');
+    }
+    if (!example?.id || regeneratingExampleId.value !== null) return;
+
+    const wordId = currentCard.value?.wordId;
+    const existingSentences = collectExcludedSentences(
+      (currentCard.value?.word?.examples || []).map((item) => item?.sentence)
+    );
+
+    regeneratingExampleId.value = example.id;
+    try {
+      const nextExample = await requestReplacementExample({
+        wordId,
+        existingSentences,
+        config: aiSettings.value,
+      });
+      if (!nextExample) {
+        return ElMessage.warning('没有生成新的不重复例句，请稍后再试');
+      }
+
+      await updateExample(example.id, {
+        sentence: nextExample.sentence,
+        translation: nextExample.translation,
+        remark: example.remark || '',
+      });
+      applyRegeneratedExample(example.id, nextExample);
+      ElMessage.success('已重新生成该例句');
+    } catch (e) {
+      ElMessage.error(
+        e?.response?.data?.msg ||
+          (e?.code === 'ECONNABORTED' ? 'AI 请求超时，请稍后重试' : '重新生成例句失败')
+      );
+    } finally {
+      regeneratingExampleId.value = null;
+    }
+  };
+
   // 键盘快捷键（逻辑已提取至 useStudyKeyboard，此处仅负责挂载/卸载）
   const { handleKeyDown } = useStudyKeyboard({
     studyMode,
@@ -336,11 +408,14 @@ export function useStudySession() {
     fetchDue();
     stopSessionSync = getStudySessionSyncChannel().subscribe(handleStudySessionSync);
     window.addEventListener('keydown', handleKeyDown);
+    stopAiSettingsSync = subscribeAiSettingsChanges(syncAiSettings);
+    void refreshAiSettings().then(syncAiSettings);
   });
 
   onUnmounted(() => {
     stopAutoRead();
     stopSessionSync();
+    stopAiSettingsSync();
     window.removeEventListener('keydown', handleKeyDown);
   });
 
@@ -383,6 +458,8 @@ export function useStudySession() {
     continueReview,
     flipCard,
     submitRating,
+    regeneratingExampleId,
+    regenerateExample,
     toggleAutoReadPause,
     loadChoices: choice.loadChoices,
     handleChoice: choice.handleChoice,

@@ -210,6 +210,20 @@
   padding: 12px 16px;
   border-radius: 8px;
   border-left: 3px solid #667eea;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-example .example-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-example .example-regenerate {
+  flex-shrink: 0;
+  height: auto;
+  padding: 0;
 }
 
 .card-example .example-en {

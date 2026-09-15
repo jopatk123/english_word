@@ -46,9 +46,11 @@
       :showAnswer="showAnswer"
       :submitting="submitting"
       :againCountMap="againCountMap"
+      :regeneratingExampleId="regeneratingExampleId"
       @flip="flipCard"
       @rate="submitRating"
       @seek="seekToIndex"
+      @regenerate-example="regenerateExample"
     />
 
     <!-- 选择题模式 -->
@@ -144,6 +146,7 @@
     finished,
     sessionStats,
     againCountMap,
+    regeneratingExampleId,
     resumeInfo,
     studyMode,
     modeSelected,
@@ -171,6 +174,7 @@
     continueReview,
     flipCard,
     submitRating,
+    regenerateExample,
     toggleAutoReadPause,
     handleChoice,
     choiceNext,

@@ -23,10 +23,20 @@
         <div v-if="card.word.remark" class="card-remark">{{ card.word.remark }}</div>
         <div v-if="card.word.examples && card.word.examples.length > 0" class="card-examples">
           <div v-for="ex in card.word.examples" :key="ex.id" class="card-example">
-            <p class="example-en">
-              {{ ex.sentence }} <SpeakButton :text="ex.sentence" class="example-speak" />
-            </p>
-            <p class="example-zh">{{ ex.translation }}</p>
+            <div class="example-main">
+              <p class="example-en">
+                {{ ex.sentence }} <SpeakButton :text="ex.sentence" class="example-speak" />
+              </p>
+              <p class="example-zh">{{ ex.translation }}</p>
+            </div>
+            <el-button
+              class="example-regenerate"
+              link
+              type="success"
+              :loading="regeneratingExampleId === ex.id"
+              @click.stop="$emit('regenerate-example', ex)"
+              >重新生成</el-button
+            >
           </div>
         </div>
       </div>
@@ -66,7 +76,8 @@
     showAnswer: { type: Boolean, default: false },
     submitting: { type: Boolean, default: false },
     againCountMap: { type: Object, default: () => ({}) },
+    regeneratingExampleId: { type: [Number, String], default: null },
   });
 
-  defineEmits(['flip', 'rate', 'seek']);
+  defineEmits(['flip', 'rate', 'seek', 'regenerate-example']);
 </script>

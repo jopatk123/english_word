@@ -106,6 +106,33 @@ describe('FlashcardMode', () => {
     expect(wrapper.emitted('rate')[0]).toEqual([3]);
   });
 
+  it('每条例句都渲染「重新生成」按钮', () => {
+    const wrapper = createWrapper({ showAnswer: true });
+    const buttons = wrapper.findAll('.example-regenerate');
+
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].text()).toBe('重新生成');
+  });
+
+  it('点击「重新生成」抛出对应例句', async () => {
+    const example = { id: 7, sentence: 'She inspects the room.', translation: '她检查房间。' };
+    const wrapper = createWrapper({
+      showAnswer: true,
+      card: { ...defaultCard, word: { ...defaultCard.word, examples: [example] } },
+    });
+
+    await wrapper.find('.example-regenerate').trigger('click');
+
+    expect(wrapper.emitted('regenerate-example')).toBeTruthy();
+    expect(wrapper.emitted('regenerate-example')[0]).toEqual([example]);
+  });
+
+  it('regeneratingExampleId 匹配时按钮处于加载态', () => {
+    const wrapper = createWrapper({ showAnswer: true, regeneratingExampleId: 1 });
+
+    expect(wrapper.find('.example-regenerate').attributes('data-loading')).toBe('true');
+  });
+
   it('againCountMap 有值时显示复习次数', () => {
     const wrapper = createWrapper({ againCountMap: { 1: 1 } });
     expect(wrapper.text()).toContain('第 2 次复习');

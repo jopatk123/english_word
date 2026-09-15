@@ -11,7 +11,6 @@ import {
   createExample,
   updateExample,
   deleteExample,
-  getAiExampleSuggestions,
 } from '../api/index.js';
 import {
   isAiSettingsReady,
@@ -19,6 +18,10 @@ import {
   refreshAiSettings,
   subscribeAiSettingsChanges,
 } from '../utils/aiSettings.js';
+import {
+  collectExcludedSentences,
+  requestReplacementExample,
+} from '../utils/exampleRegeneration.js';
 
 export function useWordDetail(wordId) {
   const router = useRouter();
@@ -89,43 +92,6 @@ export function useWordDetail(wordId) {
     } finally {
       allRootsLoading.value = false;
     }
-  };
-
-  const normalizeSentence = (sentence) => `${sentence || ''}`.trim().toLowerCase();
-
-  const getExcludedSentences = (extraSentences = []) => {
-    const sentences = [
-      ...examples.value.map((item) => item?.sentence).filter(Boolean),
-      ...extraSentences.filter(Boolean),
-    ];
-    return [...new Set(sentences)];
-  };
-
-  const requestReplacementExample = async () => {
-    const existingSentenceSet = new Set(
-      getExcludedSentences().map((sentence) => normalizeSentence(sentence))
-    );
-    let excludedSentences = getExcludedSentences();
-
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      const res = await getAiExampleSuggestions(wordId, aiSettings.value, {
-        excludedSentences,
-      });
-      const items = Array.isArray(res.data?.items) ? res.data.items : [];
-      const candidate = items.find((item) => {
-        if (!item?.sentence || !item?.translation) return false;
-        return !existingSentenceSet.has(normalizeSentence(item.sentence));
-      });
-
-      if (candidate) {
-        return candidate;
-      }
-
-      const returnedSentences = items.map((item) => item?.sentence).filter(Boolean);
-      excludedSentences = getExcludedSentences(returnedSentences);
-    }
-
-    return null;
   };
 
   const openExampleDialog = (example = null) => {
@@ -289,7 +255,11 @@ export function useWordDetail(wordId) {
 
     regeneratingExampleId.value = example.id;
     try {
-      const nextExample = await requestReplacementExample();
+      const nextExample = await requestReplacementExample({
+        wordId,
+        existingSentences: collectExcludedSentences(examples.value.map((item) => item?.sentence)),
+        config: aiSettings.value,
+      });
       if (!nextExample) {
         return ElMessage.warning('没有生成新的不重复例句，请稍后再试');
       }

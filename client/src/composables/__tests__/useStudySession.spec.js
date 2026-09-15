@@ -71,6 +71,8 @@ const submitReviewResultMock = vi.fn().mockResolvedValue({});
 const getQuizChoicesMock = vi.fn().mockResolvedValue({
   data: { correct: { id: 1, meaning: 'meaning1' }, distractors: [] },
 });
+const getAiExampleSuggestionsMock = vi.fn();
+const updateExampleMock = vi.fn().mockResolvedValue({});
 const mockSpeak = vi.fn();
 const mockSpeakAsync = vi.fn().mockResolvedValue(true);
 const mockSpeakSequence = vi.fn().mockResolvedValue(true);
@@ -89,6 +91,15 @@ vi.mock('../../api/index.js', () => ({
   getReviewDue: (...args) => getReviewDueMock(...args),
   submitReviewResult: (...args) => submitReviewResultMock(...args),
   getQuizChoices: (...args) => getQuizChoicesMock(...args),
+  getAiExampleSuggestions: (...args) => getAiExampleSuggestionsMock(...args),
+  updateExample: (...args) => updateExampleMock(...args),
+}));
+
+vi.mock('../../utils/aiSettings.js', () => ({
+  isAiSettingsReady: (settings) => Boolean(settings?.model),
+  loadAiSettings: () => ({ providerId: 'openai', model: 'gpt-test' }),
+  refreshAiSettings: () => Promise.resolve({ providerId: 'openai', model: 'gpt-test' }),
+  subscribeAiSettingsChanges: () => () => {},
 }));
 
 vi.mock('../../utils/speech.js', () => ({
@@ -376,6 +387,97 @@ describe('自动朗读暂停控制', () => {
     wrapper.vm.toggleAutoReadPause();
     expect(wrapper.vm.isAutoReadPaused).toBe(false);
     expect(mockResumeSpeech).toHaveBeenCalledTimes(1);
+
+    wrapper.unmount();
+  });
+});
+
+describe('useStudySession 重新生成例句', () => {
+  const makeCard = (wordId = 1, exampleId = 11) => ({
+    wordId,
+    word: {
+      id: wordId,
+      name: `word${wordId}`,
+      meaning: `meaning${wordId}`,
+      examples: [
+        { id: exampleId, sentence: 'Old sentence.', translation: '旧句子。', remark: '备注' },
+      ],
+    },
+  });
+
+  const mountSession = async (card) => {
+    const wrapper = mount({
+      template: '<div />',
+      setup() {
+        return useStudySession();
+      },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    wrapper.vm.queue = [card];
+    wrapper.vm.originalQueue = [card];
+    wrapper.vm.currentIndex = 0;
+    return wrapper;
+  };
+
+  beforeEach(() => {
+    getAiExampleSuggestionsMock.mockReset();
+    updateExampleMock.mockClear();
+  });
+
+  it('重新生成后同步刷新队列与原始队列中的例句', async () => {
+    getAiExampleSuggestionsMock.mockResolvedValue({
+      data: { items: [{ sentence: 'Brand new sentence.', translation: '全新句子。' }] },
+    });
+
+    const card = makeCard();
+    const wrapper = await mountSession(card);
+
+    await wrapper.vm.regenerateExample(card.word.examples[0]);
+
+    expect(getAiExampleSuggestionsMock).toHaveBeenCalledWith(1, expect.any(Object), {
+      excludedSentences: ['Old sentence.'],
+    });
+    expect(updateExampleMock).toHaveBeenCalledWith(11, {
+      sentence: 'Brand new sentence.',
+      translation: '全新句子。',
+      remark: '备注',
+    });
+    expect(wrapper.vm.queue[0].word.examples[0].sentence).toBe('Brand new sentence.');
+    expect(wrapper.vm.originalQueue[0].word.examples[0].sentence).toBe('Brand new sentence.');
+    expect(wrapper.vm.regeneratingExampleId).toBeNull();
+
+    wrapper.unmount();
+  });
+
+  it('候选全部重复时不更新例句并提示重试', async () => {
+    getAiExampleSuggestionsMock.mockResolvedValue({
+      data: { items: [{ sentence: 'Old sentence.', translation: '重复' }] },
+    });
+
+    const card = makeCard();
+    const wrapper = await mountSession(card);
+
+    await wrapper.vm.regenerateExample(card.word.examples[0]);
+
+    expect(updateExampleMock).not.toHaveBeenCalled();
+    expect(wrapper.vm.queue[0].word.examples[0].sentence).toBe('Old sentence.');
+    expect(wrapper.vm.regeneratingExampleId).toBeNull();
+
+    wrapper.unmount();
+  });
+
+  it('请求失败时给出错误提示且不更新例句', async () => {
+    getAiExampleSuggestionsMock.mockRejectedValue(new Error('network down'));
+
+    const card = makeCard();
+    const wrapper = await mountSession(card);
+
+    await wrapper.vm.regenerateExample(card.word.examples[0]);
+
+    expect(updateExampleMock).not.toHaveBeenCalled();
+    expect(wrapper.vm.queue[0].word.examples[0].sentence).toBe('Old sentence.');
+    expect(wrapper.vm.regeneratingExampleId).toBeNull();
 
     wrapper.unmount();
   });

@@ -39,7 +39,7 @@ const REVIEW_INCLUDE = [
         through: { attributes: [] },
         attributes: ['id', 'name', 'meaning'],
       },
-      { model: Example, as: 'examples', attributes: ['id', 'sentence', 'translation'] },
+      { model: Example, as: 'examples', attributes: ['id', 'sentence', 'translation', 'remark'] },
     ],
   },
 ];
