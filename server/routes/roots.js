@@ -9,6 +9,7 @@ import {
   ReviewHistory,
 } from '../models/index.js';
 import { success, error } from '../utils/response.js';
+import { isString, isOptionalString } from '../utils/validation.js';
 import { ensureDefaultRoot } from '../utils/defaultRoot.js';
 import { buildKeywordSearch } from '../utils/search.js';
 
@@ -112,7 +113,11 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { name, meaning, remark } = req.body;
-    if (!name || !meaning) return error(res, '词根和核心含义为必填项');
+    if (!name || !meaning) return error(res, '词根和核心含义为必填项', 400);
+    if (!isString(name) || !isString(meaning)) {
+      return error(res, '词根和核心含义必须为字符串', 400);
+    }
+    if (!isOptionalString(remark)) return error(res, '备注必须为字符串', 400);
     const trimmedName = name.trim();
     const existedRoot = await Root.findOne({ where: { name: trimmedName, userId: req.userId } });
     if (existedRoot) return error(res, '词根已存在，请勿重复添加', 400);
@@ -137,7 +142,11 @@ router.put('/:id', async (req, res) => {
     const root = await Root.findByPk(req.params.id);
     if (!root || root.userId !== req.userId) return error(res, '词根不存在');
     const { name, meaning, remark } = req.body;
-    if (!name || !meaning) return error(res, '词根和核心含义为必填项');
+    if (!name || !meaning) return error(res, '词根和核心含义为必填项', 400);
+    if (!isString(name) || !isString(meaning)) {
+      return error(res, '词根和核心含义必须为字符串', 400);
+    }
+    if (!isOptionalString(remark)) return error(res, '备注必须为字符串', 400);
     const trimmedName = name.trim();
     const existedRoot = await Root.findOne({ where: { name: trimmedName, userId: req.userId } });
     if (existedRoot && existedRoot.id !== root.id)

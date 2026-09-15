@@ -9,6 +9,7 @@ import {
   ReviewHistory,
 } from '../../models/index.js';
 import { success, error } from '../../utils/response.js';
+import { isString, isOptionalString } from '../../utils/validation.js';
 import { ensureDefaultRoot } from '../../utils/defaultRoot.js';
 import { ensureWordReview } from '../../utils/wordReview.js';
 
@@ -23,7 +24,13 @@ const isWordNameConflict = (err) =>
 router.post('/', async (req, res) => {
   try {
     const { rootId: rawRootId, rootIds: rawRootIds, name, meaning, phonetic, remark } = req.body;
-    if (!name || !meaning) return error(res, '单词和含义为必填项');
+    if (!name || !meaning) return error(res, '单词和含义为必填项', 400);
+    if (!isString(name) || !isString(meaning)) {
+      return error(res, '单词和含义必须为字符串', 400);
+    }
+    if (!isOptionalString(phonetic) || !isOptionalString(remark)) {
+      return error(res, '音标和备注必须为字符串', 400);
+    }
 
     let rootIds = [];
     if (Array.isArray(rawRootIds)) rootIds = rawRootIds.map(Number).filter(Boolean);
@@ -149,7 +156,17 @@ router.put('/:id', async (req, res) => {
 
       const { name, meaning, phonetic, remark, rootIds: rawRootIds } = req.body;
       if (!name || !meaning) {
-        const validationError = new Error('单词和含义为必填项');
+        const requiredError = new Error('单词和含义为必填项');
+        requiredError.code = 400;
+        throw requiredError;
+      }
+      if (
+        !isString(name) ||
+        !isString(meaning) ||
+        !isOptionalString(phonetic) ||
+        !isOptionalString(remark)
+      ) {
+        const validationError = new Error('单词、含义、音标和备注必须为字符串');
         validationError.code = 400;
         throw validationError;
       }
@@ -219,8 +236,13 @@ router.put('/:id', async (req, res) => {
 router.put('/:id/move', async (req, res) => {
   try {
     const { fromRootId, toRootId } = req.body;
-    if (!fromRootId || !toRootId) return error(res, 'fromRootId 和 toRootId 为必填项');
-    if (Number(fromRootId) === Number(toRootId)) return error(res, '来源词根和目标词根不能相同');
+    if (!fromRootId || !toRootId) return error(res, 'fromRootId 和 toRootId 为必填项', 400);
+    if (!Number.isInteger(Number(fromRootId)) || !Number.isInteger(Number(toRootId))) {
+      return error(res, 'fromRootId 和 toRootId 必须为整数', 400);
+    }
+    if (Number(fromRootId) === Number(toRootId)) {
+      return error(res, '来源词根和目标词根不能相同', 400);
+    }
 
     const word = await Word.findOne({ where: { id: req.params.id, userId: req.userId } });
     if (!word) return error(res, '单词不存在');

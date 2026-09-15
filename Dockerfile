@@ -17,6 +17,10 @@ RUN npm ci --omit=dev
 FROM node:20-alpine
 WORKDIR /app
 
+# 生产模式：Express 默认错误处理器不再输出 HTML 堆栈，
+# 同时作为 trust proxy 默认值（信任一层反向代理）的判定依据。
+ENV NODE_ENV=production
+
 RUN apk add --no-cache su-exec
 
 # 复制后端

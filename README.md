@@ -176,6 +176,25 @@ npm run test:coverage
 | `API_TOKEN_PEPPER`    | 是       | 用户 API Token 的 HMAC pepper，必须与 `JWT_SECRET` 不同；改密或轮换 JWT 密钥不会撤销已有 API Token |
 | `ADMIN_JWT_SECRET`    | 是       | 超级管理员 token 的签名密钥，必须与 `JWT_SECRET` 不同                                              |
 | `ADMIN_PASSWORD_HASH` | 是       | 超级管理员登录密码的 bcrypt 哈希，对应页面为 `/super-admin`                                        |
+| `ALLOWED_ORIGINS`     | 否       | 允许跨域的来源白名单（逗号分隔）；留空表示仅允许同源请求                                           |
+| `TRUST_PROXY`         | 否       | 反向代理层数，决定 Express 如何解析客户端真实 IP；未设置时生产环境默认 `1`，其他环境 `false`       |
+
+### 反向代理与限流（`TRUST_PROXY`）
+
+登录、管理员登录、AI 接口按客户端 IP 限流。若服务部署在 Nginx 等反向代理之后，必须让 Express 信任代理，否则所有请求的 `req.ip` 都会是代理地址，导致全站共用一个限流桶：
+
+- 未设置 `TRUST_PROXY` 时：`NODE_ENV=production`（Docker 镜像已默认设置）按「信任一层代理」处理，本地开发/测试环境不信任任何代理头
+- 服务**直接暴露公网**（无反向代理）时必须显式设置 `TRUST_PROXY=false`，否则客户端可伪造 `X-Forwarded-For` 绕过限流
+- 多级代理（如 CDN + Nginx）按实际跳数设置，如 `TRUST_PROXY=2`
+
+Docker 部署时该变量由 `docker-compose.yml` 透传，默认值为 `1`。
+
+### 错误响应格式
+
+所有未捕获异常统一返回 JSON，不再返回 HTML 错误页：
+
+- 4xx：仅回传显式标记可暴露的提示（如 CORS 拒绝、请求体解析失败），其余返回「请求失败」
+- 5xx：返回 `{"code":500,"msg":"服务器内部错误"}`，完整堆栈只写入服务端日志
 
 ## 运维审计命令
 

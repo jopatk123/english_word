@@ -6,10 +6,13 @@ import { todayStr } from '../../utils/srs.js';
 
 const router = Router();
 
+// 解析 days 查询参数：默认 30 天，钳制在 [1, 365] 之间
+const parseDays = (raw) => Math.min(Math.max(parseInt(raw, 10) || 30, 1), 365);
+
 // 获取学习历史（用于报表）
 router.get('/history', async (req, res) => {
   try {
-    const days = parseInt(req.query.days) || 30;
+    const days = parseDays(req.query.days);
     const since = new Date();
     since.setDate(since.getDate() - days);
 
@@ -38,7 +41,7 @@ router.get('/history', async (req, res) => {
 router.get('/history/summary', async (req, res) => {
   try {
     const tz = req.query.tz;
-    const days = parseInt(req.query.days) || 30;
+    const days = parseDays(req.query.days);
     const since = new Date();
     since.setDate(since.getDate() - days);
 

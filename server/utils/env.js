@@ -27,7 +27,12 @@ export const getJwtSecret = () => {
 
 export const getAdminJwtSecret = () => {
   const secret = readEnv('ADMIN_JWT_SECRET');
-  if (secret) return secret;
+  if (secret) {
+    if (secret === getJwtSecret()) {
+      throw new Error('ADMIN_JWT_SECRET 必须与 JWT_SECRET 使用不同的随机字符串');
+    }
+    return secret;
+  }
 
   if (process.env.NODE_ENV === 'test') {
     return 'test-admin-jwt-secret';
@@ -111,4 +116,30 @@ export const getAllowedOrigins = () => {
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean);
+};
+
+/**
+ * 返回 Express 的 trust proxy 配置。
+ *
+ * 未设置 TRUST_PROXY 时：生产环境默认信任一层反向代理（1），
+ * 其他环境默认为 false，避免客户端伪造 X-Forwarded-For 绕过 IP 限流。
+ * 若服务直接暴露公网（无反向代理），必须显式设置 TRUST_PROXY=false。
+ *
+ * 支持取值：false / true / 正整数（信任的代理跳数）/ Express 支持的其他写法（如 loopback、IP 网段）。
+ */
+export const getTrustProxySetting = () => {
+  const raw = readEnv('TRUST_PROXY');
+  if (!raw) {
+    return process.env.NODE_ENV === 'production' ? 1 : false;
+  }
+
+  const normalized = raw.toLowerCase();
+  if (normalized === 'false' || normalized === '0') return false;
+  if (normalized === 'true') return true;
+  if (/^\d+$/.test(normalized)) {
+    const hops = Number.parseInt(normalized, 10);
+    if (hops >= 1) return hops;
+  }
+
+  return raw;
 };

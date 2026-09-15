@@ -15,6 +15,11 @@ services:
       API_TOKEN_PEPPER: ${API_TOKEN_PEPPER:?API_TOKEN_PEPPER is required}
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:?ADMIN_JWT_SECRET is required}
       ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:?ADMIN_PASSWORD_HASH is required}
+      # 可选：跨域来源白名单（留空表示仅允许同源）
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      # 可选：反向代理层数，默认 1（信任一层反向代理，如 Nginx）。
+      # 服务直接暴露公网时请设置为 false，否则客户端可伪造 X-Forwarded-For 绕过限流。
+      TRUST_PROXY: ${TRUST_PROXY:-1}
     restart: unless-stopped
     logging:
       driver: json-file

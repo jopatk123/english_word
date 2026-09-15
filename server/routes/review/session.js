@@ -111,7 +111,8 @@ router.post('/:wordId/result', async (req, res) => {
 router.get('/quiz-choices/:wordId', async (req, res) => {
   try {
     const { wordId } = req.params;
-    const count = Math.min(parseInt(req.query.count) || 3, 5);
+    // 干扰项数量钳制在 [1, 5]：负值会让 SQLite 忽略 LIMIT 返回全表
+    const count = Math.min(Math.max(parseInt(req.query.count, 10) || 3, 1), 5);
 
     const word = await Word.findOne({
       where: { id: wordId, userId: req.userId },

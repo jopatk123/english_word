@@ -2,6 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { User } from '../models/index.js';
 import { success, error } from '../utils/response.js';
+import { isString } from '../utils/validation.js';
 import { generateToken, authMiddleware } from '../middleware/auth.js';
 
 const router = Router();
@@ -11,6 +12,9 @@ router.post('/register', async (req, res) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) return error(res, '用户名和密码为必填项', 400);
+    if (!isString(username) || !isString(password)) {
+      return error(res, '用户名和密码必须为字符串', 400);
+    }
 
     const trimmedUsername = username.trim();
     if (trimmedUsername.length < 2 || trimmedUsername.length > 30) {
@@ -38,6 +42,9 @@ router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) return error(res, '用户名和密码为必填项', 400);
+    if (!isString(username) || !isString(password)) {
+      return error(res, '用户名和密码必须为字符串', 400);
+    }
 
     const user = await User.findOne({ where: { username: username.trim() } });
     if (!user) return error(res, '用户名或密码错误', 401);

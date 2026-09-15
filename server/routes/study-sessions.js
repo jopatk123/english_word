@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { Op, fn, col } from 'sequelize';
 import { StudySession } from '../models/index.js';
 import { success, error } from '../utils/response.js';
+import { isOptionalString } from '../utils/validation.js';
 import { todayStart, tomorrowStart, dateStrAt, addDays, startOfDay } from '../utils/srs.js';
 import {
   STUDY_SESSION_END_REASONS,
@@ -86,6 +87,7 @@ export function createStudySessionsRouter(options = {}) {
       }
 
       const { note } = req.body;
+      if (!isOptionalString(note)) return error(res, 'note 必须为字符串', 400);
       let session;
       try {
         session = await StudySession.create({

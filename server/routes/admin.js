@@ -16,6 +16,7 @@ import {
 } from '../models/index.js';
 import { success, successList, error } from '../utils/response.js';
 import { getAdminPasswordHash } from '../utils/env.js';
+import { isString } from '../utils/validation.js';
 import { adminAuthMiddleware, generateAdminToken } from '../middleware/admin.js';
 import { adminLoginRateLimiter } from '../middleware/rateLimiter.js';
 
@@ -25,6 +26,7 @@ router.post('/login', adminLoginRateLimiter, async (req, res) => {
   try {
     const { password } = req.body;
     if (!password) return error(res, '密码为必填项', 400);
+    if (!isString(password)) return error(res, '密码必须为字符串', 400);
 
     const passwordMatches = await bcrypt.compare(password, getAdminPasswordHash());
     if (!passwordMatches) {
@@ -71,6 +73,7 @@ router.put('/users/:id/password', adminAuthMiddleware, async (req, res) => {
   try {
     const { password } = req.body;
     if (!password) return error(res, '密码为必填项', 400);
+    if (!isString(password)) return error(res, '密码必须为字符串', 400);
     if (password.length < 6 || password.length > 100) {
       return error(res, '密码长度需在 6-100 个字符之间', 400);
     }

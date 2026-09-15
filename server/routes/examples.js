@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { Example, Word } from '../models/index.js';
 import { success, successList, error } from '../utils/response.js';
+import { isString, isOptionalString } from '../utils/validation.js';
 
 const router = Router();
 
@@ -74,7 +75,13 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { wordId, sentence, translation, remark } = req.body;
-    if (!wordId || !sentence || !translation) return error(res, '单词ID、例句原文和翻译为必填项');
+    if (!wordId || !sentence || !translation) {
+      return error(res, '单词ID、例句原文和翻译为必填项', 400);
+    }
+    if (!isString(sentence) || !isString(translation)) {
+      return error(res, '例句原文和翻译必须为字符串', 400);
+    }
+    if (!isOptionalString(remark)) return error(res, '备注必须为字符串', 400);
     const word = await isWordOwnedByUser(wordId, req.userId);
     if (!word) return error(res, '关联的单词不存在');
     const trimmedSentence = sentence.trim();
@@ -100,7 +107,11 @@ router.put('/:id', async (req, res) => {
     });
     if (!example || example.word?.userId !== req.userId) return error(res, '例句不存在');
     const { sentence, translation, remark } = req.body;
-    if (!sentence || !translation) return error(res, '例句原文和翻译为必填项');
+    if (!sentence || !translation) return error(res, '例句原文和翻译为必填项', 400);
+    if (!isString(sentence) || !isString(translation)) {
+      return error(res, '例句原文和翻译必须为字符串', 400);
+    }
+    if (!isOptionalString(remark)) return error(res, '备注必须为字符串', 400);
     const trimmedSentence = sentence.trim();
     const existedExample = await Example.findOne({
       where: { wordId: example.wordId, sentence: trimmedSentence },
