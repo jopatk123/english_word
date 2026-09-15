@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Example, Word } from '../models/index.js';
-import { success, successList, error } from '../utils/response.js';
+import { success, successList, error, handleRouteError } from '../utils/response.js';
 import { isString, isOptionalString } from '../utils/validation.js';
 
 const router = Router();
@@ -47,7 +47,7 @@ router.get('/', async (req, res) => {
     ]);
     successList(res, examples, total);
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -67,7 +67,7 @@ router.get('/:id', async (req, res) => {
     if (!example || example.word?.userId !== req.userId) return error(res, '例句不存在');
     success(res, example);
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -95,7 +95,7 @@ router.post('/', async (req, res) => {
     });
     success(res, example, '添加成功');
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -125,7 +125,7 @@ router.put('/:id', async (req, res) => {
     });
     success(res, example, '更新成功');
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -139,7 +139,7 @@ router.delete('/:id', async (req, res) => {
     await example.destroy();
     success(res, null, '删除成功');
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 

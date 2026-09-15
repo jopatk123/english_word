@@ -14,7 +14,7 @@ import {
   UserAiSetting,
   ApiToken,
 } from '../models/index.js';
-import { success, successList, error } from '../utils/response.js';
+import { success, successList, error, handleRouteError } from '../utils/response.js';
 import { getAdminPasswordHash } from '../utils/env.js';
 import { isString } from '../utils/validation.js';
 import { adminAuthMiddleware, generateAdminToken } from '../middleware/admin.js';
@@ -36,7 +36,7 @@ router.post('/login', adminLoginRateLimiter, async (req, res) => {
     const token = generateAdminToken();
     success(res, { token }, '登录成功');
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -65,7 +65,7 @@ router.get('/users', adminAuthMiddleware, async (req, res) => {
 
     successList(res, rows, count);
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -88,7 +88,7 @@ router.put('/users/:id/password', adminAuthMiddleware, async (req, res) => {
     });
     success(res, null, '密码已更新');
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -109,7 +109,7 @@ router.put('/users/:id/status', adminAuthMiddleware, async (req, res) => {
       disabled ? '已禁用登录' : '已启用登录'
     );
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -210,7 +210,7 @@ router.delete('/users/:id', adminAuthMiddleware, async (req, res) => {
 
     success(res, { id: userId, deletedCounts }, '用户及关联数据已删除');
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 

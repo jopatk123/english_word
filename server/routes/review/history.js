@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { Op } from 'sequelize';
 import { Word, Root, WordReview, ReviewHistory } from '../../models/index.js';
-import { success, error } from '../../utils/response.js';
+import { success, handleRouteError } from '../../utils/response.js';
 import { todayStr } from '../../utils/srs.js';
 
 const router = Router();
@@ -33,7 +33,7 @@ router.get('/history', async (req, res) => {
 
     success(res, histories);
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -93,7 +93,7 @@ router.get('/history/summary', async (req, res) => {
       totalReviews: histories.length,
     });
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -180,7 +180,7 @@ router.get('/export', async (req, res) => {
     res.setHeader('Content-Disposition', 'attachment; filename=learning-data.json');
     res.json({ data, exportedAt: new Date().toISOString(), total: data.length });
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 

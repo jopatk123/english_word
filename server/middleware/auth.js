@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { error } from '../utils/response.js';
 import { getJwtSecret } from '../utils/env.js';
+import logger from '../utils/logger.js';
 import { User } from '../models/index.js';
 import { API_TOKEN_PREFIX, validateToken } from '../services/api-tokens.js';
 
@@ -33,8 +34,10 @@ const authenticateApiToken = async (req, res, next, token) => {
     req.authType = AUTH_TYPE_API_TOKEN;
     return next();
   } catch (e) {
+    // 环境变量缺失属于服务端配置问题：只记日志，不回传给未认证请求（避免泄露配置项名称）
     if (e.message?.includes('API_TOKEN_PEPPER')) {
-      return error(res, e.message, 500);
+      logger.error('api-token-config-error', { message: e.message });
+      return error(res, '服务器内部错误', 500);
     }
     return error(res, '无效的 API Token', 401);
   }
@@ -56,8 +59,10 @@ const authenticateJwt = async (req, res, next, token) => {
     req.authType = AUTH_TYPE_JWT;
     return next();
   } catch (e) {
+    // 同上：JWT_SECRET 缺失只记日志
     if (e.message?.includes('JWT_SECRET')) {
-      return error(res, e.message, 500);
+      logger.error('jwt-config-error', { message: e.message });
+      return error(res, '服务器内部错误', 500);
     }
     return error(res, '登录已过期，请重新登录', 401);
   }

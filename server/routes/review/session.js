@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { Op, literal } from 'sequelize';
 import { sequelize, Word, WordReview, ReviewHistory } from '../../models/index.js';
-import { success, error } from '../../utils/response.js';
+import { success, error, handleRouteError } from '../../utils/response.js';
 import { getNextReview, buildDueSchedule } from '../../utils/srs.js';
 import { ensureWordReview } from '../../utils/wordReview.js';
 
@@ -103,7 +103,7 @@ router.post('/:wordId/result', async (req, res) => {
 
     success(res, updatedReview);
   } catch (e) {
-    error(res, e.message, e.code || 500);
+    handleRouteError(res, e);
   }
 });
 
@@ -132,7 +132,7 @@ router.get('/quiz-choices/:wordId', async (req, res) => {
       distractors: distractors.map((d) => ({ id: d.id, name: d.name, meaning: d.meaning })),
     });
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 

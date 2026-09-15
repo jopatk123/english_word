@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { error } from '../utils/response.js';
 import { getAdminJwtSecret, getAdminPasswordHash } from '../utils/env.js';
+import logger from '../utils/logger.js';
 import { API_TOKEN_PREFIX } from '../services/api-tokens.js';
 
 const getAdminCredentialVersion = () =>
@@ -41,8 +42,10 @@ export const adminAuthMiddleware = (req, res, next) => {
     req.adminRole = decoded.role;
     next();
   } catch (e) {
+    // 环境变量缺失属于服务端配置问题：只记日志，不回传给未认证请求（避免泄露配置项名称）
     if (e.message?.includes('ADMIN_JWT_SECRET')) {
-      return error(res, e.message, 500);
+      logger.error('admin-jwt-config-error', { message: e.message });
+      return error(res, '服务器内部错误', 500);
     }
     return error(res, '登录已过期，请重新登录', 401);
   }

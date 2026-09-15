@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { Op, fn, col } from 'sequelize';
 import { StudySession } from '../models/index.js';
-import { success, error } from '../utils/response.js';
+import { success, error, handleRouteError } from '../utils/response.js';
 import { isOptionalString } from '../utils/validation.js';
 import { todayStart, tomorrowStart, dateStrAt, addDays, startOfDay } from '../utils/srs.js';
 import {
@@ -62,7 +62,7 @@ export function createStudySessionsRouter(options = {}) {
         })
       );
     } catch (e) {
-      error(res, e.message);
+      handleRouteError(res, e);
     }
   });
 
@@ -120,7 +120,7 @@ export function createStudySessionsRouter(options = {}) {
       await publishTimerState(req.userId);
       return success(res, state);
     } catch (e) {
-      return error(res, e.message);
+      return handleRouteError(res, e);
     }
   });
 
@@ -170,7 +170,7 @@ export function createStudySessionsRouter(options = {}) {
       await publishTimerState(req.userId);
       return success(res, state);
     } catch (e) {
-      return error(res, e.message);
+      return handleRouteError(res, e);
     }
   });
 
@@ -226,7 +226,7 @@ export function createStudySessionsRouter(options = {}) {
 
       success(res, { totalSeconds, todaySeconds, recentSessions });
     } catch (e) {
-      error(res, e.message);
+      handleRouteError(res, e);
     }
   });
 
@@ -342,7 +342,7 @@ export function createStudySessionsRouter(options = {}) {
         recentSessions,
       });
     } catch (e) {
-      error(res, e.message);
+      handleRouteError(res, e);
     }
   });
 
@@ -383,7 +383,7 @@ export function createStudySessionsRouter(options = {}) {
       res.setHeader('Content-Disposition', 'attachment; filename=study-sessions.json');
       res.json(data);
     } catch (e) {
-      error(res, e.message);
+      handleRouteError(res, e);
     }
   });
 

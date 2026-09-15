@@ -104,6 +104,16 @@ describe('AI settings route', () => {
     expect(summaryRes.status).toBe(200);
     expect(summaryRes.body.data.providerKeys).toEqual({});
   });
+
+  it('缺少 providerId / apiKey 时返回 400 + 提示（不回传内部错误原文）', async () => {
+    const missingProvider = await request(app).put('/ai-settings').send({ apiKey: 'sk-x' });
+    expect(missingProvider.status).toBe(400);
+    expect(missingProvider.body.msg).toBe('缺少 AI providerId');
+
+    const missingKey = await request(app).put('/ai-settings').send({ providerId: 'openai' });
+    expect(missingKey.status).toBe(400);
+    expect(missingKey.body.msg).toBe('API Key 不能为空');
+  });
 });
 
 describe('resolveUserAiConfig', () => {

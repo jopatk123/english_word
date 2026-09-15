@@ -14,6 +14,7 @@ import { createApp } from '../app.js';
 import { initDB, User, Word } from '../models/index.js';
 import { generateToken } from '../middleware/auth.js';
 import { getTrustProxySetting } from '../utils/env.js';
+import { handleRouteError } from '../utils/response.js';
 
 // 模拟一个未被路由 try/catch 捕获的中间件异常，用于验证全局错误处理
 vi.mock('../utils/logger.js', async (importOriginal) => {
@@ -104,6 +105,83 @@ describe('统一错误处理', () => {
     const res = await request(app).post('/api/auth/login');
     expect(res.status).toBe(400);
     expect(res.body.msg).toContain('必填');
+  });
+});
+
+// ================================================================
+// handleRouteError：路由 catch 分支的错误响应策略
+// ================================================================
+
+describe('handleRouteError', () => {
+  const createRes = () => {
+    const res = { statusCode: null, body: null };
+    res.status = (code) => {
+      res.statusCode = code;
+      return res;
+    };
+    res.json = (payload) => {
+      res.body = payload;
+      return res;
+    };
+    return res;
+  };
+
+  it('业务错误（statusCode 4xx）回传原始 message', () => {
+    const res = createRes();
+    handleRouteError(res, Object.assign(new Error('过期时间格式无效'), { statusCode: 400 }));
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ code: 400, data: null, msg: '过期时间格式无效' });
+  });
+
+  it('http-errors 风格 status 与路由内数值 code 同样按 4xx 回传', () => {
+    const byStatus = createRes();
+    handleRouteError(byStatus, Object.assign(new Error('词根不存在'), { status: 404 }));
+    expect(byStatus.statusCode).toBe(404);
+    expect(byStatus.body.msg).toBe('词根不存在');
+
+    const byCode = createRes();
+    handleRouteError(byCode, Object.assign(new Error('参数错误'), { code: 400 }));
+    expect(byCode.statusCode).toBe(400);
+    expect(byCode.body.msg).toBe('参数错误');
+  });
+
+  it('5xx 异常折叠为通用提示，且不泄漏原始信息', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const res = createRes();
+    const internalError = Object.assign(new Error('SQLITE_ERROR: no such table: words'), {
+      statusCode: 502,
+    });
+    handleRouteError(res, internalError);
+
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toEqual({ code: 500, data: null, msg: '服务器内部错误' });
+    expect(JSON.stringify(res.body)).not.toContain('SQLITE_ERROR');
+    // 服务端仍需留痕，便于排查
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it('Sequelize 的字符串 code（如 SQLITE_CONSTRAINT）不会被当成状态码回传', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const res = createRes();
+    handleRouteError(
+      res,
+      Object.assign(new Error('UNIQUE constraint failed: users.username'), {
+        code: 'SQLITE_CONSTRAINT',
+      })
+    );
+
+    expect(res.statusCode).toBe(500);
+    expect(res.body.msg).toBe('服务器内部错误');
+    consoleError.mockRestore();
+  });
+
+  it('支持自定义兜底文案', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const res = createRes();
+    handleRouteError(res, new Error('boom'), '创建 API Token 失败');
+    expect(res.body.msg).toBe('创建 API Token 失败');
+    consoleError.mockRestore();
   });
 });
 

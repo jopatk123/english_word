@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Word, Root, WordReview } from '../../models/index.js';
-import { success, error } from '../../utils/response.js';
+import { success, handleRouteError } from '../../utils/response.js';
 import { REVIEW_STATUS } from '../../utils/srs.js';
 
 const router = Router();
@@ -55,7 +55,7 @@ router.get('/roots-progress', async (req, res) => {
 
     success(res, result);
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { success, error } from '../utils/response.js';
+import { success, error, handleRouteError } from '../utils/response.js';
 import { ApiTokenError, createToken, listUserTokens, revokeToken } from '../services/api-tokens.js';
 
 const router = Router();
@@ -20,7 +20,7 @@ const handleApiTokenError = (res, e, fallbackMsg) => {
   if (e instanceof ApiTokenError) {
     return error(res, e.message, e.statusCode);
   }
-  return error(res, e.message || fallbackMsg);
+  return handleRouteError(res, e, fallbackMsg);
 };
 
 router.post('/', async (req, res) => {

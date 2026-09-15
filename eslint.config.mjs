@@ -2,6 +2,7 @@ import js from '@eslint/js';
 import pluginVue from 'eslint-plugin-vue';
 import globals from 'globals';
 import prettierConfig from 'eslint-config-prettier';
+import { builtinRules } from 'eslint/use-at-your-own-risk';
 
 /** 公共宽松规则（warn 级别，不阻断开发） */
 const looseRules = {
@@ -9,6 +10,25 @@ const looseRules = {
   'no-console': 'off',
   'no-debugger': 'warn',
   'no-undef': 'error',
+};
+
+// ── 文件体量控制（见 AGENTS.md）────────────────────────────
+// 限制有效行数（跳过空行与注释）：600 行预警、800 行直接报错（阻断 CI）。
+// 同一条规则在同名文件里只能有一个阈值，因此把核心 max-lines 复制为
+// local/max-lines-hard 承担 800 行的硬上限，核心规则保留 600 行预警。
+const MAX_LINES_WARN = 600;
+const MAX_LINES_ERROR = 800;
+const maxLinesOptions = { skipBlankLines: true, skipComments: true };
+
+const sizeRules = {
+  'max-lines': ['warn', { max: MAX_LINES_WARN, ...maxLinesOptions }],
+  'local/max-lines-hard': ['error', { max: MAX_LINES_ERROR, ...maxLinesOptions }],
+};
+
+const sizePlugin = {
+  rules: {
+    'max-lines-hard': builtinRules.get('max-lines'),
+  },
 };
 
 export default [
@@ -86,6 +106,13 @@ export default [
     rules: {
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
+  },
+
+  // ── 文件体量控制（全量 JS/Vue 文件）──────────────────────
+  {
+    files: ['**/*.{js,mjs,cjs,vue}'],
+    plugins: { local: sizePlugin },
+    rules: sizeRules,
   },
 
   // ── 关闭与 Prettier 冲突的格式类规则 ────────────────────

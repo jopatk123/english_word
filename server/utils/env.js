@@ -42,7 +42,10 @@ export const getAdminJwtSecret = () => {
 };
 
 export const getAdminPasswordHash = () => {
-  const passwordHash = readEnv('ADMIN_PASSWORD_HASH');
+  // 同一个 .env 既被 docker-compose 读取（要求 bcrypt 哈希里的 $ 转义为 $$，
+  // 否则会被当成变量插值），也被本地 dotenv 读取（不做任何转义）。
+  // 这里统一还原 $$ -> $，保证两种运行方式都能正常工作。
+  const passwordHash = readEnv('ADMIN_PASSWORD_HASH').replace(/\$\$/g, '$');
   if (passwordHash) {
     if (/^\$2[aby]\$(1[0-9]|2[0-9]|3[01])\$/.test(passwordHash)) {
       return passwordHash;

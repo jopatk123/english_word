@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Word, Root, WordRoot, Example } from '../../models/index.js';
-import { success, successList, error } from '../../utils/response.js';
+import { success, successList, error, handleRouteError } from '../../utils/response.js';
 import { buildKeywordSearch } from '../../utils/search.js';
 
 const router = Router();
@@ -103,7 +103,7 @@ router.get('/', async (req, res) => {
     }
     successList(res, result, total);
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -133,7 +133,7 @@ router.get('/:id', async (req, res) => {
     };
     success(res, result);
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 

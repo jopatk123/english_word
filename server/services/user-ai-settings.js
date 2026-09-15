@@ -6,6 +6,9 @@ function normalizeProviderId(providerId) {
   return typeof providerId === 'string' ? providerId.trim() : '';
 }
 
+// 参数校验类错误带 statusCode 400，路由层可安全回传 message（见 utils/response.js）
+const badRequest = (message) => Object.assign(new Error(message), { statusCode: 400 });
+
 function normalizeApiKey(apiKey) {
   return typeof apiKey === 'string' ? apiKey.trim() : '';
 }
@@ -71,10 +74,10 @@ export async function saveUserAiKey(userId, providerId, apiKey, options = {}) {
   const normalizedProviderId = normalizeProviderId(providerId);
   const normalizedApiKey = normalizeApiKey(apiKey);
   if (!normalizedProviderId) {
-    throw new Error('缺少 AI providerId');
+    throw badRequest('缺少 AI providerId');
   }
   if (!normalizedApiKey) {
-    throw new Error('API Key 不能为空');
+    throw badRequest('API Key 不能为空');
   }
 
   const current = await getUserAiKeyMap(userId, options);

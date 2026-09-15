@@ -8,7 +8,7 @@ import {
   WordReview,
   ReviewHistory,
 } from '../models/index.js';
-import { success, error } from '../utils/response.js';
+import { success, error, handleRouteError } from '../utils/response.js';
 import { isString, isOptionalString } from '../utils/validation.js';
 import { ensureDefaultRoot } from '../utils/defaultRoot.js';
 import { buildKeywordSearch } from '../utils/search.js';
@@ -31,7 +31,7 @@ router.get('/default', async (req, res) => {
       isDefault: true,
     });
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -74,7 +74,7 @@ router.get('/', async (req, res) => {
     });
     success(res, result);
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -105,7 +105,7 @@ router.get('/:id', async (req, res) => {
     };
     success(res, result);
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -132,7 +132,7 @@ router.post('/', async (req, res) => {
     if (isUniqueNameConflict(e)) {
       return error(res, '词根已存在，请勿重复添加', 400);
     }
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -157,7 +157,7 @@ router.put('/:id', async (req, res) => {
     if (isUniqueNameConflict(e)) {
       return error(res, '词根已存在，请勿重复命名', 400);
     }
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -211,7 +211,7 @@ router.delete('/:id', async (req, res) => {
 
     success(res, null, '删除成功');
   } catch (e) {
-    error(res, e.message, e.code || 500);
+    handleRouteError(res, e);
   }
 });
 

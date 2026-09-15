@@ -29,6 +29,29 @@ export const adminLoginRateLimiter = rateLimit({
 });
 
 /**
+ * 登录账号级限速：同一用户名 10 分钟内最多 10 次失败尝试（登录成功不计入）。
+ *
+ * IP 限速只能挡住单机暴力破解，攻击者用大量代理 IP 对同一账号撞库时不起作用；
+ * 这里以用户名为维度再限一层，两者互补。
+ */
+export const loginAccountRateLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 10,
+  skipSuccessfulRequests: true,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const username =
+      typeof req.body?.username === 'string' ? req.body.username.trim().toLowerCase() : '';
+    // 缺失用户名时无法按账号计数，退回 IP 维度（仍受 authRateLimiter 约束）
+    return username ? `acct:${username}` : ipKeyGenerator(req.ip);
+  },
+  handler: (_req, res) => {
+    error(res, '该账号登录失败次数过多，请稍后再试', 429);
+  },
+});
+
+/**
  * AI 接口限速：按登录用户限额，防止上游模型调用被单用户滥用。
  */
 export const aiRateLimiter = rateLimit({

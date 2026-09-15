@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { Op } from 'sequelize';
 import { WordReview } from '../../models/index.js';
-import { success, error } from '../../utils/response.js';
+import { success, handleRouteError } from '../../utils/response.js';
 import { REVIEW_STATUS, todayStr, todayStart } from '../../utils/srs.js';
 import { computeMinDueCount } from '../../utils/dueFiller.js';
 
@@ -58,7 +58,7 @@ router.get('/stats', async (req, res) => {
       overdue: overdueCount,
     });
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 

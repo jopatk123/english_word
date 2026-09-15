@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { Op, literal } from 'sequelize';
 import { Word, Root, Example, WordReview } from '../../models/index.js';
-import { success, error } from '../../utils/response.js';
+import { success, handleRouteError } from '../../utils/response.js';
 import { REVIEW_STATUS, todayStr, todayStart } from '../../utils/srs.js';
 import { countLearning, computeMinDueCount } from '../../utils/dueFiller.js';
 
@@ -181,7 +181,7 @@ router.get('/due', async (req, res) => {
     const valid = reviews.filter((r) => r.word);
     success(res, valid);
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 

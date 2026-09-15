@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { User } from '../models/index.js';
-import { success, error } from '../utils/response.js';
+import { success, error, handleRouteError } from '../utils/response.js';
 import { isString } from '../utils/validation.js';
 import { generateToken, authMiddleware } from '../middleware/auth.js';
+import { loginAccountRateLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
 
@@ -25,7 +26,8 @@ router.post('/register', async (req, res) => {
     }
 
     const existingUser = await User.findOne({ where: { username: trimmedUsername } });
-    if (existingUser) return error(res, '用户名已存在', 400);
+    // 中性提示：不直接确认用户名是否已存在，避免被用来批量枚举已注册账号
+    if (existingUser) return error(res, '用户名不可用，请更换后重试', 400);
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({ username: trimmedUsername, password: hashedPassword });
@@ -33,12 +35,12 @@ router.post('/register', async (req, res) => {
 
     success(res, { token, user: { id: user.id, username: user.username } }, '注册成功');
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
-// 登录
-router.post('/login', async (req, res) => {
+// 登录（账号级失败限流 + 全局 IP 限流双重保护）
+router.post('/login', loginAccountRateLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) return error(res, '用户名和密码为必填项', 400);
@@ -56,7 +58,7 @@ router.post('/login', async (req, res) => {
     const token = generateToken(user);
     success(res, { token, user: { id: user.id, username: user.username } }, '登录成功');
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -67,7 +69,7 @@ router.get('/me', authMiddleware, async (req, res) => {
     if (!user) return error(res, '用户不存在', 404);
     success(res, { id: user.id, username: user.username });
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 

@@ -8,7 +8,7 @@ import {
   WordReview,
   ReviewHistory,
 } from '../../models/index.js';
-import { success, error } from '../../utils/response.js';
+import { success, error, handleRouteError } from '../../utils/response.js';
 import { isString, isOptionalString } from '../../utils/validation.js';
 import { ensureDefaultRoot } from '../../utils/defaultRoot.js';
 import { ensureWordReview } from '../../utils/wordReview.js';
@@ -136,7 +136,7 @@ router.post('/', async (req, res) => {
     if (isWordNameConflict(e)) {
       return error(res, '单词已存在，请勿重复添加', 400);
     }
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -228,7 +228,7 @@ router.put('/:id', async (req, res) => {
     if (isWordNameConflict(e)) {
       return error(res, '已存在同名单词，请勿重复命名', 400);
     }
-    error(res, e.message, e.code || 500);
+    handleRouteError(res, e);
   }
 });
 
@@ -266,7 +266,7 @@ router.put('/:id/move', async (req, res) => {
 
     success(res, null, '移动成功');
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
@@ -286,7 +286,7 @@ router.delete('/:id', async (req, res) => {
 
     success(res, null, '删除成功');
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 

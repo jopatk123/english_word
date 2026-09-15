@@ -65,14 +65,16 @@ describe('POST /api/auth/register', () => {
     expect(res.body.msg).toMatch(/长度/);
   });
 
-  it('重复注册同名用户返回 400', async () => {
+  it('重复注册同名用户返回 400，且提示不暴露「用户名已存在」', async () => {
     const username = `dupuser_${uniqueSuffix()}`;
     await request(app).post('/api/auth/register').send({ username, password: 'pass123' });
     const res = await request(app)
       .post('/api/auth/register')
       .send({ username, password: 'pass123' });
     expect(res.status).toBe(400);
-    expect(res.body.msg).toMatch(/已存在/);
+    // 中性提示：避免注册接口被用来批量枚举已注册账号
+    expect(res.body.msg).not.toMatch(/已存在/);
+    expect(res.body.msg).toMatch(/不可用/);
   });
 });
 
@@ -108,6 +110,40 @@ describe('POST /api/auth/login', () => {
   it('缺少参数返回 400', async () => {
     const res = await request(app).post('/api/auth/login').send({ username });
     expect(res.status).toBe(400);
+  });
+});
+
+// ── 账号级登录失败限流 ────────────────────────────────────────
+describe('POST /api/auth/login 账号级失败限流', () => {
+  const password = 'limitpass123';
+
+  it('同一账号连续失败 10 次后第 11 次返回 429', async () => {
+    const username = `limituser_${uniqueSuffix()}`;
+    await request(app).post('/api/auth/register').send({ username, password });
+
+    for (let i = 0; i < 10; i += 1) {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ username, password: 'wrong-pass' });
+      expect(res.status).toBe(401);
+    }
+
+    const blocked = await request(app)
+      .post('/api/auth/login')
+      .send({ username, password: 'wrong-pass' });
+    expect(blocked.status).toBe(429);
+    expect(blocked.body.msg).toMatch(/过多/);
+  });
+
+  it('登录成功不计入失败次数', async () => {
+    const username = `okuser_${uniqueSuffix()}`;
+    await request(app).post('/api/auth/register').send({ username, password });
+
+    // 成功次数超过 limit(10) 仍应正常登录，说明成功请求不会累加计数
+    for (let i = 0; i < 12; i += 1) {
+      const res = await request(app).post('/api/auth/login').send({ username, password });
+      expect(res.status).toBe(200);
+    }
   });
 });
 

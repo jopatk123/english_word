@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import sequelize from '../../config/database.js';
 import { Root, Word, WordRoot, Example, WordReview } from '../../models/index.js';
-import { success, error } from '../../utils/response.js';
+import { success, error, handleRouteError } from '../../utils/response.js';
 import { ensureWordReview } from '../../utils/wordReview.js';
 import { ensureDefaultRoot } from '../../utils/defaultRoot.js';
 
@@ -131,7 +131,7 @@ router.get('/data/export', async (req, res) => {
     res.setHeader('Content-Disposition', 'attachment; filename=vocabulary-export.json');
     res.json(result);
   } catch (e) {
-    error(res, e.message);
+    handleRouteError(res, e);
   }
 });
 
