@@ -2,7 +2,9 @@ import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useWordDetail } from '../useWordDetail.js';
 
-const getWordMock = vi.fn().mockResolvedValue({ data: { id: 1, name: 'stable', meaning: '稳定的' } });
+const getWordMock = vi
+  .fn()
+  .mockResolvedValue({ data: { id: 1, name: 'stable', meaning: '稳定的' } });
 const getExamplesMock = vi.fn().mockResolvedValue({ data: [] });
 const getAiExampleSuggestionsMock = vi.fn();
 const updateExampleMock = vi.fn().mockResolvedValue({});
