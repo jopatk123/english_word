@@ -40,11 +40,7 @@ const handleAiError = (res, req, startedAt, route, e, extra = {}) => {
 
   const statusCode = Number.isInteger(e?.statusCode) ? e.statusCode : 502;
   const safeStatus = statusCode >= 500 ? statusCode : 502;
-  error(
-    res,
-    `${AI_UNEXPECTED_FAILURE_MSG} [requestId=${debugInfo.requestId}]`,
-    safeStatus
-  );
+  error(res, `${AI_UNEXPECTED_FAILURE_MSG} [requestId=${debugInfo.requestId}]`, safeStatus);
 };
 
 /**
