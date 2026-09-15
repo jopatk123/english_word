@@ -252,6 +252,7 @@ export function useWordDetail(wordId) {
     if (!isAiSettingsReady(aiSettings.value)) {
       return ElMessage.warning('请先完成 AI 配置');
     }
+    if (!example?.id || regeneratingExampleId.value !== null) return;
 
     regeneratingExampleId.value = example.id;
     try {
