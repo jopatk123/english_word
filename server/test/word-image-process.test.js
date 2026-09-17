@@ -59,4 +59,21 @@ describe('processWordImage', () => {
   it('拒绝非图片数据', async () => {
     await expect(processWordImage(Buffer.from('not-an-image'))).rejects.toThrow(/无法识别/);
   });
+
+  it('按 EXIF 方向旋转输出且不拉伸变形（Orientation=6 竖拍照片）', async () => {
+    // 存储尺寸 800x1200 + EXIF Orientation=6（顺时针 90°）→ 显示应为 1200x800。
+    // 若误用旋转前的存储宽高，输出会被 fit:'fill' 拉伸成 800x1200 导致变形。
+    const stored = await makeJpeg({ width: 800, height: 1200 });
+    const input = await sharp(stored).withMetadata({ orientation: 6 }).jpeg().toBuffer();
+
+    const result = await processWordImage(input);
+    expect(result.width).toBe(1200);
+    expect(result.height).toBe(800);
+
+    const meta = await sharp(result.buffer).metadata();
+    expect(meta.width).toBe(1200);
+    expect(meta.height).toBe(800);
+    // 旋转已烘焙进像素，输出的 JPEG 不应再携带 EXIF 方向标签
+    expect(meta.orientation).toBeUndefined();
+  });
 });

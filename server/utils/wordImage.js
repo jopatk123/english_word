@@ -131,7 +131,7 @@ export async function processWordImage(inputBuffer) {
 
   let metadata;
   try {
-    metadata = await sharp(inputBuffer, SHARP_INPUT).rotate().metadata();
+    metadata = await sharp(inputBuffer, SHARP_INPUT).metadata();
   } catch {
     throw new WordImageError('无法识别的图片，请上传 JPEG、PNG 或 WebP');
   }
@@ -141,8 +141,14 @@ export async function processWordImage(inputBuffer) {
     throw new WordImageError('仅支持 JPEG、PNG 或 WebP 图片');
   }
 
-  const sourceWidth = metadata.width || 0;
-  const sourceHeight = metadata.height || 0;
+  // EXIF Orientation 5-8 表示需旋转 90°/270°，存储宽高与显示宽高互换。
+  // metadata() 返回的是旋转前的存储尺寸（链式 .rotate() 对其无效），而
+  // encodeJpeg 管道中的 .rotate() 会按 EXIF 自动旋转后再输出，因此必须
+  // 换算成旋转后的显示尺寸再做校验与缩放，否则 resize(fit: 'fill') 会把
+  // 已旋转的图片强行拉伸回旋转前的宽高，导致手机竖拍照片变形。
+  const swapDims = metadata.orientation >= 5 && metadata.orientation <= 8;
+  const sourceWidth = (swapDims ? metadata.height : metadata.width) || 0;
+  const sourceHeight = (swapDims ? metadata.width : metadata.height) || 0;
   const metrics = validateImageMetrics(sourceWidth, sourceHeight);
   if (!metrics.ok) {
     throw new WordImageError(metrics.message);

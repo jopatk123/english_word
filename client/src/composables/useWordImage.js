@@ -18,6 +18,9 @@ export function useWordImage(wordIdRef, hasImageRef) {
   const objectUrl = ref('');
   const loading = ref(false);
   const loadError = ref('');
+  // 递增序号用于丢弃过期的加载结果：快速切换卡片时旧请求可能后返回，
+  // 避免旧单词的图片覆盖当前卡片，也避免覆盖或卸载后产生无法回收的 objectURL。
+  let loadSeq = 0;
 
   const revoke = () => {
     if (objectUrl.value) {
@@ -27,6 +30,7 @@ export function useWordImage(wordIdRef, hasImageRef) {
   };
 
   const load = async () => {
+    const seq = ++loadSeq;
     const wordId = typeof wordIdRef === 'function' ? wordIdRef() : wordIdRef.value;
     const hasImage = typeof hasImageRef === 'function' ? hasImageRef() : hasImageRef.value;
     revoke();
@@ -39,14 +43,19 @@ export function useWordImage(wordIdRef, hasImageRef) {
     loading.value = true;
     try {
       const blob = await getWordImageBlob(wordId);
+      if (seq !== loadSeq) return;
       if (blob?.type && blob.type.includes('application/json')) {
         throw new Error('加载记忆图片失败');
       }
       objectUrl.value = URL.createObjectURL(blob);
     } catch (err) {
-      loadError.value = await readApiErrorMessage(err, '加载记忆图片失败');
+      const message = await readApiErrorMessage(err, '加载记忆图片失败');
+      if (seq !== loadSeq) return;
+      loadError.value = message;
     } finally {
-      loading.value = false;
+      if (seq === loadSeq) {
+        loading.value = false;
+      }
     }
   };
 
@@ -58,7 +67,10 @@ export function useWordImage(wordIdRef, hasImageRef) {
     { immediate: true }
   );
 
-  onUnmounted(revoke);
+  onUnmounted(() => {
+    loadSeq += 1; // 使在途请求过期，卸载后不再创建无人回收的 objectURL
+    revoke();
+  });
 
   return { objectUrl, loading, loadError, reload: load };
 }
