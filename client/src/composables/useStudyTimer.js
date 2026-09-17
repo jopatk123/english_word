@@ -2,7 +2,6 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import {
   createStudyTimerSocket,
   endStudySession,
-  endStudySessionKeepalive,
   getStudySessionStats,
   getStudyTimerState,
   startStudySession,
@@ -444,11 +443,6 @@ export function useStudyTimer() {
     persistPreferences();
   });
 
-  function _handlePageHide() {
-    if (!isRunning.value || !sessionId.value) return;
-    endStudySessionKeepalive(sessionId.value, 'page_close');
-  }
-
   onMounted(async () => {
     restorePreferences();
     await syncStateFromServer({ force: true });
@@ -457,7 +451,6 @@ export function useStudyTimer() {
     _statsRefreshTimer = window.setInterval(_refreshStatsIfVisible, 60 * 1000);
     document.addEventListener('visibilitychange', _refreshStatsIfVisible);
     window.addEventListener('focus', _refreshStatsIfVisible);
-    window.addEventListener('pagehide', _handlePageHide);
   });
 
   onUnmounted(() => {
@@ -470,7 +463,6 @@ export function useStudyTimer() {
     }
     document.removeEventListener('visibilitychange', _refreshStatsIfVisible);
     window.removeEventListener('focus', _refreshStatsIfVisible);
-    window.removeEventListener('pagehide', _handlePageHide);
   });
 
   return {

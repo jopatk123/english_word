@@ -157,21 +157,6 @@ export const startStudySession = (note = '') => api.post('/study-sessions/start'
 export const endStudySession = (id, options = {}) =>
   api.post(`/study-sessions/${id}/end`, { reason: options.reason });
 
-/** 页面卸载时尽力结束会话（Authorization + keepalive） */
-export function endStudySessionKeepalive(id, reason = 'page_close') {
-  const token = localStorage.getItem('token');
-  if (!token || !id || typeof fetch !== 'function') return;
-
-  void fetch(`/api/study-sessions/${id}/end`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ reason }),
-    keepalive: true,
-  }).catch(() => {});
-}
 export const getStudyTimerState = () => api.get('/study-sessions/current');
 export const getStudySessionStats = () =>
   api.get('/study-sessions/stats', { params: { tz: getUserTz() } });
