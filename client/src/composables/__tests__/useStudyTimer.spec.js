@@ -6,7 +6,6 @@ import { useStudyTimer } from '../useStudyTimer.js';
 const apiMocks = vi.hoisted(() => ({
   createStudyTimerSocket: vi.fn(),
   endStudySession: vi.fn(),
-  endStudySessionKeepalive: vi.fn(),
   getStudySessionStats: vi.fn(),
   getStudyTimerState: vi.fn(),
   startStudySession: vi.fn(),
@@ -271,15 +270,55 @@ describe('useStudyTimer', () => {
     wrapper.unmount();
   });
 
-  it('pagehide 时通过 keepalive 尽力结束进行中的会话', async () => {
+  it('pagehide 不会结束进行中的会话（依赖服务端断连宽限与重连恢复）', async () => {
     const wrapper = mountHarness();
     await flush();
     socket.open();
     await flush();
 
     window.dispatchEvent(new Event('pagehide'));
-    expect(apiMocks.endStudySessionKeepalive).toHaveBeenCalledWith(8, 'page_close');
+    expect(apiMocks.endStudySession).not.toHaveBeenCalled();
+    expect(wrapper.vm.isRunning).toBe(true);
+    expect(wrapper.vm.sessionId).toBe(8);
 
     wrapper.unmount();
+  });
+
+  it('卸载后重新挂载会从服务端恢复进行中的计时状态', async () => {
+    const first = mountHarness();
+    await flush();
+    socket.open();
+    await flush();
+
+    expect(first.vm.isRunning).toBe(true);
+    expect(first.vm.sessionId).toBe(8);
+    first.unmount();
+    await flush();
+
+    apiMocks.getStudyTimerState.mockResolvedValueOnce({
+      data: makeState({
+        isRunning: true,
+        sessionId: 8,
+        startedAt: '2026-04-15T09:59:30.000Z',
+        elapsedSeconds: 45,
+        stateChangedAtMs: Date.parse('2026-04-15T10:00:15.000Z'),
+        revision: '110:8:1',
+      }),
+    });
+
+    const secondSocket = new MockSocket();
+    apiMocks.createStudyTimerSocket.mockReturnValue(secondSocket);
+
+    const second = mountHarness();
+    await flush();
+    secondSocket.open();
+    await flush();
+
+    expect(apiMocks.getStudyTimerState).toHaveBeenCalled();
+    expect(second.vm.isRunning).toBe(true);
+    expect(second.vm.sessionId).toBe(8);
+    expect(second.vm.elapsedSeconds).toBe(45);
+
+    second.unmount();
   });
 });
