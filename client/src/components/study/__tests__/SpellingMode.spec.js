@@ -28,7 +28,9 @@ describe('SpellingMode', () => {
         isLast: false,
         ...props,
       },
-      global: { stubs: globalStubs },
+      global: {
+        stubs: { ...globalStubs, WordImage: { template: '<div class="word-image-stub" />' } },
+      },
     });
 
   it('显示单词释义', () => {
@@ -99,5 +101,12 @@ describe('SpellingMode', () => {
     const wrapper = createWrapper({ spellingHint: 'c________ (9个字母)' });
     const input = wrapper.find('input');
     expect(input.attributes('placeholder')).toBe('c________ (9个字母)');
+  });
+
+  it('单词有记忆图片时展示', () => {
+    const wrapper = createWrapper({
+      card: { ...defaultCard, word: { ...defaultCard.word, hasImage: true } },
+    });
+    expect(wrapper.find('.word-image-stub').exists()).toBe(true);
   });
 });

@@ -5,6 +5,13 @@
     <div class="flashcard spelling-card">
       <div class="listening-prompt">听发音，拼写单词</div>
       <SpeakButton :text="card.word.name" size="large" />
+      <WordImage
+        v-if="card.word.hasImage"
+        :word-id="card.word.id || card.wordId"
+        :has-image="true"
+        :alt="`${card.word.name} 的记忆图片`"
+        variant="study"
+      />
 
       <div class="listening-audio-tools">
         <div v-if="revealedSentenceTranslation" class="listening-audio-translation">
@@ -79,6 +86,7 @@
   import { ref, computed, onMounted, watch, nextTick } from 'vue';
   import SpeakButton from '../SpeakButton.vue';
   import SessionProgress from './SessionProgress.vue';
+  import WordImage from '../WordImage.vue';
   import { useSpeech } from '../../utils/speech.js';
 
   const props = defineProps({

@@ -40,7 +40,9 @@ describe('ListeningMode', () => {
         isLast: false,
         ...props,
       },
-      global: { stubs: globalStubs },
+      global: {
+        stubs: { ...globalStubs, WordImage: { template: '<div class="word-image-stub" />' } },
+      },
     });
 
   it('显示听力模式提示文字', () => {
@@ -155,5 +157,12 @@ describe('ListeningMode', () => {
   it('未作答时不显示释义（保持听写语义）', () => {
     const wrapper = createWrapper({ answered: false });
     expect(wrapper.text()).not.toContain('建造；构建');
+  });
+
+  it('单词有记忆图片时展示', () => {
+    const wrapper = createWrapper({
+      card: { ...defaultCard, word: { ...defaultCard.word, hasImage: true } },
+    });
+    expect(wrapper.find('.word-image-stub').exists()).toBe(true);
   });
 });

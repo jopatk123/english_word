@@ -140,9 +140,8 @@ describe('FlashcardMode', () => {
     expect(wrapper.text()).toContain('第 2 次复习');
   });
 
-  it('翻牌后若单词有记忆图片则展示', () => {
+  it('单词有记忆图片时未翻牌也展示', () => {
     const wrapper = createWrapper({
-      showAnswer: true,
       card: {
         ...defaultCard,
         word: { ...defaultCard.word, hasImage: true },
@@ -151,13 +150,8 @@ describe('FlashcardMode', () => {
     expect(wrapper.find('.word-image-stub').exists()).toBe(true);
   });
 
-  it('未翻牌时不展示记忆图片', () => {
-    const wrapper = createWrapper({
-      card: {
-        ...defaultCard,
-        word: { ...defaultCard.word, hasImage: true },
-      },
-    });
+  it('未上传记忆图片时不展示图片占位', () => {
+    const wrapper = createWrapper();
     expect(wrapper.find('.word-image-stub').exists()).toBe(false);
   });
 });

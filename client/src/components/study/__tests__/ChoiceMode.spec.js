@@ -28,7 +28,9 @@ describe('ChoiceMode', () => {
         isLast: false,
         ...props,
       },
-      global: { stubs: globalStubs },
+      global: {
+        stubs: { ...globalStubs, WordImage: { template: '<div class="word-image-stub" />' } },
+      },
     });
 
   it('显示单词名称', () => {
@@ -62,5 +64,12 @@ describe('ChoiceMode', () => {
   it('isLast=true 时按钮显示"完成"', () => {
     const wrapper = createWrapper({ choiceAnswered: true, isLast: true });
     expect(wrapper.text()).toContain('完成');
+  });
+
+  it('单词有记忆图片时展示', () => {
+    const wrapper = createWrapper({
+      card: { ...defaultCard, word: { ...defaultCard.word, hasImage: true } },
+    });
+    expect(wrapper.find('.word-image-stub').exists()).toBe(true);
   });
 });

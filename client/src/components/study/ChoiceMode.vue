@@ -7,6 +7,13 @@
         <div class="card-word">{{ card.word.name }}</div>
         <div v-if="card.word.phonetic" class="card-phonetic">{{ card.word.phonetic }}</div>
         <SpeakButton :text="card.word.name" />
+        <WordImage
+          v-if="card.word.hasImage"
+          :word-id="card.word.id || card.wordId"
+          :has-image="true"
+          :alt="`${card.word.name} 的记忆图片`"
+          variant="study"
+        />
       </div>
 
       <div class="choice-options">
@@ -43,6 +50,7 @@
 <script setup>
   import SpeakButton from '../SpeakButton.vue';
   import SessionProgress from './SessionProgress.vue';
+  import WordImage from '../WordImage.vue';
 
   defineProps({
     card: { type: Object, required: true },

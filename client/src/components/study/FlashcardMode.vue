@@ -10,6 +10,13 @@
         <div class="card-word">{{ card.word.name }}</div>
         <div v-if="card.word.phonetic" class="card-phonetic">{{ card.word.phonetic }}</div>
         <SpeakButton :text="card.word.name" />
+        <WordImage
+          v-if="card.word.hasImage"
+          :word-id="card.word.id || card.wordId"
+          :has-image="true"
+          :alt="`${card.word.name} 的记忆图片`"
+          variant="study"
+        />
         <div class="card-root-tag">
           词根：{{
             (card.word.roots || []).map((r) => `${r.name}（${r.meaning}）`).join('、') || '无'
@@ -20,13 +27,6 @@
       <div v-if="showAnswer" class="card-back">
         <div class="card-divider"></div>
         <div class="card-meaning">{{ card.word.meaning }}</div>
-        <WordImage
-          v-if="card.word.hasImage"
-          :word-id="card.word.id || card.wordId"
-          :has-image="true"
-          :alt="`${card.word.name} 的记忆图片`"
-          variant="study"
-        />
         <div v-if="card.word.remark" class="card-remark">{{ card.word.remark }}</div>
         <div v-if="card.word.examples && card.word.examples.length > 0" class="card-examples">
           <div v-for="ex in card.word.examples" :key="ex.id" class="card-example">

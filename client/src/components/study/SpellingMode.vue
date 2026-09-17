@@ -10,6 +10,13 @@
       <div v-if="card.word.roots?.length" class="card-root-tag">
         词根：{{ card.word.roots.map((r) => `${r.name}（${r.meaning}）`).join('、') }}
       </div>
+      <WordImage
+        v-if="card.word.hasImage"
+        :word-id="card.word.id || card.wordId"
+        :has-image="true"
+        :alt="`${card.word.name} 的记忆图片`"
+        variant="study"
+      />
 
       <div class="spelling-input-area">
         <div class="spelling-input-row">
@@ -54,6 +61,7 @@
 <script setup>
   import { ref, computed, onMounted, watch, nextTick } from 'vue';
   import SessionProgress from './SessionProgress.vue';
+  import WordImage from '../WordImage.vue';
 
   const props = defineProps({
     card: { type: Object, required: true },
