@@ -4,6 +4,7 @@ dist
 data/*.db
 server/data/*.db
 data/uploads/
+server/data/uploads/
 client/dist
 .DS_Store
 *.pid
