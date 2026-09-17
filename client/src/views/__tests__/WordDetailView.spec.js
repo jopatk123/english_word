@@ -99,6 +99,7 @@ const flushPromises = async () => {
 };
 
 const globalStubs = {
+  WordImageManager: { template: '<div class="word-image-manager-stub" />' },
   SpeakButton: { template: '<button class="speak-stub" />' },
   'el-breadcrumb': { template: '<div><slot /></div>' },
   'el-breadcrumb-item': {

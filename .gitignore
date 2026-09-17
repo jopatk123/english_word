@@ -3,6 +3,7 @@ node_modules
 dist
 data/*.db
 server/data/*.db
+data/uploads/
 client/dist
 .DS_Store
 *.pid

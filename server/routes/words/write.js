@@ -12,6 +12,8 @@ import { success, error, handleRouteError } from '../../utils/response.js';
 import { isString, isOptionalString } from '../../utils/validation.js';
 import { ensureDefaultRoot } from '../../utils/defaultRoot.js';
 import { ensureWordReview } from '../../utils/wordReview.js';
+import { removeWordImageFile } from '../../services/word-image-store.js';
+import logger from '../../utils/logger.js';
 
 const router = Router();
 
@@ -282,6 +284,14 @@ router.delete('/:id', async (req, res) => {
       await WordReview.destroy({ where: { wordId: word.id, userId: req.userId }, transaction });
       await ReviewHistory.destroy({ where: { wordId: word.id, userId: req.userId }, transaction });
       await word.destroy({ transaction });
+    });
+
+    await removeWordImageFile(req.userId, word.id).catch((cleanupErr) => {
+      logger.warn('word-image-cleanup-failed', {
+        userId: req.userId,
+        wordId: word.id,
+        message: cleanupErr.message,
+      });
     });
 
     success(res, null, '删除成功');

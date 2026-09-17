@@ -191,4 +191,10 @@ describe('导出的 API 函数', () => {
   it('exportAllData 是函数', () => {
     expect(typeof apiModule.exportAllData).toBe('function');
   });
+  it('uploadWordImage 是函数', () => {
+    expect(typeof apiModule.uploadWordImage).toBe('function');
+  });
+  it('getWordImageBlob 是函数', () => {
+    expect(typeof apiModule.getWordImageBlob).toBe('function');
+  });
 });

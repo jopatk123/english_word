@@ -83,6 +83,18 @@ export const updateWord = (id, data) => api.put(`/words/${id}`, data);
 export const deleteWord = (id) => api.delete(`/words/${id}`);
 export const moveWord = (id, fromRootId, toRootId) =>
   api.put(`/words/${id}/move`, { fromRootId, toRootId });
+export const uploadWordImage = (id, file) => {
+  const form = new FormData();
+  form.append('image', file);
+  return api.post(`/words/${id}/image`, form, { timeout: 60000 });
+};
+export const getWordImageBlob = (id, options = {}) =>
+  api.get(`/words/${id}/image`, {
+    responseType: 'blob',
+    params: options.download ? { download: 1 } : undefined,
+    timeout: 30000,
+  });
+export const deleteWordImage = (id) => api.delete(`/words/${id}/image`);
 
 // ========== 例句 API ==========
 export const getExamples = (params) => api.get('/examples', { params });

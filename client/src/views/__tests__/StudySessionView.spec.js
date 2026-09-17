@@ -73,6 +73,7 @@ describe('StudySessionView 例句重新生成接线', () => {
         directives: { loading: {} },
         stubs: {
           ...globalStubs,
+          WordImage: { template: '<div class="word-image-stub" />' },
           'el-breadcrumb': { template: '<nav><slot /></nav>' },
           'el-breadcrumb-item': { template: '<span><slot /></span>' },
         },

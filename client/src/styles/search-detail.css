@@ -113,6 +113,77 @@
   color: #b5bcc8;
 }
 
+.word-image-manager {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.word-image-manager-header h4 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: var(--ew-text);
+}
+
+.word-image-hint {
+  margin: 0 0 14px;
+  color: #7b8292;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.word-image-empty {
+  margin-bottom: 12px;
+  padding: 18px 14px;
+  color: #909399;
+  font-size: 13px;
+  text-align: center;
+  border: 1px dashed rgba(148, 163, 184, 0.28);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.8);
+}
+
+.word-image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.word-image-file {
+  display: none;
+}
+
+.word-image-frame {
+  margin: 0 0 14px;
+  display: flex;
+  justify-content: center;
+}
+
+.word-image-status {
+  padding: 20px 12px;
+  color: #909399;
+  font-size: 13px;
+}
+
+.word-image-status.is-error {
+  color: #f56c6c;
+}
+
+.word-memory-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #f4f4f5;
+}
+
+.word-image-frame.is-detail .word-memory-image {
+  max-width: 480px;
+  max-height: 320px;
+}
+
 /* ========== 例句卡片 ========== */
 .example-list {
   display: flex;

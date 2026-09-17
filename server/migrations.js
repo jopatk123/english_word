@@ -380,6 +380,17 @@ async function m019_study_sessions_add_end_reason() {
   console.log('[migration] M019: study_sessions.end_reason 已添加');
 }
 
+// M020：为 words 表添加 image_ext，标记该单词是否已有记忆图片
+async function m020_words_add_image_ext() {
+  const info = await qi.describeTable('words').catch(() => ({}));
+  if (info.image_ext !== undefined || Object.keys(info).length === 0) return;
+  await qi.addColumn('words', 'image_ext', {
+    type: DataTypes.STRING(8),
+    allowNull: true,
+  });
+  console.log('[migration] M020: words.image_ext 已添加');
+}
+
 /**
  * 按顺序执行所有迁移。每个迁移函数都是幂等的，可以安全重复运行。
  */
@@ -403,4 +414,5 @@ export async function runMigrations() {
   await m017_create_user_ai_settings();
   await m018_create_api_tokens();
   await m019_study_sessions_add_end_reason();
+  await m020_words_add_image_ext();
 }

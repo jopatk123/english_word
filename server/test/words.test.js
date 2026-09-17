@@ -188,6 +188,8 @@ describe('GET /words/:id', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.id).toBe(wordId);
     expect(Array.isArray(res.body.data.roots)).toBe(true);
+    expect(res.body.data.hasImage).toBe(false);
+    expect(res.body.data).not.toHaveProperty('imageExt');
   });
 
   it('不存在的 id 返回错误', async () => {

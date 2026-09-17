@@ -17,6 +17,8 @@ import {
 import { success, successList, error, handleRouteError } from '../utils/response.js';
 import { getAdminPasswordHash } from '../utils/env.js';
 import { isString } from '../utils/validation.js';
+import { removeUserWordImages } from '../services/word-image-store.js';
+import logger from '../utils/logger.js';
 import { adminAuthMiddleware, generateAdminToken } from '../middleware/admin.js';
 import { adminLoginRateLimiter } from '../middleware/rateLimiter.js';
 
@@ -207,6 +209,13 @@ router.delete('/users/:id', adminAuthMiddleware, async (req, res) => {
     if (!deletedCounts) {
       return error(res, '用户不存在', 404);
     }
+
+    await removeUserWordImages(userId).catch((cleanupErr) => {
+      logger.warn('word-image-user-cleanup-failed', {
+        userId,
+        message: cleanupErr.message,
+      });
+    });
 
     success(res, { id: userId, deletedCounts }, '用户及关联数据已删除');
   } catch (e) {

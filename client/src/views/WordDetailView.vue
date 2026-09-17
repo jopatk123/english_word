@@ -37,6 +37,13 @@
         <span v-if="!word?.roots?.length">无</span>
       </p>
       <p v-if="word?.remark" class="remark-text">备注：{{ word.remark }}</p>
+      <WordImageManager
+        v-if="word"
+        :word-id="word.id"
+        :word-name="word.name"
+        :has-image="Boolean(word.hasImage)"
+        @update:has-image="word.hasImage = $event"
+      />
     </el-card>
 
     <!-- 例句列表 -->
@@ -182,6 +189,7 @@
   import { computed } from 'vue';
   import { useRoute } from 'vue-router';
   import SpeakButton from '../components/SpeakButton.vue';
+  import WordImageManager from '../components/WordImageManager.vue';
   import { useWordDetail } from '../composables/useWordDetail.js';
   import { getRouteDisplayLabel, getRouteSource } from '../utils/navigationHistory.js';
 

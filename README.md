@@ -6,6 +6,7 @@
 
 - 用户注册、登录与多用户数据隔离
 - 词根、单词、例句的增删改查，自动维护“未分类”默认词根
+- 单词记忆图片：每个单词可上传一张助记图，详情页可替换/下载，闪卡翻牌后与自动朗读中展示
 - 首页搜索，支持按词根/单词名称和含义模糊匹配，单词结果可自动朗读
 - 背单词系统：今日到期、超期、学习中、已掌握、继续学习等视图与学习报表
 - 学习计时：服务端权威状态、WebSocket 实时同步、统计与导出
@@ -183,6 +184,7 @@ npm run test:coverage
 | `ADMIN_PASSWORD_HASH` | 是       | 超级管理员登录密码的 bcrypt 哈希，对应页面为 `/super-admin`                                        |
 | `ALLOWED_ORIGINS`     | 否       | 允许跨域的来源白名单（逗号分隔）；留空表示仅允许同源请求                                           |
 | `TRUST_PROXY`         | 否       | 反向代理层数，决定 Express 如何解析客户端真实 IP；未设置时生产环境默认 `1`，其他环境 `false`       |
+| `UPLOAD_DIR`          | 否       | 单词记忆图片目录；未设置时使用 `DB_PATH` 所在目录下的 `uploads/`                                   |
 
 ### 反向代理与限流（`TRUST_PROXY`）
 
@@ -238,6 +240,27 @@ AI 配置页（`/ai/settings`）支持多厂商切换、模型选择与温度调
 ```bash
 curl -H "Authorization: Bearer ewt_your_token" http://localhost:3010/api/roots
 ```
+
+单词记忆图片接口同样接受登录 JWT 或 API Token：
+
+```bash
+# 上传或替换（服务端会压缩到 300KB 以内，并优先保留分辨率）
+curl -H "Authorization: Bearer ewt_your_token" \
+  -F "image=@./apple.png" \
+  http://localhost:3010/api/words/123/image
+
+# 查看（浏览器/预览）
+curl -H "Authorization: Bearer ewt_your_token" \
+  -o apple-memory.jpg \
+  http://localhost:3010/api/words/123/image
+
+# 下载
+curl -H "Authorization: Bearer ewt_your_token" \
+  -OJ \
+  "http://localhost:3010/api/words/123/image?download=1"
+```
+
+图片限制：最短边 ≥ 640px，最长边规范到 1600px，宽高比 1:2～2:1，入库后单张严格 ≤ 300KB。详情页会提示推荐分辨率（1280×800 或 1280×720）。
 
 ### 模型自动获取
 

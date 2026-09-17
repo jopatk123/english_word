@@ -19,6 +19,13 @@
       <div class="card-word">{{ card.word.name }}</div>
       <div v-if="card.word.phonetic" class="card-phonetic">{{ card.word.phonetic }}</div>
       <div class="card-meaning">{{ card.word.meaning || '暂无释义' }}</div>
+      <WordImage
+        v-if="card.word.hasImage"
+        :word-id="card.word.id || card.wordId"
+        :has-image="true"
+        :alt="`${card.word.name} 的记忆图片`"
+        variant="study"
+      />
 
       <div v-if="card.word.examples && card.word.examples.length > 0" class="card-examples">
         <div v-for="ex in card.word.examples" :key="ex.id" class="card-example">
@@ -36,6 +43,7 @@
 
 <script setup>
   import SessionProgress from './SessionProgress.vue';
+  import WordImage from '../WordImage.vue';
 
   defineProps({
     card: { type: Object, required: true },

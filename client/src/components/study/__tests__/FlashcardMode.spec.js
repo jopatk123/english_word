@@ -26,7 +26,9 @@ describe('FlashcardMode', () => {
         againCountMap: {},
         ...props,
       },
-      global: { stubs: globalStubs },
+      global: {
+        stubs: { ...globalStubs, WordImage: { template: '<div class="word-image-stub" />' } },
+      },
     });
 
   it('显示单词名称', () => {
@@ -136,5 +138,26 @@ describe('FlashcardMode', () => {
   it('againCountMap 有值时显示复习次数', () => {
     const wrapper = createWrapper({ againCountMap: { 1: 1 } });
     expect(wrapper.text()).toContain('第 2 次复习');
+  });
+
+  it('翻牌后若单词有记忆图片则展示', () => {
+    const wrapper = createWrapper({
+      showAnswer: true,
+      card: {
+        ...defaultCard,
+        word: { ...defaultCard.word, hasImage: true },
+      },
+    });
+    expect(wrapper.find('.word-image-stub').exists()).toBe(true);
+  });
+
+  it('未翻牌时不展示记忆图片', () => {
+    const wrapper = createWrapper({
+      card: {
+        ...defaultCard,
+        word: { ...defaultCard.word, hasImage: true },
+      },
+    });
+    expect(wrapper.find('.word-image-stub').exists()).toBe(false);
   });
 });

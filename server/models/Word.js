@@ -29,6 +29,12 @@ const Word = sequelize.define(
       allowNull: true,
       comment: '备注',
     },
+    imageExt: {
+      type: DataTypes.STRING(8),
+      allowNull: true,
+      field: 'image_ext',
+      comment: '记忆图片扩展名，空表示未上传',
+    },
     userId: {
       type: DataTypes.INTEGER,
       allowNull: true,
@@ -43,5 +49,12 @@ const Word = sequelize.define(
     updatedAt: 'update_time',
   }
 );
+
+Word.prototype.toJSON = function toJSON() {
+  const values = this.get({ plain: true });
+  values.hasImage = Boolean(values.imageExt);
+  delete values.imageExt;
+  return values;
+};
 
 export default Word;

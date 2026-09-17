@@ -28,6 +28,7 @@ describe('AutoReadMode', () => {
         stubs: {
           ...globalStubs,
           SessionProgress: { template: '<div class="progress-stub" />' },
+          WordImage: { template: '<div class="word-image-stub" />' },
         },
       },
     });
@@ -59,5 +60,15 @@ describe('AutoReadMode', () => {
     await wrapper.find('button.el-btn').trigger('click');
 
     expect(wrapper.emitted('toggle-pause')).toBeTruthy();
+  });
+
+  it('有记忆图片时会展示图片', () => {
+    const wrapper = createWrapper({
+      card: {
+        ...defaultCard,
+        word: { ...defaultCard.word, hasImage: true },
+      },
+    });
+    expect(wrapper.find('.word-image-stub').exists()).toBe(true);
   });
 });

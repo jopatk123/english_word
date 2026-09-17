@@ -191,6 +191,16 @@
   margin-bottom: 12px;
 }
 
+.word-image-frame.is-study {
+  margin: 4px 0 14px;
+  width: 100%;
+}
+
+.word-image-frame.is-study .word-memory-image {
+  max-width: 100%;
+  max-height: 240px;
+}
+
 .card-remark {
   font-size: 14px;
   color: #606266;
@@ -707,6 +717,10 @@
 
   .card-meaning {
     font-size: 16px;
+  }
+
+  .word-image-frame.is-study .word-memory-image {
+    max-height: 180px;
   }
 
   .card-remark {
