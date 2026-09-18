@@ -1,10 +1,42 @@
 /* ========== 闪卡学习页 ========== */
+/* 学习页内容通常只有一张卡片，让它在主区纵向居中，避免空白全部堆在卡片下方 */
+.app-main:has(> .study-session) {
+  display: flex;
+  flex-direction: column;
+}
+
+.study-session {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 上下留白由两个占位伪元素按 1 : 1.6 分配，卡片重心略高于几何中心，
+   避免卡片离顶部控制条太远。用 flex 而非 auto 外边距：空间不足时两者
+   一起收缩到 0，自动退化为顶部对齐，内容不会被裁切 */
+.study-session::before,
+.study-session::after {
+  content: '';
+  min-height: 0;
+}
+
+.study-session::before {
+  flex: 1 1 0;
+}
+
+.study-session::after {
+  flex: 1.6 1 0;
+}
+
 .session-chrome {
+  /* 提到最前，使 ::before 占位落在控制条与卡片之间 */
+  order: -1;
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 10px;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .study-session .el-breadcrumb {
@@ -100,6 +132,7 @@
 /* 闪卡 */
 .flashcard-container {
   max-width: 600px;
+  width: 100%;
   margin: 0 auto;
 }
 
@@ -140,6 +173,157 @@
 
 .flashcard.flipped {
   cursor: default;
+}
+
+/* ========== 学习页放大 ==========
+   学习卡片与模式选择页的内容都不多，默认密度在宽屏下显得空旷。
+   两个变量分别控制盒子与文字，便于「图大、字小」这类分别微调：
+   --card-scale      卡片宽度、内边距、间距、控件尺寸
+   --card-text-scale 文字字号
+   定义在学习页根节点上供各区块共用，各断点的取值见文件末尾的媒体查询。 */
+.study-session {
+  --card-scale: 1.5;
+  --card-text-scale: 1.2;
+}
+
+.flashcard-container {
+  max-width: calc(600px * var(--card-scale));
+}
+
+.flashcard-container .flashcard {
+  border-radius: calc(12px * var(--card-scale));
+  padding: calc(16px * var(--card-scale)) calc(18px * var(--card-scale));
+}
+
+.flashcard-container .card-front {
+  gap: calc(6px * var(--card-scale));
+}
+
+.flashcard-container .card-head,
+.flashcard-container .card-head-text {
+  gap: calc(8px * var(--card-scale));
+}
+
+.flashcard-container .card-word {
+  font-size: calc(28px * var(--card-text-scale));
+}
+
+.flashcard-container .card-phonetic {
+  font-size: calc(14px * var(--card-text-scale));
+}
+
+.flashcard-container .speak-btn {
+  width: calc(28px * var(--card-scale));
+  height: calc(28px * var(--card-scale));
+}
+
+.flashcard-container .speak-btn svg {
+  width: calc(16px * var(--card-scale));
+  height: calc(16px * var(--card-scale));
+}
+
+.flashcard-container .card-root-tag {
+  font-size: calc(12px * var(--card-text-scale));
+  margin-top: calc(4px * var(--card-scale));
+  padding: calc(4px * var(--card-scale)) calc(12px * var(--card-scale));
+  border-radius: calc(12px * var(--card-scale));
+}
+
+.flashcard-container .card-hint {
+  font-size: calc(12px * var(--card-text-scale));
+  margin-top: calc(4px * var(--card-scale));
+}
+
+.flashcard-container .again-badge {
+  font-size: calc(12px * var(--card-text-scale));
+  padding: calc(1px * var(--card-scale)) calc(8px * var(--card-scale));
+  border-radius: calc(10px * var(--card-scale));
+}
+
+.flashcard-container .word-image-frame.is-study {
+  margin: calc(2px * var(--card-scale)) 0 calc(6px * var(--card-scale));
+}
+
+/* 记忆图高度按模式区分：闪卡正面/自动朗读以图为主角，给足高度；
+   闪卡背面和拼写/听力/选择题下方还有作答区，用 vh 上限兜底避免撑破同屏 */
+.flashcard-container.is-flip .flashcard:not(.flipped) .word-memory-image {
+  max-height: min(42vh, 460px);
+}
+
+.flashcard-container.is-flip .flashcard.flipped .word-memory-image {
+  max-height: min(26vh, 260px);
+}
+
+.auto-read-card .word-image-frame.is-study .word-memory-image {
+  max-height: min(34vh, 400px);
+}
+
+.choice-card .word-image-frame.is-study .word-memory-image {
+  max-height: min(30vh, 340px);
+}
+
+.spelling-card .word-image-frame.is-study .word-memory-image {
+  max-height: min(26vh, 280px);
+}
+
+.flashcard-container .card-back {
+  margin-top: calc(4px * var(--card-scale));
+}
+
+.flashcard-container .card-divider {
+  margin: calc(8px * var(--card-scale)) 0;
+}
+
+.flashcard-container .card-meaning {
+  font-size: calc(18px * var(--card-text-scale));
+  margin-bottom: calc(6px * var(--card-scale));
+}
+
+.flashcard-container .card-remark {
+  font-size: calc(13px * var(--card-text-scale));
+  margin-bottom: calc(6px * var(--card-scale));
+}
+
+.flashcard-container .card-examples {
+  margin-top: calc(8px * var(--card-scale));
+  gap: calc(6px * var(--card-scale));
+}
+
+.flashcard-container .card-example {
+  padding: calc(8px * var(--card-scale)) calc(12px * var(--card-scale));
+  border-radius: calc(8px * var(--card-scale));
+  gap: calc(8px * var(--card-scale));
+}
+
+.flashcard-container .card-example .example-en {
+  font-size: calc(13px * var(--card-text-scale));
+}
+
+.flashcard-container .card-example .example-zh {
+  font-size: calc(12px * var(--card-text-scale));
+}
+
+.flashcard-container .card-example .example-regenerate {
+  font-size: calc(13px * var(--card-text-scale));
+}
+
+/* 评分按钮跟随放大，但限制总宽，避免在加宽的卡片里被拉得过长 */
+.flashcard-container .rating-buttons {
+  max-width: calc(430px * var(--card-scale));
+  margin: calc(12px * var(--card-scale)) auto 0;
+  gap: calc(8px * var(--card-scale));
+}
+
+.flashcard-container .rate-btn {
+  min-width: calc(72px * var(--card-scale));
+  height: calc(36px * var(--card-scale));
+  border-radius: calc(10px * var(--card-scale)) !important;
+  font-size: calc(13px * var(--card-text-scale));
+}
+
+.flashcard-container .keyboard-hint {
+  font-size: calc(11px * var(--card-text-scale));
+  margin-top: calc(8px * var(--card-scale));
 }
 
 .card-front {
@@ -186,10 +370,10 @@
   font-size: 12px;
   color: #909399;
   line-height: 1.4;
-  margin: 0;
-  padding: 0;
-  background: none;
-  border-radius: 0;
+  margin: 4px 0 0;
+  padding: 4px 12px;
+  background: #f4f4f5;
+  border-radius: 12px;
 }
 
 .card-hint {
@@ -432,12 +616,15 @@
 .result-again {
   background: #f56c6c;
 }
+
 .result-hard {
   background: #e6a23c;
 }
+
 .result-good {
   background: #409eff;
 }
+
 .result-easy {
   background: #67c23a;
 }
@@ -551,6 +738,46 @@
   color: #909399;
 }
 
+/* 模式选择页同样跟随 --card-scale 放大，避免宽屏下四周留白过多 */
+.mode-select {
+  padding: calc(16px * var(--card-scale)) calc(12px * var(--card-scale));
+}
+
+.mode-select h2 {
+  font-size: calc(20px * var(--card-text-scale));
+  margin-bottom: calc(16px * var(--card-scale));
+}
+
+.mode-options {
+  gap: calc(10px * var(--card-scale));
+  max-width: calc(600px * var(--card-scale));
+  margin-bottom: calc(16px * var(--card-scale));
+}
+
+.mode-card {
+  border-radius: calc(12px * var(--card-scale));
+  padding: calc(14px * var(--card-scale)) calc(12px * var(--card-scale));
+  border-width: calc(2px * var(--card-scale));
+}
+
+.mode-icon {
+  font-size: calc(24px * var(--card-text-scale));
+  margin-bottom: calc(4px * var(--card-scale));
+}
+
+.mode-name {
+  font-size: calc(15px * var(--card-text-scale));
+  margin-bottom: calc(2px * var(--card-scale));
+}
+
+.mode-desc {
+  font-size: calc(12px * var(--card-text-scale));
+}
+
+.mode-count {
+  font-size: calc(13px * var(--card-text-scale));
+}
+
 /* 选择题模式 */
 .choice-card {
   cursor: default;
@@ -616,6 +843,32 @@
   text-align: center;
 }
 
+/* 选择题：选项列表跟随 --card-scale 放大 */
+.flashcard-container .choice-options {
+  margin-top: calc(12px * var(--card-scale));
+  gap: calc(6px * var(--card-scale));
+}
+
+.flashcard-container .choice-option {
+  gap: calc(10px * var(--card-scale));
+  padding: calc(10px * var(--card-scale)) calc(12px * var(--card-scale));
+  border-radius: calc(8px * var(--card-scale));
+}
+
+.flashcard-container .choice-letter {
+  width: calc(24px * var(--card-scale));
+  height: calc(24px * var(--card-scale));
+  font-size: calc(13px * var(--card-text-scale));
+}
+
+.flashcard-container .choice-text {
+  font-size: calc(14px * var(--card-text-scale));
+}
+
+.flashcard-container .choice-result-actions {
+  margin-top: calc(10px * var(--card-scale));
+}
+
 /* 拼写 & 听力模式 */
 .spelling-card {
   cursor: default;
@@ -669,6 +922,66 @@
   justify-content: center;
 }
 
+/* 拼写 & 听力：输入区、反馈、按钮跟随 --card-scale 放大 */
+.flashcard-container .spelling-input-area {
+  max-width: calc(400px * var(--card-scale));
+  margin-top: calc(10px * var(--card-scale));
+}
+
+.flashcard-container .spelling-input-row {
+  gap: calc(8px * var(--card-scale));
+}
+
+.flashcard-container .spelling-input-area .el-input--large {
+  --el-input-height: calc(40px * var(--card-scale));
+  font-size: calc(14px * var(--card-text-scale));
+}
+
+.flashcard-container .spelling-feedback {
+  margin-top: calc(8px * var(--card-scale));
+}
+
+.flashcard-container .spelling-correct {
+  font-size: calc(16px * var(--card-text-scale));
+}
+
+.flashcard-container .spelling-wrong,
+.flashcard-container .spelling-hard {
+  font-size: calc(14px * var(--card-text-scale));
+}
+
+.flashcard-container .spelling-actions {
+  margin-top: calc(10px * var(--card-scale));
+  gap: calc(8px * var(--card-scale));
+}
+
+.flashcard-container .listening-toolbar {
+  gap: calc(8px * var(--card-scale));
+  margin-bottom: calc(8px * var(--card-scale));
+}
+
+.flashcard-container .listening-hint {
+  margin-top: calc(6px * var(--card-scale));
+  font-size: calc(14px * var(--card-text-scale));
+}
+
+.flashcard-container .listening-audio-translation,
+.flashcard-container .listening-audio-empty {
+  max-width: calc(520px * var(--card-scale));
+  font-size: calc(13px * var(--card-text-scale));
+}
+
+/* 卡片内的操作按钮（确认/下一个、播放例句、提示）跟随放大，避免相对卡片显得过小 */
+.flashcard-container .spelling-actions .el-button,
+.flashcard-container .choice-result-actions .el-button,
+.flashcard-container .listening-audio-button,
+.flashcard-container .spelling-hint-button {
+  height: calc(32px * var(--card-scale));
+  padding: 0 calc(15px * var(--card-scale));
+  border-radius: calc(4px * var(--card-scale));
+  font-size: calc(14px * var(--card-text-scale));
+}
+
 /* ========== 响应式 - 学习会话 ========== */
 @media (max-width: 768px) {
   .session-chrome {
@@ -681,19 +994,26 @@
     width: 100%;
   }
 
-  .card-word {
+  /* 以下规则带 .flashcard-container 前缀：放大规则为 2 类选择器，
+     不加前缀会被它盖过而在移动端失效 */
+  .flashcard-container .card-word {
     font-size: 24px;
   }
 
-  .card-meaning {
+  .study-session {
+    --card-scale: 1.15;
+    --card-text-scale: 1.05;
+  }
+
+  .flashcard-container .card-meaning {
     font-size: 16px;
   }
 
-  .rating-buttons {
+  .flashcard-container .rating-buttons {
     gap: 6px;
   }
 
-  .rate-btn {
+  .flashcard-container .rate-btn {
     min-width: 64px;
     font-size: 12px;
     height: 36px;
@@ -743,37 +1063,41 @@
 }
 
 @media (max-width: 480px) {
-  .flashcard {
+  /* 同 768px：这些属性已被放大规则覆盖，需加前缀才能生效 */
+  .flashcard-container .flashcard {
     padding: 12px 12px;
     border-radius: 12px;
   }
 
-  .card-word {
+  .flashcard-container .card-word {
     font-size: 22px;
   }
 
-  .card-phonetic {
+  .study-session {
+    --card-scale: 1;
+    --card-text-scale: 1;
+  }
+
+  .flashcard-container .card-phonetic {
     font-size: 13px;
   }
 
-  .card-meaning {
+  .flashcard-container .card-meaning {
     font-size: 16px;
   }
 
-  .word-image-frame.is-study .word-memory-image {
-    max-height: 90px;
-  }
+  /* 记忆图高度已由各模式的 vh 上限统一控制，此处不再单独收紧 */
 
-  .card-remark {
+  .flashcard-container .card-remark {
     font-size: 13px;
   }
 
-  .rating-buttons {
+  .flashcard-container .rating-buttons {
     gap: 6px;
     margin-top: 10px;
   }
 
-  .choice-option {
+  .flashcard-container .choice-option {
     padding: 10px 12px;
   }
 

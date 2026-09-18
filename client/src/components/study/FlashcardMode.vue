@@ -1,5 +1,5 @@
 <template>
-  <div class="flashcard-container">
+  <div class="flashcard-container is-flip">
     <div class="flashcard" :class="{ flipped: showAnswer }" @click="!showAnswer && $emit('flip')">
       <div class="card-front">
         <div v-if="againCountMap[card.wordId] > 0" class="again-badge">
