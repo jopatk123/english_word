@@ -9,6 +9,7 @@ import { globalStubs } from '../../components/study/__tests__/studyTestUtils';
  */
 
 const regenerateExampleMock = vi.fn();
+const sessionTestState = vi.hoisted(() => ({ studyMode: 'flashcard' }));
 
 vi.mock('../../composables/useStudySession.js', () => ({
   useStudySession: () => buildSessionState(),
@@ -39,7 +40,7 @@ function buildSessionState() {
     submitting: false,
     finished: false,
     modeSelected: true,
-    studyMode: 'flashcard',
+    studyMode: sessionTestState.studyMode,
     againCountMap: {},
     regeneratingExampleId: 11,
     sessionStats: { total: 0, again: 0, hard: 0, good: 0, easy: 0 },
@@ -65,6 +66,7 @@ function buildSessionState() {
 describe('StudySessionView 例句重新生成接线', () => {
   beforeEach(() => {
     regenerateExampleMock.mockClear();
+    sessionTestState.studyMode = 'flashcard';
   });
 
   const createWrapper = () =>
@@ -73,6 +75,7 @@ describe('StudySessionView 例句重新生成接线', () => {
         directives: { loading: {} },
         stubs: {
           ...globalStubs,
+          SessionProgress: false,
           WordImage: { template: '<div class="word-image-stub" />' },
           'el-breadcrumb': { template: '<nav><slot /></nav>' },
           'el-breadcrumb-item': { template: '<span><slot /></span>' },
@@ -93,5 +96,15 @@ describe('StudySessionView 例句重新生成接线', () => {
 
     expect(regenerateExampleMock).toHaveBeenCalledTimes(1);
     expect(regenerateExampleMock.mock.calls[0][0]).toMatchObject({ id: 11 });
+  });
+
+  it('自动朗读模式把暂停控件放在进度条旁', () => {
+    sessionTestState.studyMode = 'autoRead';
+    const wrapper = createWrapper();
+
+    expect(wrapper.text()).toContain('朗读中');
+    expect(wrapper.text()).toContain('暂停');
+    expect(wrapper.find('.auto-read-toggle').exists()).toBe(true);
+    expect(wrapper.find('.flashcard.auto-read-card').exists()).toBe(true);
   });
 });

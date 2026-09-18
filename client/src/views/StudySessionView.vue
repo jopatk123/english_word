@@ -1,10 +1,32 @@
 <template>
   <div class="study-session">
-    <el-breadcrumb separator="/">
-      <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-      <el-breadcrumb-item :to="{ path: '/study' }">背单词</el-breadcrumb-item>
-      <el-breadcrumb-item>学习中</el-breadcrumb-item>
-    </el-breadcrumb>
+    <div class="session-chrome">
+      <el-breadcrumb separator="/">
+        <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: '/study' }">背单词</el-breadcrumb-item>
+        <el-breadcrumb-item>学习中</el-breadcrumb-item>
+      </el-breadcrumb>
+      <SessionProgress
+        v-if="showSessionProgress"
+        :currentIndex="currentIndex"
+        :total="queue.length"
+        @seek="seekToIndex"
+      >
+        <template v-if="studyMode === 'autoRead'" #extra>
+          <span class="auto-read-status" :class="{ 'is-paused': isAutoReadPaused }">
+            {{ isAutoReadPaused ? '已暂停' : '朗读中' }}
+          </span>
+          <el-button
+            class="auto-read-toggle"
+            size="small"
+            :type="isAutoReadPaused ? 'success' : 'warning'"
+            @click="toggleAutoReadPause"
+          >
+            {{ isAutoReadPaused ? '继续' : '暂停' }}
+          </el-button>
+        </template>
+      </SessionProgress>
+    </div>
 
     <!-- 加载状态 -->
     <div
@@ -41,15 +63,12 @@
     <FlashcardMode
       v-else-if="currentCard && studyMode === 'flashcard'"
       :card="currentCard"
-      :currentIndex="currentIndex"
-      :total="queue.length"
       :showAnswer="showAnswer"
       :submitting="submitting"
       :againCountMap="againCountMap"
       :regeneratingExampleId="regeneratingExampleId"
       @flip="flipCard"
       @rate="submitRating"
-      @seek="seekToIndex"
       @regenerate-example="regenerateExample"
     />
 
@@ -57,8 +76,6 @@
     <ChoiceMode
       v-else-if="currentCard && studyMode === 'choice'"
       :card="currentCard"
-      :currentIndex="currentIndex"
-      :total="queue.length"
       :choiceOptions="choiceOptions"
       :choiceSelected="choiceSelected"
       :choiceAnswered="choiceAnswered"
@@ -66,7 +83,6 @@
       :isLast="currentIndex + 1 >= queue.length"
       @choose="handleChoice"
       @next="choiceNext"
-      @seek="seekToIndex"
     />
 
     <!-- 拼写模式 -->
@@ -74,7 +90,6 @@
       v-else-if="currentCard && studyMode === 'spelling'"
       :card="currentCard"
       :currentIndex="currentIndex"
-      :total="queue.length"
       v-model:inputValue="spellingInput"
       :answered="spellingAnswered"
       :correct="spellingCorrect"
@@ -85,7 +100,6 @@
       @check="checkSpelling"
       @hint="showSpellingHint"
       @next="spellingNext"
-      @seek="seekToIndex"
     />
 
     <!-- 听力模式 -->
@@ -93,7 +107,6 @@
       v-else-if="currentCard && studyMode === 'listening'"
       :card="currentCard"
       :currentIndex="currentIndex"
-      :total="queue.length"
       v-model:inputValue="spellingInput"
       :answered="spellingAnswered"
       :correct="spellingCorrect"
@@ -105,19 +118,10 @@
       @check="checkSpelling"
       @hint="showSpellingHint"
       @next="spellingNext"
-      @seek="seekToIndex"
     />
 
     <!-- 自动朗读模式 -->
-    <AutoReadMode
-      v-else-if="currentCard && studyMode === 'autoRead'"
-      :card="currentCard"
-      :currentIndex="currentIndex"
-      :total="queue.length"
-      :isPaused="isAutoReadPaused"
-      @toggle-pause="toggleAutoReadPause"
-      @seek="seekToIndex"
-    />
+    <AutoReadMode v-else-if="currentCard && studyMode === 'autoRead'" :card="currentCard" />
 
     <!-- 无待复习 -->
     <div v-else class="session-empty">
@@ -128,8 +132,10 @@
 </template>
 
 <script setup>
+  import { computed, unref } from 'vue';
   import { useStudySession } from '../composables/useStudySession.js';
   import ModeSelect from '../components/study/ModeSelect.vue';
+  import SessionProgress from '../components/study/SessionProgress.vue';
   import SessionComplete from '../components/study/SessionComplete.vue';
   import FlashcardMode from '../components/study/FlashcardMode.vue';
   import ChoiceMode from '../components/study/ChoiceMode.vue';
@@ -182,4 +188,8 @@
     showSpellingHint,
     spellingNext,
   } = useStudySession();
+
+  const showSessionProgress = computed(() =>
+    Boolean(unref(modeSelected) && unref(currentCard) && !unref(finished) && unref(queue)?.length)
+  );
 </script>

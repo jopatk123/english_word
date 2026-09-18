@@ -1,6 +1,6 @@
 export const globalStubs = {
   SpeakButton: { template: '<button class="speak-stub" />' },
-  SessionProgress: { template: '<div class="progress-stub" />' },
+  SessionProgress: { template: '<div class="progress-stub"><slot name="extra" /></div>' },
   'el-button': {
     props: ['loading'],
     emits: ['click'],
@@ -15,7 +15,7 @@ export const globalStubs = {
       focus() {},
     },
     template:
-      '<div class="el-input-stub"><input :placeholder="placeholder" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" /></div>',
+      '<div class="el-input-stub"><input :placeholder="placeholder" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" /><slot name="append" /></div>',
   },
   'el-alert': { template: '<div class="el-alert-stub"><slot /><slot name="default" /></div>' },
   'el-progress': true,

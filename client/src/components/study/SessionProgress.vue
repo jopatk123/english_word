@@ -2,7 +2,7 @@
   <div class="session-progress">
     <span class="progress-text">{{ displayIndex }} / {{ total }}</span>
     <div class="progress-track">
-      <el-progress :percentage="percentage" :show-text="false" :stroke-width="6" />
+      <el-progress :percentage="percentage" :show-text="false" :stroke-width="5" />
       <input
         v-if="canSeek"
         class="progress-seek"
@@ -13,6 +13,9 @@
         :aria-label="`跳转到第 ${displayIndex} 个单词`"
         @input="handleSeek"
       />
+    </div>
+    <div v-if="$slots.extra" class="progress-extra">
+      <slot name="extra" />
     </div>
   </div>
 </template>

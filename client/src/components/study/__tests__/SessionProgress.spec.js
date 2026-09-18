@@ -29,4 +29,15 @@ describe('SessionProgress', () => {
 
     expect(wrapper.emitted('seek')[0]).toEqual([5]);
   });
+
+  it('有 extra 插槽时渲染在进度条右侧', () => {
+    const wrapper = mount(SessionProgress, {
+      props: { currentIndex: 0, total: 10 },
+      slots: { extra: '<button class="extra-slot">暂停</button>' },
+      global: { stubs: globalStubs },
+    });
+
+    expect(wrapper.find('.progress-extra .extra-slot').exists()).toBe(true);
+    expect(wrapper.text()).toContain('暂停');
+  });
 });

@@ -45,9 +45,10 @@ describe('ListeningMode', () => {
       },
     });
 
-  it('显示听力模式提示文字', () => {
+  it('显示听力工具条而不显示模式标题', () => {
     const wrapper = createWrapper();
-    expect(wrapper.text()).toContain('听发音，拼写单词');
+    expect(wrapper.text()).not.toContain('听发音，拼写单词');
+    expect(wrapper.find('.listening-toolbar').exists()).toBe(true);
   });
 
   it('默认不显示例句中文翻译', () => {
@@ -89,7 +90,7 @@ describe('ListeningMode', () => {
         },
       },
     });
-    expect(wrapper.text()).toContain('当前单词暂无例句音频');
+    expect(wrapper.text()).toContain('暂无例句音频');
     expect(wrapper.text()).not.toContain('播放例句');
   });
 
@@ -159,8 +160,18 @@ describe('ListeningMode', () => {
     expect(wrapper.text()).not.toContain('建造；构建');
   });
 
-  it('单词有记忆图片时展示', () => {
+  it('未作答时不展示记忆图片', () => {
     const wrapper = createWrapper({
+      answered: false,
+      card: { ...defaultCard, word: { ...defaultCard.word, hasImage: true } },
+    });
+    expect(wrapper.find('.word-image-stub').exists()).toBe(false);
+  });
+
+  it('作答后展示记忆图片', () => {
+    const wrapper = createWrapper({
+      answered: true,
+      correct: true,
       card: { ...defaultCard, word: { ...defaultCard.word, hasImage: true } },
     });
     expect(wrapper.find('.word-image-stub').exists()).toBe(true);

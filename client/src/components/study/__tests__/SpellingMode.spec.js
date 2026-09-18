@@ -103,8 +103,18 @@ describe('SpellingMode', () => {
     expect(input.attributes('placeholder')).toBe('c________ (9个字母)');
   });
 
-  it('单词有记忆图片时展示', () => {
+  it('未作答时不展示记忆图片', () => {
     const wrapper = createWrapper({
+      answered: false,
+      card: { ...defaultCard, word: { ...defaultCard.word, hasImage: true } },
+    });
+    expect(wrapper.find('.word-image-stub').exists()).toBe(false);
+  });
+
+  it('作答后展示记忆图片', () => {
+    const wrapper = createWrapper({
+      answered: true,
+      correct: true,
       card: { ...defaultCard, word: { ...defaultCard.word, hasImage: true } },
     });
     expect(wrapper.find('.word-image-stub').exists()).toBe(true);

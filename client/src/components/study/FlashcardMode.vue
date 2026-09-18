@@ -1,15 +1,17 @@
 <template>
   <div class="flashcard-container">
-    <SessionProgress :currentIndex="currentIndex" :total="total" @seek="$emit('seek', $event)" />
-
     <div class="flashcard" :class="{ flipped: showAnswer }" @click="!showAnswer && $emit('flip')">
       <div class="card-front">
         <div v-if="againCountMap[card.wordId] > 0" class="again-badge">
           第 {{ againCountMap[card.wordId] + 1 }} 次复习
         </div>
-        <div class="card-word">{{ card.word.name }}</div>
-        <div v-if="card.word.phonetic" class="card-phonetic">{{ card.word.phonetic }}</div>
-        <SpeakButton :text="card.word.name" />
+        <div class="card-head">
+          <div class="card-head-text">
+            <span class="card-word">{{ card.word.name }}</span>
+            <span v-if="card.word.phonetic" class="card-phonetic">{{ card.word.phonetic }}</span>
+          </div>
+          <SpeakButton :text="card.word.name" />
+        </div>
         <WordImage
           v-if="card.word.hasImage"
           :word-id="card.word.id || card.wordId"
@@ -22,7 +24,7 @@
             (card.word.roots || []).map((r) => `${r.name}（${r.meaning}）`).join('、') || '无'
           }}
         </div>
-        <div class="card-hint">点击卡片显示答案</div>
+        <div v-if="!showAnswer" class="card-hint">点击卡片显示答案 · 空格翻牌</div>
       </div>
       <div v-if="showAnswer" class="card-back">
         <div class="card-divider"></div>
@@ -63,29 +65,23 @@
         >很熟悉</el-button
       >
     </div>
-    <div v-else class="flip-action">
-      <el-button type="primary" size="large" @click="$emit('flip')">显示答案</el-button>
-      <div class="keyboard-hint">
-        快捷键：<kbd>空格</kbd> 翻牌，翻牌后 <kbd>空格</kbd> 发音，<kbd>1</kbd>-<kbd>4</kbd> 评分
-      </div>
+    <div v-else class="keyboard-hint">
+      快捷键：<kbd>空格</kbd> 翻牌，翻牌后 <kbd>空格</kbd> 发音，<kbd>1</kbd>-<kbd>4</kbd> 评分
     </div>
   </div>
 </template>
 
 <script setup>
   import SpeakButton from '../SpeakButton.vue';
-  import SessionProgress from './SessionProgress.vue';
   import WordImage from '../WordImage.vue';
 
   defineProps({
     card: { type: Object, required: true },
-    currentIndex: { type: Number, required: true },
-    total: { type: Number, required: true },
     showAnswer: { type: Boolean, default: false },
     submitting: { type: Boolean, default: false },
     againCountMap: { type: Object, default: () => ({}) },
     regeneratingExampleId: { type: [Number, String], default: null },
   });
 
-  defineEmits(['flip', 'rate', 'seek', 'regenerate-example']);
+  defineEmits(['flip', 'rate', 'regenerate-example']);
 </script>

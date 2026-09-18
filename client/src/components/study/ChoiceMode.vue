@@ -1,12 +1,14 @@
 <template>
   <div class="flashcard-container">
-    <SessionProgress :currentIndex="currentIndex" :total="total" @seek="$emit('seek', $event)" />
-
     <div class="flashcard choice-card">
       <div class="card-front">
-        <div class="card-word">{{ card.word.name }}</div>
-        <div v-if="card.word.phonetic" class="card-phonetic">{{ card.word.phonetic }}</div>
-        <SpeakButton :text="card.word.name" />
+        <div class="card-head">
+          <div class="card-head-text">
+            <span class="card-word">{{ card.word.name }}</span>
+            <span v-if="card.word.phonetic" class="card-phonetic">{{ card.word.phonetic }}</span>
+          </div>
+          <SpeakButton :text="card.word.name" />
+        </div>
         <WordImage
           v-if="card.word.hasImage"
           :word-id="card.word.id || card.wordId"
@@ -49,13 +51,10 @@
 
 <script setup>
   import SpeakButton from '../SpeakButton.vue';
-  import SessionProgress from './SessionProgress.vue';
   import WordImage from '../WordImage.vue';
 
   defineProps({
     card: { type: Object, required: true },
-    currentIndex: { type: Number, required: true },
-    total: { type: Number, required: true },
     choiceOptions: { type: Array, required: true },
     choiceSelected: { type: Number, default: -1 },
     choiceAnswered: { type: Boolean, default: false },
@@ -63,5 +62,5 @@
     isLast: { type: Boolean, default: false },
   });
 
-  defineEmits(['choose', 'next', 'seek']);
+  defineEmits(['choose', 'next']);
 </script>

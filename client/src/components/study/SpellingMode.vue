@@ -1,17 +1,12 @@
 <template>
   <div class="flashcard-container">
-    <SessionProgress :currentIndex="currentIndex" :total="total" @seek="$emit('seek', $event)" />
-
     <div class="flashcard spelling-card">
-      <!-- 显示释义和词根供用户拼写 -->
-      <div class="card-meaning" style="font-size: 22px; margin-bottom: 16px">
-        {{ card.word.meaning }}
-      </div>
+      <div class="card-meaning">{{ card.word.meaning }}</div>
       <div v-if="card.word.roots?.length" class="card-root-tag">
         词根：{{ card.word.roots.map((r) => `${r.name}（${r.meaning}）`).join('、') }}
       </div>
       <WordImage
-        v-if="card.word.hasImage"
+        v-if="answered && card.word.hasImage"
         :word-id="card.word.id || card.wordId"
         :has-image="true"
         :alt="`${card.word.name} 的记忆图片`"
@@ -26,10 +21,11 @@
             size="large"
             :disabled="answered"
             ref="inputRef"
-          />
-          <el-button v-if="!answered" class="spelling-hint-button" @click="$emit('hint')">
-            提示
-          </el-button>
+          >
+            <template v-if="!answered" #append>
+              <el-button class="spelling-hint-button" @click="$emit('hint')">提示</el-button>
+            </template>
+          </el-input>
         </div>
         <div v-if="answered" class="spelling-feedback">
           <div v-if="correct" class="spelling-correct">✅ 正确！</div>
@@ -42,13 +38,16 @@
         </div>
       </div>
 
-      <div v-if="!answered" class="spelling-actions">
-        <el-button type="primary" @click="$emit('check')" :disabled="!localInput.trim()">
+      <div class="spelling-actions">
+        <el-button
+          v-if="!answered"
+          type="primary"
+          @click="$emit('check')"
+          :disabled="!localInput.trim()"
+        >
           确认
         </el-button>
-      </div>
-      <div v-else class="spelling-actions">
-        <el-button type="primary" @click="$emit('next')" :loading="submitting">
+        <el-button v-else type="primary" @click="$emit('next')" :loading="submitting">
           {{ isLast ? '完成' : '下一个' }}
         </el-button>
       </div>
@@ -60,13 +59,11 @@
 
 <script setup>
   import { ref, computed, onMounted, watch, nextTick } from 'vue';
-  import SessionProgress from './SessionProgress.vue';
   import WordImage from '../WordImage.vue';
 
   const props = defineProps({
     card: { type: Object, required: true },
     currentIndex: { type: Number, required: true },
-    total: { type: Number, required: true },
     inputValue: { type: String, default: '' },
     answered: { type: Boolean, default: false },
     correct: { type: Boolean, default: false },
@@ -77,7 +74,7 @@
     isLast: { type: Boolean, default: false },
   });
 
-  const emit = defineEmits(['check', 'hint', 'next', 'seek', 'update:inputValue']);
+  const emit = defineEmits(['check', 'hint', 'next', 'update:inputValue']);
 
   const localInput = computed({
     get: () => props.inputValue,

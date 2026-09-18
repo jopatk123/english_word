@@ -1,22 +1,33 @@
 /* ========== 闪卡学习页 ========== */
+.session-chrome {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  min-width: 0;
+}
+
 .study-session .el-breadcrumb {
-  margin-bottom: 20px;
-  font-size: 14px;
+  margin-bottom: 0;
+  font-size: 13px;
+  flex-shrink: 0;
 }
 
 .session-loading {
-  min-height: 300px;
+  min-height: 220px;
 }
 
 .session-progress {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
 }
 
 .progress-text {
-  font-size: 14px;
+  font-size: 13px;
   color: #909399;
   white-space: nowrap;
 }
@@ -27,16 +38,23 @@
   min-width: 0;
 }
 
+.progress-extra {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 .progress-track .el-progress {
   pointer-events: none;
 }
 
 .progress-seek {
   position: absolute;
-  inset: -10px 0;
+  inset: -6px 0;
   width: 100%;
   margin: 0;
-  height: 26px;
+  height: 18px;
   cursor: pointer;
   background: transparent;
   -webkit-appearance: none;
@@ -55,9 +73,9 @@
 .progress-seek::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
-  margin-top: -6px;
+  width: 14px;
+  height: 14px;
+  margin-top: -4px;
   border: 2px solid #409eff;
   border-radius: 50%;
   background: #fff;
@@ -71,8 +89,8 @@
 }
 
 .progress-seek::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border: 2px solid #409eff;
   border-radius: 50%;
   background: #fff;
@@ -87,9 +105,8 @@
 
 .flashcard {
   background: #fff;
-  border-radius: 16px;
-  padding: 32px 24px;
-  min-height: 280px;
+  border-radius: 12px;
+  padding: 16px 18px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   cursor: pointer;
   transition: box-shadow 0.3s;
@@ -98,18 +115,11 @@
   align-items: center;
 }
 
-.auto-read-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0 4px 18px;
-}
-
 .auto-read-status {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: #409eff;
+  white-space: nowrap;
 }
 
 .auto-read-status.is-paused {
@@ -117,7 +127,7 @@
 }
 
 .auto-read-toggle {
-  min-width: 120px;
+  min-width: 56px;
 }
 
 .auto-read-card {
@@ -136,93 +146,110 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
 }
 
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.card-head-text {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  min-width: 0;
+}
+
 .card-word {
-  font-size: 36px;
+  font-size: 28px;
   font-weight: 700;
   color: #303133;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
 }
 
 .card-phonetic {
-  font-size: 16px;
+  font-size: 14px;
   color: #909399;
   font-style: italic;
 }
 
 .card-root-tag {
-  font-size: 13px;
+  font-size: 12px;
   color: #909399;
-  background: #f4f4f5;
-  padding: 4px 12px;
-  border-radius: 12px;
-  margin-top: 8px;
+  line-height: 1.4;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border-radius: 0;
 }
 
 .card-hint {
-  font-size: 13px;
+  font-size: 12px;
   color: #c0c4cc;
-  margin-top: 16px;
-}
-
-.flashcard.flipped .card-hint {
-  display: none;
+  margin-top: 4px;
 }
 
 .card-back {
   width: 100%;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .card-divider {
   height: 1px;
   background: #ebeef5;
-  margin: 16px 0;
+  margin: 8px 0;
 }
 
 .card-meaning {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   color: #303133;
   text-align: center;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
+  line-height: 1.35;
 }
 
 .word-image-frame.is-study {
-  margin: 4px 0 14px;
+  margin: 2px 0 6px;
   width: 100%;
 }
 
 .word-image-frame.is-study .word-memory-image {
   max-width: 100%;
-  max-height: 240px;
+  max-height: 120px;
 }
 
 .card-remark {
-  font-size: 14px;
+  font-size: 13px;
   color: #606266;
   text-align: center;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
 
 .card-examples {
-  margin-top: 16px;
+  margin-top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
 }
 
 .card-example {
   background: #f9fafb;
-  padding: 12px 16px;
+  padding: 8px 12px;
   border-radius: 8px;
   border-left: 3px solid #667eea;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .card-example .example-main {
@@ -237,34 +264,34 @@
 }
 
 .card-example .example-en {
-  font-size: 14px;
+  font-size: 13px;
   color: #303133;
-  line-height: 1.6;
-  margin-bottom: 4px;
+  line-height: 1.45;
+  margin-bottom: 2px;
 }
 
 .card-example .example-zh {
-  font-size: 13px;
+  font-size: 12px;
   color: #909399;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 /* 评分按钮 */
 .rating-buttons {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   justify-content: center;
-  margin-top: 24px;
+  margin-top: 12px;
   flex-wrap: wrap;
 }
 
 .rate-btn {
   flex: 1;
-  min-width: 80px;
-  height: 44px;
-  border-radius: 12px !important;
+  min-width: 72px;
+  height: 36px;
+  border-radius: 10px !important;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .rate-again {
@@ -303,15 +330,11 @@
   --el-button-hover-text-color: #fff !important;
 }
 
-.flip-action {
-  text-align: center;
-  margin-top: 24px;
-}
-
 .keyboard-hint {
-  margin-top: 10px;
-  font-size: 12px;
+  margin-top: 8px;
+  font-size: 11px;
   color: #c0c4cc;
+  text-align: center;
 }
 
 .keyboard-hint kbd {
@@ -325,17 +348,37 @@
 }
 
 .listening-hint {
-  margin-top: 12px;
-  font-size: 15px;
+  margin-top: 6px;
+  font-size: 14px;
   color: #606266;
   letter-spacing: 1px;
 }
 
-.flip-action .el-button {
-  min-width: 200px;
-  height: 44px;
-  border-radius: 22px;
-  font-size: 16px;
+.listening-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.listening-audio-translation,
+.listening-audio-empty {
+  max-width: 520px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #7d8ca3;
+  text-align: center;
+}
+
+.listening-audio-button {
+  min-width: 0;
+}
+
+.listening-audio-button-secondary {
+  color: #5f6f89;
 }
 
 /* 学习完成页 */
@@ -425,7 +468,7 @@
 
 /* 断点续学提示 */
 .resume-banner {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   text-align: left;
 }
 
@@ -436,41 +479,45 @@
   color: #f56c6c;
   font-size: 12px;
   font-weight: 600;
-  padding: 2px 10px;
+  padding: 1px 8px;
   border-radius: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 2px;
 }
 
 /* 模式选择页 */
 .mode-select {
   text-align: center;
-  padding: 40px 20px;
+  padding: 16px 12px;
 }
 
 .mode-select h2 {
-  font-size: 24px;
+  font-size: 20px;
   color: #303133;
-  margin-bottom: 32px;
+  margin-bottom: 16px;
 }
 
 .mode-options {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  gap: 10px;
   max-width: 500px;
-  margin: 0 auto 24px;
+  margin: 0 auto 16px;
 }
 
 .mode-card {
   background: #fff;
-  border-radius: 16px;
-  padding: 24px 16px;
+  border-radius: 12px;
+  padding: 14px 12px;
   cursor: pointer;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   transition:
     transform 0.2s,
     box-shadow 0.2s;
   border: 2px solid transparent;
+}
+
+.mode-card:nth-child(5) {
+  grid-column: 1 / -1;
 }
 
 .mode-card:hover {
@@ -480,24 +527,27 @@
 }
 
 .mode-icon {
-  font-size: 36px;
-  margin-bottom: 8px;
-}
-
-.mode-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
+  font-size: 24px;
   margin-bottom: 4px;
 }
 
+.mode-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 2px;
+}
+
 .mode-desc {
-  font-size: 13px;
+  font-size: 12px;
   color: #909399;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mode-count {
-  font-size: 14px;
+  font-size: 13px;
   color: #909399;
 }
 
@@ -508,18 +558,18 @@
 
 .choice-options {
   width: 100%;
-  margin-top: 24px;
+  margin-top: 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .choice-option {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 10px;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
   border: 2px solid #e4e7ed;
   cursor: pointer;
   transition:
@@ -546,23 +596,23 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: #f0f2f5;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   color: #606266;
   flex-shrink: 0;
 }
 
 .choice-text {
-  font-size: 15px;
+  font-size: 14px;
   color: #303133;
 }
 
 .choice-result-actions {
-  margin-top: 20px;
+  margin-top: 10px;
   text-align: center;
 }
 
@@ -575,18 +625,20 @@
 .spelling-input-area {
   width: 100%;
   max-width: 400px;
-  margin: 16px auto 0;
+  margin: 10px auto 0;
 }
 
 .spelling-input-row {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
+  width: 100%;
 }
 
 .spelling-input-area .el-input {
   flex: 1;
-  font-size: 18px;
+  width: 100%;
+  font-size: 16px;
   text-align: center;
 }
 
@@ -595,72 +647,68 @@
 }
 
 .spelling-feedback {
-  margin-top: 12px;
+  margin-top: 8px;
   text-align: center;
 }
 
 .spelling-correct {
   color: #67c23a;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
 }
 
 .spelling-wrong {
   color: #f56c6c;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .spelling-actions {
-  margin-top: 16px;
+  margin-top: 10px;
   display: flex;
-  gap: 10px;
+  gap: 8px;
   justify-content: center;
 }
 
 /* ========== 响应式 - 学习会话 ========== */
 @media (max-width: 768px) {
-  .card-word {
-    font-size: 28px;
-  }
-
-  .card-meaning {
-    font-size: 18px;
-  }
-
-  .rating-buttons {
+  .session-chrome {
+    flex-direction: column;
+    align-items: stretch;
     gap: 8px;
   }
 
+  .session-progress {
+    width: 100%;
+  }
+
+  .card-word {
+    font-size: 24px;
+  }
+
+  .card-meaning {
+    font-size: 16px;
+  }
+
+  .rating-buttons {
+    gap: 6px;
+  }
+
   .rate-btn {
-    min-width: 70px;
-    font-size: 13px;
-    height: 42px;
+    min-width: 64px;
+    font-size: 12px;
+    height: 36px;
   }
 
-  .auto-read-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .auto-read-status {
-    text-align: center;
-  }
-
-  .auto-read-toggle {
-    width: 100%;
-  }
-
-  .spelling-input-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .spelling-hint-button {
-    width: 100%;
+  .keyboard-hint {
+    display: none;
   }
 
   .mode-options {
     grid-template-columns: 1fr;
+  }
+
+  .mode-card:nth-child(5) {
+    grid-column: auto;
   }
 
   .complete-actions {
@@ -680,39 +728,32 @@
     font-size: 20px;
   }
 
-  .flip-action .el-button {
-    min-width: 0;
-    width: 100%;
-    max-width: 320px;
-  }
-
   .result-bars {
     gap: 10px;
   }
 
   .mode-select {
-    padding: 24px 12px;
+    padding: 12px 8px;
   }
 
   .mode-select h2 {
-    font-size: 20px;
-    margin-bottom: 20px;
+    font-size: 18px;
+    margin-bottom: 12px;
   }
 }
 
 @media (max-width: 480px) {
   .flashcard {
-    padding: 20px 14px;
-    min-height: 240px;
-    border-radius: 14px;
+    padding: 12px 12px;
+    border-radius: 12px;
   }
 
   .card-word {
-    font-size: 24px;
+    font-size: 22px;
   }
 
   .card-phonetic {
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .card-meaning {
@@ -720,54 +761,28 @@
   }
 
   .word-image-frame.is-study .word-memory-image {
-    max-height: 180px;
+    max-height: 90px;
   }
 
   .card-remark {
     font-size: 13px;
   }
 
-  .card-example .example-en {
-    font-size: 13px;
-  }
-
-  .card-example .example-zh {
-    font-size: 12px;
-  }
-
   .rating-buttons {
     gap: 6px;
-    margin-top: 16px;
-  }
-
-  .rate-btn {
-    height: 44px;
-    font-size: 13px;
-    border-radius: 10px !important;
-  }
-
-  .flip-action {
-    margin-top: 16px;
+    margin-top: 10px;
   }
 
   .choice-option {
-    padding: 12px 14px;
-  }
-
-  .choice-text {
-    font-size: 14px;
+    padding: 10px 12px;
   }
 
   .mode-card {
-    padding: 18px 12px;
+    padding: 12px 10px;
   }
 
   .mode-icon {
-    font-size: 28px;
-  }
-
-  .mode-name {
-    font-size: 15px;
+    font-size: 22px;
   }
 
   .complete-icon {

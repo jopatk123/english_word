@@ -46,15 +46,15 @@ describe('FlashcardMode', () => {
     expect(wrapper.text()).toContain('spect');
   });
 
-  it('showAnswer=false 时显示"显示答案"按钮', () => {
+  it('showAnswer=false 时提示点击卡片翻牌', () => {
     const wrapper = createWrapper();
-    expect(wrapper.text()).toContain('显示答案');
+    expect(wrapper.text()).toContain('点击卡片显示答案');
+    expect(wrapper.text()).not.toContain('再来一遍');
   });
 
-  it('点击"显示答案"触发 flip 事件', async () => {
+  it('点击卡片触发 flip 事件', async () => {
     const wrapper = createWrapper();
-    const btn = wrapper.find('.el-btn');
-    await btn.trigger('click');
+    await wrapper.find('.flashcard').trigger('click');
     expect(wrapper.emitted('flip')).toBeTruthy();
   });
 
