@@ -107,35 +107,61 @@
       />
     </div>
     <!-- 词根列表（查看掌握进度） -->
-    <div class="root-section">
+    <div class="root-section has-mobile-cards">
       <div class="section-header">
         <h3>按词根查看掌握进度</h3>
       </div>
 
-      <el-table
-        :data="rootsProgress"
-        stripe
-        v-loading="rootsLoading"
-        empty-text="暂无词根，请先添加词根和单词"
-      >
-        <el-table-column prop="name" label="词根" min-width="100">
-          <template #default="{ row }">
-            <el-link type="primary" @click="$router.push(`/root/${row.id}`)">
+      <div class="table-scroll">
+        <el-table
+          :data="rootsProgress"
+          stripe
+          v-loading="rootsLoading"
+          empty-text="暂无词根，请先添加词根和单词"
+        >
+          <el-table-column prop="name" label="词根" min-width="100">
+            <template #default="{ row }">
+              <el-link type="primary" @click="$router.push(`/root/${row.id}`)">
+                <strong>{{ row.name }}</strong>
+              </el-link>
+              <el-tag
+                v-if="row.isDefault"
+                type="info"
+                size="small"
+                style="display: block; margin-top: 4px; width: fit-content"
+                >未分类</el-tag
+              >
+            </template>
+          </el-table-column>
+          <el-table-column prop="meaning" label="含义" min-width="120" />
+          <el-table-column label="掌握进度" min-width="220">
+            <template #default="{ row }">
+              <div class="progress-info">
+                <el-progress
+                  :percentage="row.wordCount ? Math.round((row.known / row.wordCount) * 100) : 0"
+                  :stroke-width="14"
+                  :format="() => `${row.known}/${row.wordCount}`"
+                />
+                <span v-if="row.learning > 0" class="known-badge"> 学习中 {{ row.learning }} </span>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <div class="mobile-card-list">
+        <article
+          v-for="row in rootsProgress"
+          :key="row.id"
+          class="data-card-item"
+          @click="$router.push(`/root/${row.id}`)"
+        >
+          <div class="data-card-body">
+            <div class="data-card-title">
               <strong>{{ row.name }}</strong>
-            </el-link>
-            <el-tag
-              v-if="row.isDefault"
-              type="info"
-              size="small"
-              style="display: block; margin-top: 4px; width: fit-content"
-              >未分类</el-tag
-            >
-          </template>
-        </el-table-column>
-        <el-table-column prop="meaning" label="含义" min-width="120" />
-        <el-table-column label="掌握进度" min-width="220">
-          <template #default="{ row }">
-            <div class="progress-info">
+              <el-tag v-if="row.isDefault" type="info" size="small">未分类</el-tag>
+            </div>
+            <div class="data-card-meta">{{ row.meaning }}</div>
+            <div class="progress-info" style="margin-top: 8px">
               <el-progress
                 :percentage="row.wordCount ? Math.round((row.known / row.wordCount) * 100) : 0"
                 :stroke-width="14"
@@ -143,9 +169,9 @@
               />
               <span v-if="row.learning > 0" class="known-badge"> 学习中 {{ row.learning }} </span>
             </div>
-          </template>
-        </el-table-column>
-      </el-table>
+          </div>
+        </article>
+      </div>
     </div>
   </div>
 </template>

@@ -1,6 +1,10 @@
 <template>
   <router-view v-if="isAdminRoute" />
-  <div v-else class="app-container">
+  <div
+    v-else
+    class="app-container"
+    :class="{ 'is-study-session': isStudySession, 'is-guest': !user }"
+  >
     <el-header class="app-header">
       <div class="header-shell">
         <div class="header-clock">
@@ -28,6 +32,16 @@
     <el-main class="app-main">
       <router-view />
     </el-main>
+    <AppMobileNav
+      :visible="Boolean(user) && !isStudySession"
+      :active="activeTab"
+      :more-open="moreOpen"
+      :username="user?.username || ''"
+      @select="onMobileTabSelect"
+      @navigate="onMoreNavigate"
+      @logout="handleLogout"
+      @close-more="moreOpen = false"
+    />
   </div>
 </template>
 
@@ -35,6 +49,7 @@
   import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
   import { useRouter, useRoute } from 'vue-router';
   import AlarmClock from './components/AlarmClock.vue';
+  import AppMobileNav from './components/AppMobileNav.vue';
   import { notifyUserSessionChanged, subscribeUserSessionChanges } from './utils/authSync.js';
   import { clearAiSettingsServerState } from './utils/aiSettings.js';
   import { getAuthRedirectPath, isAdminRoutePath } from './utils/authRouteAccess.js';
@@ -42,7 +57,9 @@
   const router = useRouter();
   const route = useRoute();
   const isAdminRoute = computed(() => isAdminRoutePath(route.path));
+  const isStudySession = computed(() => route.path === '/study/session');
   const user = ref(null);
+  const moreOpen = ref(false);
   let stopUserSessionSync = () => {};
 
   const now = ref(new Date());
@@ -62,8 +79,37 @@
     }
   };
 
+  const activeTab = computed(() => {
+    const path = route.path;
+    if (path.startsWith('/study')) return 'study';
+    if (path.startsWith('/search')) return 'search';
+    if (path.startsWith('/ai') || path.startsWith('/settings')) return 'more';
+    return 'home';
+  });
+
+  const onMobileTabSelect = (id) => {
+    if (id === 'more') {
+      moreOpen.value = !moreOpen.value;
+      return;
+    }
+    moreOpen.value = false;
+    const target = { home: '/', study: '/study', search: '/search' }[id];
+    if (target) router.push(target);
+  };
+
+  const onMoreNavigate = (path) => {
+    moreOpen.value = false;
+    router.push(path);
+  };
+
   // 管理员路由不显示带时钟的 header，不需要持续计时
   watch(isAdminRoute, (isAdmin) => (isAdmin ? stopClock() : startClock()), { immediate: true });
+  watch(
+    () => route.path,
+    () => {
+      moreOpen.value = false;
+    }
+  );
 
   onUnmounted(stopClock);
 
@@ -105,6 +151,7 @@
   };
 
   const handleLogout = () => {
+    moreOpen.value = false;
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     clearAiSettingsServerState();

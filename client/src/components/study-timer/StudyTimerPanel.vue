@@ -118,7 +118,7 @@
 <style scoped>
   .st-panel {
     width: min(300px, calc(100vw - 16px));
-    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
     background: #fff;
     border-radius: 14px;
     box-shadow:
@@ -311,7 +311,7 @@
   @media (max-width: 768px) {
     .st-panel {
       width: min(320px, calc(100vw - 24px));
-      max-height: calc(100vh - 24px);
+      max-height: calc(100dvh - 24px);
     }
 
     .stp-elapsed {

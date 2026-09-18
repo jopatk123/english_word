@@ -194,7 +194,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 72vh;
+    min-height: 100dvh;
     padding: 32px 16px;
   }
 
@@ -284,7 +284,7 @@
 
   @media (max-width: 480px) {
     .login-view {
-      min-height: 68vh;
+      min-height: 100dvh;
       padding: 20px 12px;
     }
 

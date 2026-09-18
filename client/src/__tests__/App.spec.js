@@ -45,6 +45,13 @@ vi.mock('../components/AlarmClock.vue', () => ({
   },
 }));
 
+vi.mock('../components/AppMobileNav.vue', () => ({
+  default: {
+    props: ['visible', 'active', 'moreOpen', 'username'],
+    template: '<nav class="mobile-tabbar-stub" />',
+  },
+}));
+
 const globalStubs = {
   'el-header': {
     template: '<header class="el-header-stub"><slot /></header>',
@@ -109,6 +116,24 @@ describe('App', () => {
     expect(wrapper.find('.header-clock').exists()).toBe(true);
     expect(wrapper.find('.header-nav').exists()).toBe(true);
     expect(wrapper.find('.header-user').text()).toContain('Alice');
+    expect(wrapper.find('.mobile-tabbar-stub').exists()).toBe(true);
+
+    wrapper.unmount();
+  });
+
+  it('marks the study session route for fullscreen chrome', async () => {
+    routeMock.path = '/study/session';
+
+    const wrapper = mount(App, {
+      global: {
+        stubs: globalStubs,
+      },
+    });
+
+    await flush();
+    await nextTick();
+
+    expect(wrapper.find('.app-container').classes()).toContain('is-study-session');
 
     wrapper.unmount();
   });

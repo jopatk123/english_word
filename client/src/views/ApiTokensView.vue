@@ -23,51 +23,53 @@
       <el-empty v-else-if="tokens.length === 0" description="暂无 API Token">
         <el-button type="primary" @click="showCreateDialog = true">创建第一个 Token</el-button>
       </el-empty>
-      <el-table v-else :data="tokens" style="width: 100%">
-        <el-table-column label="名称" prop="name" min-width="140">
-          <template #default="{ row }">
-            <span v-if="row.name">{{ row.name }}</span>
-            <span v-else class="token-muted">未命名</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="前缀" prop="tokenPrefix" min-width="150">
-          <template #default="{ row }">
-            <code class="token-prefix">{{ row.tokenPrefix || '-' }}</code>
-          </template>
-        </el-table-column>
-        <el-table-column label="创建时间" min-width="160">
-          <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
-        </el-table-column>
-        <el-table-column label="最后使用" min-width="160">
-          <template #default="{ row }">
-            <span v-if="row.lastUsedAt">{{ formatDate(row.lastUsedAt) }}</span>
-            <span v-else class="token-muted">从未使用</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="过期时间" min-width="180">
-          <template #default="{ row }">
-            <span v-if="row.expiresAt" :class="{ 'token-expired': isExpired(row.expiresAt) }">
-              {{ formatDate(row.expiresAt) }}
-              <el-tag v-if="isExpired(row.expiresAt)" type="danger" size="small">已过期</el-tag>
-            </span>
-            <span v-else class="token-muted">永不过期</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right">
-          <template #default="{ row }">
-            <el-popconfirm
-              title="确定要撤销此 Token 吗？"
-              confirm-button-text="撤销"
-              cancel-button-text="取消"
-              @confirm="handleRevoke(row.id)"
-            >
-              <template #reference>
-                <el-button link type="danger" size="small">撤销</el-button>
-              </template>
-            </el-popconfirm>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div v-else class="table-scroll">
+        <el-table :data="tokens" style="width: 100%">
+          <el-table-column label="名称" prop="name" min-width="140">
+            <template #default="{ row }">
+              <span v-if="row.name">{{ row.name }}</span>
+              <span v-else class="token-muted">未命名</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="前缀" prop="tokenPrefix" min-width="150">
+            <template #default="{ row }">
+              <code class="token-prefix">{{ row.tokenPrefix || '-' }}</code>
+            </template>
+          </el-table-column>
+          <el-table-column label="创建时间" min-width="160">
+            <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
+          </el-table-column>
+          <el-table-column label="最后使用" min-width="160">
+            <template #default="{ row }">
+              <span v-if="row.lastUsedAt">{{ formatDate(row.lastUsedAt) }}</span>
+              <span v-else class="token-muted">从未使用</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="过期时间" min-width="180">
+            <template #default="{ row }">
+              <span v-if="row.expiresAt" :class="{ 'token-expired': isExpired(row.expiresAt) }">
+                {{ formatDate(row.expiresAt) }}
+                <el-tag v-if="isExpired(row.expiresAt)" type="danger" size="small">已过期</el-tag>
+              </span>
+              <span v-else class="token-muted">永不过期</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="100" fixed="right">
+            <template #default="{ row }">
+              <el-popconfirm
+                title="确定要撤销此 Token 吗？"
+                confirm-button-text="撤销"
+                cancel-button-text="取消"
+                @confirm="handleRevoke(row.id)"
+              >
+                <template #reference>
+                  <el-button link type="danger" size="small">撤销</el-button>
+                </template>
+              </el-popconfirm>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
     </el-card>
 
     <el-dialog

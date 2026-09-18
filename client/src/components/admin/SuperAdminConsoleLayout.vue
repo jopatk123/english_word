@@ -45,6 +45,7 @@
       </header>
 
       <div class="sa-content">
+        <div class="sa-desktop-hint">管理后台功能较多，建议使用电脑浏览器操作。</div>
         <slot />
       </div>
     </div>
@@ -296,6 +297,10 @@
     gap: 16px;
   }
 
+  .sa-desktop-hint {
+    display: none;
+  }
+
   @media (max-width: 900px) {
     .sa-console {
       flex-direction: column;
@@ -315,7 +320,10 @@
       flex: 1;
     }
 
-    .sa-nav,
+    .sa-nav {
+      display: none;
+    }
+
     .sa-admin-badge {
       display: none;
     }
@@ -331,9 +339,24 @@
       white-space: nowrap;
     }
 
-    .sa-stats-pills,
+    .sa-stats-pills {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
     .sa-topbar-sub {
       display: none;
+    }
+
+    .sa-desktop-hint {
+      display: block;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #fff7ed;
+      color: #9a3412;
+      font-size: 13px;
+      line-height: 1.5;
     }
   }
 </style>

@@ -1,6 +1,12 @@
 <template>
   <div class="flashcard-container is-flip">
-    <div class="flashcard" :class="{ flipped: showAnswer }" @click="!showAnswer && $emit('flip')">
+    <div
+      class="flashcard"
+      :class="{ flipped: showAnswer }"
+      @click="onCardClick"
+      @touchstart.passive="onTouchStart"
+      @touchend="onTouchEnd"
+    >
       <div class="card-front">
         <div v-if="againCountMap[card.wordId] > 0" class="again-badge">
           第 {{ againCountMap[card.wordId] + 1 }} 次复习
@@ -24,7 +30,7 @@
             (card.word.roots || []).map((r) => `${r.name}（${r.meaning}）`).join('、') || '无'
           }}
         </div>
-        <div v-if="!showAnswer" class="card-hint">点击卡片显示答案 · 空格翻牌</div>
+        <div v-if="!showAnswer" class="card-hint">点击或左右滑动显示答案 · 空格翻牌</div>
       </div>
       <div v-if="showAnswer" class="card-back">
         <div class="card-divider"></div>
@@ -74,8 +80,9 @@
 <script setup>
   import SpeakButton from '../SpeakButton.vue';
   import WordImage from '../WordImage.vue';
+  import { useFlashcardSwipe } from '../../composables/useFlashcardSwipe.js';
 
-  defineProps({
+  const props = defineProps({
     card: { type: Object, required: true },
     showAnswer: { type: Boolean, default: false },
     submitting: { type: Boolean, default: false },
@@ -83,5 +90,12 @@
     regeneratingExampleId: { type: [Number, String], default: null },
   });
 
-  defineEmits(['flip', 'rate', 'regenerate-example']);
+  const emit = defineEmits(['flip', 'rate', 'regenerate-example']);
+
+  const { onTouchStart, onTouchEnd, onCardClick } = useFlashcardSwipe({
+    isAnswerShown: () => props.showAnswer,
+    isSubmitting: () => props.submitting,
+    flip: () => emit('flip'),
+    rate: (value) => emit('rate', value),
+  });
 </script>

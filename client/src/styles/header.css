@@ -5,7 +5,7 @@
   z-index: 100;
   height: auto;
   min-height: 60px;
-  padding: 14px 16px 12px;
+  padding: max(14px, env(safe-area-inset-top, 0px)) 16px 12px;
   background: linear-gradient(
     135deg,
     rgba(8, 47, 73, 0.98) 0%,
@@ -112,15 +112,13 @@
 /* ========== 响应式 - 顶栏 ========== */
 @media (max-width: 980px) {
   .app-header {
-    padding: 12px 12px 10px;
+    padding: max(10px, env(safe-area-inset-top, 0px)) 12px 8px;
   }
 
   .header-shell {
     display: grid;
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      'clock'
-      'nav';
+    grid-template-columns: 1fr auto;
+    grid-template-areas: 'clock nav';
     align-items: center;
     gap: 8px 10px;
   }
@@ -133,9 +131,10 @@
 
   .header-nav {
     grid-area: nav;
-    width: 100%;
+    width: auto;
     min-width: 0;
-    justify-content: flex-start;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
   }
 
   .header-user .username {
@@ -145,11 +144,11 @@
 
 @media (max-width: 768px) {
   .app-header {
-    padding: 10px 12px 8px;
+    padding: max(8px, env(safe-area-inset-top, 0px)) 12px 8px;
   }
 
   .header-shell {
-    align-items: flex-start;
+    align-items: center;
     gap: 8px;
   }
 
@@ -159,7 +158,7 @@
   }
 
   .header-nav {
-    width: 100%;
+    width: auto;
     gap: 6px;
   }
 
@@ -176,7 +175,7 @@
 
 @media (max-width: 480px) {
   .app-header {
-    padding: 8px 10px 6px;
+    padding: max(8px, env(safe-area-inset-top, 0px)) 10px 6px;
   }
 
   .header-clock {

@@ -43,37 +43,71 @@
       >
     </div>
 
-    <el-table
-      ref="wordTableRef"
-      :data="words"
-      stripe
-      empty-text="暂无单词"
-      v-loading="wordsLoading"
-      @selection-change="handleWordSelectionChange"
-    >
-      <el-table-column type="selection" width="55" />
-      <el-table-column prop="name" label="单词" min-width="120">
-        <template #default="{ row }">
-          <div class="cell-with-speak">
-            <el-link type="primary" @click="$router.push(`/word/${row.id}`)">
-              <strong>{{ row.name }}</strong>
-            </el-link>
-            <SpeakButton :text="row.name" />
+    <div class="has-mobile-cards">
+      <div class="table-scroll">
+        <el-table
+          ref="wordTableRef"
+          :data="words"
+          stripe
+          empty-text="暂无单词"
+          v-loading="wordsLoading"
+          @selection-change="handleWordSelectionChange"
+        >
+          <el-table-column type="selection" width="55" />
+          <el-table-column prop="name" label="单词" min-width="120">
+            <template #default="{ row }">
+              <div class="cell-with-speak">
+                <el-link type="primary" @click="$router.push(`/word/${row.id}`)">
+                  <strong>{{ row.name }}</strong>
+                </el-link>
+                <SpeakButton :text="row.name" />
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="meaning" label="含义" min-width="150" />
+          <el-table-column prop="phonetic" label="音标" min-width="120" />
+          <el-table-column prop="exampleCount" label="例句数" width="90" align="center" />
+          <el-table-column prop="remark" label="备注" min-width="130" show-overflow-tooltip />
+          <el-table-column label="操作" width="200" align="center">
+            <template #default="{ row }">
+              <el-button link type="warning" @click="openMoveDialog(row)">移动</el-button>
+              <el-button link type="primary" @click="openWordDialog(row)">编辑</el-button>
+              <el-button link type="danger" @click="handleDeleteWord(row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <div class="mobile-card-list">
+        <article v-for="row in words" :key="row.id" class="data-card-item">
+          <label class="data-card-check">
+            <input
+              type="checkbox"
+              :checked="isWordChecked(row)"
+              @change="toggleWordChecked(row, $event.target.checked)"
+            />
+          </label>
+          <div class="data-card-body">
+            <div class="data-card-title">
+              <el-link type="primary" @click="$router.push(`/word/${row.id}`)">
+                <strong>{{ row.name }}</strong>
+              </el-link>
+              <SpeakButton :text="row.name" />
+            </div>
+            <div class="data-card-meta">
+              {{ row.meaning }}
+              <template v-if="row.phonetic"> · {{ row.phonetic }}</template>
+              · 例句 {{ row.exampleCount ?? 0 }}
+              <template v-if="row.remark"> · {{ row.remark }}</template>
+            </div>
+            <div class="data-card-actions">
+              <el-button link type="warning" @click="openMoveDialog(row)">移动</el-button>
+              <el-button link type="primary" @click="openWordDialog(row)">编辑</el-button>
+              <el-button link type="danger" @click="handleDeleteWord(row)">删除</el-button>
+            </div>
           </div>
-        </template>
-      </el-table-column>
-      <el-table-column prop="meaning" label="含义" min-width="150" />
-      <el-table-column prop="phonetic" label="音标" min-width="120" />
-      <el-table-column prop="exampleCount" label="例句数" width="90" align="center" />
-      <el-table-column prop="remark" label="备注" min-width="130" show-overflow-tooltip />
-      <el-table-column label="操作" width="200" align="center">
-        <template #default="{ row }">
-          <el-button link type="warning" @click="openMoveDialog(row)">移动</el-button>
-          <el-button link type="primary" @click="openWordDialog(row)">编辑</el-button>
-          <el-button link type="danger" @click="handleDeleteWord(row)">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+        </article>
+      </div>
+    </div>
 
     <!-- 移动单词对话框 -->
     <el-dialog
@@ -257,6 +291,16 @@
 
   const handleWordSelectionChange = (rows) => {
     selectedWords.value = rows;
+  };
+
+  const isWordChecked = (word) => selectedWords.value.some((item) => item.id === word.id);
+
+  const toggleWordChecked = (word, checked) => {
+    if (checked) {
+      if (!isWordChecked(word)) selectedWords.value = [...selectedWords.value, word];
+      return;
+    }
+    selectedWords.value = selectedWords.value.filter((item) => item.id !== word.id);
   };
 
   const summarizeWords = (items) => {

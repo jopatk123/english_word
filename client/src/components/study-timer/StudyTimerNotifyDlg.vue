@@ -72,7 +72,7 @@
   :deep(.rest-notify-dlg .el-dialog) {
     width: min(360px, calc(100vw - 24px)) !important;
     max-width: calc(100vw - 24px);
-    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
     margin: 0;
     overflow: auto;
     box-sizing: border-box;
@@ -95,7 +95,7 @@
 
   @media (max-width: 480px) {
     :deep(.rest-notify-dlg .el-dialog) {
-      max-height: calc(100vh - 16px);
+      max-height: calc(100dvh - 16px);
     }
 
     :deep(.rest-notify-dlg .el-overlay-dialog) {

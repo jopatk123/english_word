@@ -147,19 +147,21 @@
           <span>最近学习记录</span>
         </div>
       </template>
-      <el-table :data="report.recentSessions" stripe size="small">
-        <el-table-column label="开始时间" min-width="150">
-          <template #default="{ row }">{{ formatDateTime(row.startedAt) }}</template>
-        </el-table-column>
-        <el-table-column label="时长" min-width="100">
-          <template #default="{ row }">{{ formatSecondsText(row.durationSeconds) }}</template>
-        </el-table-column>
-        <el-table-column label="备注" min-width="120">
-          <template #default="{ row }">
-            <span :class="row.note ? '' : 'session-note-empty'">{{ row.note || '—' }}</span>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="table-scroll">
+        <el-table :data="report.recentSessions" stripe size="small">
+          <el-table-column label="开始时间" min-width="150">
+            <template #default="{ row }">{{ formatDateTime(row.startedAt) }}</template>
+          </el-table-column>
+          <el-table-column label="时长" min-width="100">
+            <template #default="{ row }">{{ formatSecondsText(row.durationSeconds) }}</template>
+          </el-table-column>
+          <el-table-column label="备注" min-width="120">
+            <template #default="{ row }">
+              <span :class="row.note ? '' : 'session-note-empty'">{{ row.note || '—' }}</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
     </el-card>
 
     <!-- 空状态 -->

@@ -48,14 +48,30 @@ describe('FlashcardMode', () => {
 
   it('showAnswer=false 时提示点击卡片翻牌', () => {
     const wrapper = createWrapper();
-    expect(wrapper.text()).toContain('点击卡片显示答案');
+    expect(wrapper.text()).toContain('点击或左右滑动显示答案');
     expect(wrapper.text()).not.toContain('再来一遍');
   });
 
-  it('点击卡片触发 flip 事件', async () => {
+  it('左右滑动触发翻牌', async () => {
     const wrapper = createWrapper();
-    await wrapper.find('.flashcard').trigger('click');
+    await wrapper.find('.flashcard').trigger('touchstart', {
+      changedTouches: [{ clientX: 180, clientY: 40 }],
+    });
+    await wrapper.find('.flashcard').trigger('touchend', {
+      changedTouches: [{ clientX: 40, clientY: 44 }],
+    });
     expect(wrapper.emitted('flip')).toBeTruthy();
+  });
+
+  it('已翻开时右滑评分为认识', async () => {
+    const wrapper = createWrapper({ showAnswer: true });
+    await wrapper.find('.flashcard').trigger('touchstart', {
+      changedTouches: [{ clientX: 40, clientY: 40 }],
+    });
+    await wrapper.find('.flashcard').trigger('touchend', {
+      changedTouches: [{ clientX: 180, clientY: 42 }],
+    });
+    expect(wrapper.emitted('rate')[0]).toEqual([3]);
   });
 
   it('showAnswer=true 时显示评分按钮', () => {

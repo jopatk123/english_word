@@ -21,40 +21,62 @@
     </div>
 
     <!-- 搜索结果：单词 -->
-    <div v-if="searchKeyword && wordResults.length" class="search-results">
+    <div v-if="searchKeyword && wordResults.length" class="search-results has-mobile-cards">
       <h3>单词搜索结果</h3>
-      <el-table :data="wordResults" stripe>
-        <el-table-column prop="name" label="单词" min-width="120">
-          <template #default="{ row }">
-            <div class="cell-with-speak">
-              <el-link type="primary" @click="goToWordDetail(row.id)">
-                {{ row.name }}
-              </el-link>
+      <div class="table-scroll">
+        <el-table :data="wordResults" stripe>
+          <el-table-column prop="name" label="单词" min-width="120">
+            <template #default="{ row }">
+              <div class="cell-with-speak">
+                <el-link type="primary" @click="goToWordDetail(row.id)">
+                  {{ row.name }}
+                </el-link>
+                <SpeakButton :text="row.name" />
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="meaning" label="含义" min-width="150" />
+          <el-table-column label="所属词根" min-width="120">
+            <template #default="{ row }">
+              <template v-for="(root, idx) in row.roots || []" :key="root.id">
+                <el-link type="primary" @click="goToRootDetail(root.id)">
+                  {{ root.name }}
+                </el-link>
+                <span v-if="idx < row.roots.length - 1">、</span>
+              </template>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="80">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="goToWordDetail(row.id)">详情</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <div class="mobile-card-list">
+        <article v-for="row in wordResults" :key="row.id" class="data-card-item">
+          <div class="data-card-body">
+            <div class="data-card-title">
+              <el-link type="primary" @click="goToWordDetail(row.id)">{{ row.name }}</el-link>
               <SpeakButton :text="row.name" />
             </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="meaning" label="含义" min-width="150" />
-        <el-table-column label="所属词根" min-width="120">
-          <template #default="{ row }">
-            <template v-for="(root, idx) in row.roots || []" :key="root.id">
-              <el-link type="primary" @click="goToRootDetail(root.id)">
-                {{ root.name }}
-              </el-link>
-              <span v-if="idx < row.roots.length - 1">、</span>
-            </template>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="80">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="goToWordDetail(row.id)">详情</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+            <div class="data-card-meta">{{ row.meaning }}</div>
+            <div class="data-card-meta">
+              <template v-for="(root, idx) in row.roots || []" :key="root.id">
+                <el-link type="primary" @click="goToRootDetail(root.id)">{{ root.name }}</el-link>
+                <span v-if="idx < row.roots.length - 1">、</span>
+              </template>
+            </div>
+            <div class="data-card-actions">
+              <el-button link type="primary" @click="goToWordDetail(row.id)">详情</el-button>
+            </div>
+          </div>
+        </article>
+      </div>
     </div>
 
     <!-- 词根列表 -->
-    <div class="root-section">
+    <div class="root-section has-mobile-cards">
       <div class="section-header">
         <h2>词根列表</h2>
         <div class="section-actions">
@@ -72,46 +94,80 @@
         >
       </div>
 
-      <el-table
-        ref="rootTableRef"
-        :data="roots"
-        stripe
-        v-loading="loading"
-        empty-text="暂无词根，点击「添加词根」开始吧"
-        @selection-change="handleRootSelectionChange"
-      >
-        <el-table-column type="selection" width="55" :selectable="isRootSelectable" />
-        <el-table-column prop="name" label="词根" min-width="120">
-          <template #default="{ row }">
-            <div class="cell-with-speak">
+      <div class="table-scroll">
+        <el-table
+          ref="rootTableRef"
+          :data="roots"
+          stripe
+          v-loading="loading"
+          empty-text="暂无词根，点击「添加词根」开始吧"
+          @selection-change="handleRootSelectionChange"
+        >
+          <el-table-column type="selection" width="55" :selectable="isRootSelectable" />
+          <el-table-column prop="name" label="词根" min-width="120">
+            <template #default="{ row }">
+              <div class="cell-with-speak">
+                <el-link type="primary" @click="goToRootDetail(row.id)">
+                  <strong>{{ row.name }}</strong>
+                </el-link>
+                <SpeakButton :text="row.name" />
+                <el-tag
+                  v-if="row.isDefault"
+                  type="info"
+                  size="small"
+                  style="margin-left: 6px; vertical-align: middle"
+                  >未分类</el-tag
+                >
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="meaning" label="核心含义" min-width="150" />
+          <el-table-column prop="wordCount" label="单词数" width="90" align="center" />
+          <el-table-column prop="remark" label="备注" min-width="150" show-overflow-tooltip />
+          <el-table-column label="操作" width="140" align="center">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="openRootDialog(row)" :disabled="row.isDefault"
+                >编辑</el-button
+              >
+              <el-button link type="danger" @click="handleDeleteRoot(row)" :disabled="row.isDefault"
+                >删除</el-button
+              >
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <div class="mobile-card-list">
+        <article v-for="row in roots" :key="row.id" class="data-card-item">
+          <label v-if="isRootSelectable(row)" class="data-card-check">
+            <input
+              type="checkbox"
+              :checked="isRootChecked(row)"
+              @change="toggleRootChecked(row, $event.target.checked)"
+            />
+          </label>
+          <div class="data-card-body">
+            <div class="data-card-title">
               <el-link type="primary" @click="goToRootDetail(row.id)">
                 <strong>{{ row.name }}</strong>
               </el-link>
               <SpeakButton :text="row.name" />
-              <el-tag
-                v-if="row.isDefault"
-                type="info"
-                size="small"
-                style="margin-left: 6px; vertical-align: middle"
-                >未分类</el-tag
+              <el-tag v-if="row.isDefault" type="info" size="small">未分类</el-tag>
+            </div>
+            <div class="data-card-meta">
+              {{ row.meaning }} · {{ row.wordCount ?? 0 }} 词
+              <template v-if="row.remark"> · {{ row.remark }}</template>
+            </div>
+            <div class="data-card-actions">
+              <el-button link type="primary" @click="openRootDialog(row)" :disabled="row.isDefault"
+                >编辑</el-button
+              >
+              <el-button link type="danger" @click="handleDeleteRoot(row)" :disabled="row.isDefault"
+                >删除</el-button
               >
             </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="meaning" label="核心含义" min-width="150" />
-        <el-table-column prop="wordCount" label="单词数" width="90" align="center" />
-        <el-table-column prop="remark" label="备注" min-width="150" show-overflow-tooltip />
-        <el-table-column label="操作" width="140" align="center">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="openRootDialog(row)" :disabled="row.isDefault"
-              >编辑</el-button
-            >
-            <el-button link type="danger" @click="handleDeleteRoot(row)" :disabled="row.isDefault"
-              >删除</el-button
-            >
-          </template>
-        </el-table-column>
-      </el-table>
+          </div>
+        </article>
+      </div>
     </div>
 
     <!-- 词根表单对话框 -->
@@ -271,6 +327,17 @@
   };
 
   const isRootSelectable = (row) => !row.isDefault;
+
+  const isRootChecked = (root) => selectedRoots.value.some((item) => item.id === root.id);
+
+  const toggleRootChecked = (root, checked) => {
+    if (!isRootSelectable(root)) return;
+    if (checked) {
+      if (!isRootChecked(root)) selectedRoots.value = [...selectedRoots.value, root];
+      return;
+    }
+    selectedRoots.value = selectedRoots.value.filter((item) => item.id !== root.id);
+  };
 
   const openRootDialog = (root = null) => {
     editingRoot.value = root;

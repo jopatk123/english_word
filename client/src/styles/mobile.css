@@ -1,0 +1,230 @@
+/* ========== 视口与安全区 ========== */
+html {
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
+body,
+#app,
+.app-container {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+body {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+.app-container.is-study-session .app-header,
+.app-container.is-study-session .mobile-tabbar {
+  display: none;
+}
+
+.app-container.is-study-session .app-main {
+  padding: 8px 10px calc(16px + env(safe-area-inset-bottom, 0px));
+  max-width: 100%;
+}
+
+.app-container.is-guest .mobile-tabbar {
+  display: none;
+}
+
+/* ========== 底部导航（窄屏） ========== */
+.mobile-tabbar {
+  display: none;
+}
+
+.more-sheet-overlay {
+  display: none;
+}
+
+@media (max-width: 980px) {
+  .header-nav .nav-btn,
+  .header-user {
+    display: none;
+  }
+
+  .mobile-tabbar {
+    display: flex;
+    position: sticky;
+    bottom: 0;
+    z-index: 90;
+    gap: 4px;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+    background: rgba(8, 47, 73, 0.96);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(16px);
+  }
+
+  .app-container:not(.is-study-session):not(.is-guest) .app-main {
+    padding-bottom: 24px;
+  }
+
+  .mobile-tab {
+    flex: 1;
+    min-height: 44px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.72);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    cursor: pointer;
+  }
+
+  .mobile-tab-icon {
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  .mobile-tab.active {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  .more-sheet-overlay {
+    display: flex;
+    position: fixed;
+    inset: 0 0 calc(56px + env(safe-area-inset-bottom, 0px)) 0;
+    z-index: 200;
+    align-items: flex-end;
+    background: rgba(15, 23, 42, 0.42);
+  }
+
+  .more-sheet {
+    width: 100%;
+    padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    border-radius: 20px 20px 0 0;
+    background: #fff;
+    box-shadow: 0 -12px 32px rgba(15, 23, 42, 0.18);
+  }
+
+  .more-sheet-handle {
+    width: 36px;
+    height: 4px;
+    margin: 0 auto 12px;
+    border-radius: 999px;
+    background: #d4d7de;
+  }
+
+  .more-sheet-user {
+    margin: 0 0 8px;
+    color: var(--ew-text-soft);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .more-sheet-item {
+    width: 100%;
+    min-height: 48px;
+    margin-bottom: 8px;
+    padding: 0 14px;
+    border: 1px solid var(--ew-border);
+    border-radius: 14px;
+    background: #f8fafc;
+    color: var(--ew-text);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .more-sheet-danger {
+    color: #b91c1c;
+    background: #fff5f5;
+    border-color: #fecaca;
+  }
+
+  .el-button:not(.is-link):not(.nav-btn) {
+    min-height: 44px;
+  }
+
+  input,
+  textarea,
+  select,
+  .el-input__inner,
+  .el-textarea__inner {
+    font-size: 16px !important;
+  }
+}
+
+@media (min-width: 981px) {
+  .mobile-tabbar,
+  .more-sheet-overlay {
+    display: none !important;
+  }
+}
+
+/* ========== 列表：桌面表格 + 窄屏卡片 ========== */
+.mobile-card-list {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.data-card-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--ew-border);
+  border-radius: 16px;
+  background: var(--ew-surface-strong);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.data-card-check {
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.data-card-check input {
+  width: 18px;
+  height: 18px;
+}
+
+.data-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.data-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ew-text);
+}
+
+.data-card-meta {
+  margin-top: 4px;
+  color: var(--ew-text-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.data-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+@media (max-width: 768px) {
+  .has-mobile-cards > .table-scroll {
+    display: none;
+  }
+
+  .has-mobile-cards > .mobile-card-list {
+    display: flex;
+  }
+}

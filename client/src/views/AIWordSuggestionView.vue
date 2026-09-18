@@ -49,36 +49,37 @@
           class="result-alert"
         />
 
-        <el-table
-          v-if="suggestions.length"
-          ref="tableRef"
-          :data="suggestions"
-          stripe
-          class="suggestion-table"
-          @selection-change="handleSelectionChange"
-        >
-          <el-table-column type="selection" width="55" />
-          <el-table-column prop="name" label="单词" min-width="140">
-            <template #default="{ row }">
-              <div class="cell-with-speak">
-                <span>{{ row.name }}</span>
-                <SpeakButton :text="row.name" />
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column label="含义 / 词性" min-width="240">
-            <template #default="{ row }">
-              <template v-if="row.partOfSpeech?.length">
-                <div v-for="(pos, idx) in row.partOfSpeech" :key="idx" class="pos-row">
-                  <el-tag type="warning" size="small" class="pos-tag">{{ pos.type }}</el-tag>
-                  <span class="pos-meaning">{{ pos.meaning }}</span>
+        <div v-if="suggestions.length" class="table-scroll">
+          <el-table
+            ref="tableRef"
+            :data="suggestions"
+            stripe
+            class="suggestion-table"
+            @selection-change="handleSelectionChange"
+          >
+            <el-table-column type="selection" width="55" />
+            <el-table-column prop="name" label="单词" min-width="140">
+              <template #default="{ row }">
+                <div class="cell-with-speak">
+                  <span>{{ row.name }}</span>
+                  <SpeakButton :text="row.name" />
                 </div>
               </template>
-              <span v-else>{{ row.meaning }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="phonetic" label="音标" min-width="140" />
-        </el-table>
+            </el-table-column>
+            <el-table-column label="含义 / 词性" min-width="240">
+              <template #default="{ row }">
+                <template v-if="row.partOfSpeech?.length">
+                  <div v-for="(pos, idx) in row.partOfSpeech" :key="idx" class="pos-row">
+                    <el-tag type="warning" size="small" class="pos-tag">{{ pos.type }}</el-tag>
+                    <span class="pos-meaning">{{ pos.meaning }}</span>
+                  </div>
+                </template>
+                <span v-else>{{ row.meaning }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="phonetic" label="音标" min-width="140" />
+          </el-table>
+        </div>
 
         <div v-if="suggestions.length" class="page-actions ai-footer-actions">
           <el-button @click="toggleAllSelection">{{

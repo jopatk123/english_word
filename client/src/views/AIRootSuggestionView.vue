@@ -47,25 +47,26 @@
           class="result-alert"
         />
 
-        <el-table
-          v-if="suggestions.length"
-          ref="tableRef"
-          :data="suggestions"
-          stripe
-          class="suggestion-table"
-          @selection-change="handleSelectionChange"
-        >
-          <el-table-column type="selection" width="55" />
-          <el-table-column prop="name" label="词根" min-width="120">
-            <template #default="{ row }">
-              <div class="cell-with-speak">
-                <span>{{ row.name }}</span>
-                <SpeakButton :text="row.name" />
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column prop="meaning" label="核心含义" min-width="150" />
-        </el-table>
+        <div v-if="suggestions.length" class="table-scroll">
+          <el-table
+            ref="tableRef"
+            :data="suggestions"
+            stripe
+            class="suggestion-table"
+            @selection-change="handleSelectionChange"
+          >
+            <el-table-column type="selection" width="55" />
+            <el-table-column prop="name" label="词根" min-width="120">
+              <template #default="{ row }">
+                <div class="cell-with-speak">
+                  <span>{{ row.name }}</span>
+                  <SpeakButton :text="row.name" />
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="meaning" label="核心含义" min-width="150" />
+          </el-table>
+        </div>
 
         <div v-if="suggestions.length" class="page-actions ai-footer-actions">
           <el-button @click="toggleAllSelection">{{

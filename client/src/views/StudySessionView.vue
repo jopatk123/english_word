@@ -1,5 +1,5 @@
 <template>
-  <div class="study-session">
+  <div class="study-session" :style="{ '--kb-inset': `${keyboardInset}px` }">
     <div class="session-chrome">
       <el-breadcrumb separator="/">
         <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
@@ -134,6 +134,7 @@
 <script setup>
   import { computed, unref } from 'vue';
   import { useStudySession } from '../composables/useStudySession.js';
+  import { useVisualViewportInset } from '../composables/useVisualViewportInset.js';
   import ModeSelect from '../components/study/ModeSelect.vue';
   import SessionProgress from '../components/study/SessionProgress.vue';
   import SessionComplete from '../components/study/SessionComplete.vue';
@@ -188,6 +189,8 @@
     showSpellingHint,
     spellingNext,
   } = useStudySession();
+
+  const keyboardInset = useVisualViewportInset();
 
   const showSessionProgress = computed(() =>
     Boolean(unref(modeSelected) && unref(currentCard) && !unref(finished) && unref(queue)?.length)

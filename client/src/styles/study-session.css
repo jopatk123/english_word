@@ -9,6 +9,7 @@
   flex: 1 0 auto;
   display: flex;
   flex-direction: column;
+  padding-bottom: var(--kb-inset, 0px);
 }
 
 /* 上下留白由两个占位伪元素按 1 : 1.6 分配，卡片重心略高于几何中心，
@@ -473,6 +474,7 @@
   flex: 1;
   min-width: 72px;
   height: 36px;
+  min-height: 36px;
   border-radius: 10px !important;
   font-weight: 600;
   font-size: 13px;
@@ -1016,7 +1018,8 @@
   .flashcard-container .rate-btn {
     min-width: 64px;
     font-size: 12px;
-    height: 36px;
+    height: 44px;
+    min-height: 44px;
   }
 
   .keyboard-hint {
@@ -1095,6 +1098,11 @@
   .flashcard-container .rating-buttons {
     gap: 6px;
     margin-top: 10px;
+  }
+
+  .flashcard-container .rate-btn {
+    height: 48px;
+    min-height: 48px;
   }
 
   .flashcard-container .choice-option {

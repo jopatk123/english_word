@@ -1,0 +1,19 @@
+{
+  "name": "背单词工具",
+  "short_name": "背单词",
+  "description": "基于词根记忆法的英语学习工具",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#eef4fb",
+  "theme_color": "#082f49",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
