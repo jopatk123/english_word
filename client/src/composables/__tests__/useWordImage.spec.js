@@ -2,6 +2,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { defineComponent, h, reactive } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useWordImage } from '../useWordImage.js';
+import { clearWordImageCache } from '../../utils/wordImageCache.js';
 
 const { getWordImageBlobMock } = vi.hoisted(() => ({
   getWordImageBlobMock: vi.fn(),
@@ -45,6 +46,7 @@ describe('useWordImage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     urlSeq = 0;
+    clearWordImageCache();
     globalThis.URL.createObjectURL = createObjectURLMock;
     globalThis.URL.revokeObjectURL = revokeObjectURLMock;
   });

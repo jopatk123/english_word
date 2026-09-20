@@ -93,6 +93,7 @@ vi.mock('../../api/index.js', () => ({
   getQuizChoices: (...args) => getQuizChoicesMock(...args),
   getAiExampleSuggestions: (...args) => getAiExampleSuggestionsMock(...args),
   updateExample: (...args) => updateExampleMock(...args),
+  getWordImageBlob: vi.fn().mockResolvedValue(new Blob(['img'], { type: 'image/jpeg' })),
 }));
 
 vi.mock('../../utils/aiSettings.js', () => ({

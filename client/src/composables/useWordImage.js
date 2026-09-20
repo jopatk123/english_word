@@ -1,5 +1,5 @@
 import { ref, watch, onUnmounted } from 'vue';
-import { getWordImageBlob } from '../api/index.js';
+import { getCachedWordImageBlob } from '../utils/wordImageCache.js';
 
 export async function readApiErrorMessage(err, fallback = '操作失败') {
   const data = err?.response?.data;
@@ -42,11 +42,8 @@ export function useWordImage(wordIdRef, hasImageRef) {
 
     loading.value = true;
     try {
-      const blob = await getWordImageBlob(wordId);
+      const blob = await getCachedWordImageBlob(wordId);
       if (seq !== loadSeq) return;
-      if (blob?.type && blob.type.includes('application/json')) {
-        throw new Error('加载记忆图片失败');
-      }
       objectUrl.value = URL.createObjectURL(blob);
     } catch (err) {
       const message = await readApiErrorMessage(err, '加载记忆图片失败');

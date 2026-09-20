@@ -52,6 +52,7 @@
     buildWordImageDownloadName,
   } from '../constants/wordImage.js';
   import { compressWordImageFile } from '../utils/wordImageCompress.js';
+  import { invalidateWordImageCache } from '../utils/wordImageCache.js';
   import { readApiErrorMessage } from '../composables/useWordImage.js';
   import { uploadWordImage, deleteWordImage, getWordImageBlob } from '../api/index.js';
 
@@ -93,6 +94,7 @@
     try {
       const compressed = await compressWordImageFile(file);
       const res = await uploadWordImage(props.wordId, compressed);
+      invalidateWordImageCache(props.wordId);
       imageNonce.value += 1;
       emit('update:hasImage', true);
       ElMessage.success(res?.msg || (props.hasImage ? '记忆图片已替换' : '记忆图片已保存'));
@@ -140,6 +142,7 @@
     removing.value = true;
     try {
       await deleteWordImage(props.wordId);
+      invalidateWordImageCache(props.wordId);
       emit('update:hasImage', false);
       ElMessage.success('记忆图片已删除');
     } catch (err) {

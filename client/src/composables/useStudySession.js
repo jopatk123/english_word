@@ -19,6 +19,7 @@ import { useStudyKeyboard } from './useStudyKeyboard.js';
 import { seekToStudyCard, getStudySessionSyncChannel } from './studySessionHelpers.js';
 import { useAutoRead } from './useAutoRead.js';
 import { useSessionProgress } from './useSessionProgress.js';
+import { useStudyImagePreload } from './useStudyImagePreload.js';
 
 const refreshChoiceState = (choice, queue) => {
   choice.setQueueWords(queue.value.map((record) => record.word));
@@ -125,6 +126,13 @@ export function useStudySession() {
       refreshChoiceState(choice, queue);
     }
   };
+
+  useStudyImagePreload({
+    queue,
+    currentIndex,
+    modeSelected,
+    finished,
+  });
 
   const { saveProgress, clearProgress, handleStudySessionSync } = useSessionProgress({
     getScope,
