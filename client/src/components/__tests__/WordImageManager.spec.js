@@ -7,6 +7,7 @@ const {
   deleteWordImageMock,
   getWordImageBlobMock,
   compressWordImageFileMock,
+  invalidateWordImageCacheMock,
   elMessage,
   elMessageBox,
 } = vi.hoisted(() => ({
@@ -14,6 +15,7 @@ const {
   deleteWordImageMock: vi.fn(),
   getWordImageBlobMock: vi.fn(),
   compressWordImageFileMock: vi.fn(),
+  invalidateWordImageCacheMock: vi.fn(),
   elMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
   elMessageBox: { confirm: vi.fn() },
 }));
@@ -22,6 +24,10 @@ vi.mock('../../api/index.js', () => ({
   uploadWordImage: (...args) => uploadWordImageMock(...args),
   deleteWordImage: (...args) => deleteWordImageMock(...args),
   getWordImageBlob: (...args) => getWordImageBlobMock(...args),
+}));
+
+vi.mock('../../utils/wordImageCache.js', () => ({
+  invalidateWordImageCache: (...args) => invalidateWordImageCacheMock(...args),
 }));
 
 vi.mock('../../utils/wordImageCompress.js', () => ({
@@ -90,6 +96,7 @@ describe('WordImageManager', () => {
 
     expect(compressWordImageFileMock).toHaveBeenCalledWith(file);
     expect(uploadWordImageMock).toHaveBeenCalledWith(12, file);
+    expect(invalidateWordImageCacheMock).toHaveBeenCalledWith(12);
     expect(wrapper.emitted('update:hasImage')?.[0]).toEqual([true]);
   });
 
@@ -117,6 +124,7 @@ describe('WordImageManager', () => {
 
     expect(elMessageBox.confirm).toHaveBeenCalled();
     expect(deleteWordImageMock).toHaveBeenCalledWith(12);
+    expect(invalidateWordImageCacheMock).toHaveBeenCalledWith(12);
     expect(wrapper.emitted('update:hasImage')?.[0]).toEqual([false]);
   });
 });

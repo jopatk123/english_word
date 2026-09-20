@@ -3,6 +3,9 @@ import { getWordImageBlob } from '../api/index.js';
 /** 同时只保留当前卡 + 下一张图，避免复习队列把 blob 堆在内存里。 */
 const MAX_CACHED_BLOBS = 2;
 
+/** 缓存条目过期时间：长会话期间他处（如其他标签页）替换图片后，过期即可重新拉取。 */
+export const WORD_IMAGE_CACHE_TTL_MS = 5 * 60 * 1000;
+
 const blobs = new Map();
 const inflight = new Map();
 const generations = new Map();
@@ -18,11 +21,22 @@ function toWordId(wordId) {
 
 function rememberBlob(wordId, blob) {
   if (blobs.has(wordId)) blobs.delete(wordId);
-  blobs.set(wordId, blob);
+  blobs.set(wordId, { blob, cachedAt: Date.now() });
   while (blobs.size > MAX_CACHED_BLOBS) {
     const oldest = blobs.keys().next().value;
     blobs.delete(oldest);
   }
+}
+
+/** 返回未过期的缓存条目；过期条目就地移除并返回 null。 */
+function getFreshEntry(wordId) {
+  const entry = blobs.get(wordId);
+  if (!entry) return null;
+  if (Date.now() - entry.cachedAt > WORD_IMAGE_CACHE_TTL_MS) {
+    blobs.delete(wordId);
+    return null;
+  }
+  return entry;
 }
 
 function isJsonBlob(blob) {
@@ -67,10 +81,12 @@ export async function getCachedWordImageBlob(wordId) {
   if (!id) {
     throw new Error('加载记忆图片失败');
   }
-  if (blobs.has(id)) {
-    const cached = blobs.get(id);
-    rememberBlob(id, cached);
-    return cached;
+  const entry = getFreshEntry(id);
+  if (entry) {
+    // 命中缓存时重新插入以续期 LRU 顺序（TTL 以取图时间戳为准，不因命中刷新）
+    blobs.delete(id);
+    blobs.set(id, entry);
+    return entry.blob;
   }
   if (inflight.has(id)) {
     return inflight.get(id);

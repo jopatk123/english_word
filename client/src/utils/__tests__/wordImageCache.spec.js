@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
+  WORD_IMAGE_CACHE_TTL_MS,
   clearWordImageCache,
   findNextWordImageId,
   getCachedWordImageBlob,
@@ -21,6 +22,10 @@ describe('wordImageCache', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearWordImageCache();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('跳过没有记忆图片的卡片，定位队列中下一张有图的单词', () => {
@@ -125,5 +130,43 @@ describe('wordImageCache', () => {
     getWordImageBlobMock.mockResolvedValue(jpeg('ok'));
     await getCachedWordImageBlob(7);
     expect(getWordImageBlobMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('超过容量上限时按 LRU 驱逐，命中会续期', async () => {
+    getWordImageBlobMock.mockImplementation((id) => Promise.resolve(jpeg(`blob-${id}`)));
+    await getCachedWordImageBlob(41); // 缓存：[41]
+    await getCachedWordImageBlob(42); // 缓存：[41, 42]
+    await getCachedWordImageBlob(41); // 命中续期 → [42, 41]
+    await getCachedWordImageBlob(43); // 超限驱逐 42 → [41, 43]
+
+    getWordImageBlobMock.mockClear();
+    await getCachedWordImageBlob(41); // 续期过，仍在缓存
+    expect(getWordImageBlobMock).not.toHaveBeenCalled();
+    await getCachedWordImageBlob(42); // 已被驱逐，重新请求
+    expect(getWordImageBlobMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('超过 TTL 后缓存过期并重新请求', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    getWordImageBlobMock.mockResolvedValueOnce(jpeg('old'));
+    const staleBlob = await getCachedWordImageBlob(51);
+    expect(getWordImageBlobMock).toHaveBeenCalledTimes(1);
+
+    vi.setSystemTime(WORD_IMAGE_CACHE_TTL_MS + 1);
+    getWordImageBlobMock.mockResolvedValueOnce(jpeg('fresh'));
+    const freshBlob = await getCachedWordImageBlob(51);
+    expect(getWordImageBlobMock).toHaveBeenCalledTimes(2);
+    expect(freshBlob).not.toBe(staleBlob);
+  });
+
+  it('TTL 之内命中缓存不重复请求', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    getWordImageBlobMock.mockResolvedValue(jpeg('cached'));
+    await getCachedWordImageBlob(52);
+    vi.setSystemTime(WORD_IMAGE_CACHE_TTL_MS - 1);
+    await getCachedWordImageBlob(52);
+    expect(getWordImageBlobMock).toHaveBeenCalledTimes(1);
   });
 });
