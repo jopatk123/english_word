@@ -12,12 +12,14 @@ const {
   getAuthRedirectPathMock,
   isAdminRoutePathMock,
   clearAiSettingsServerStateMock,
+  clearWordLookupSessionMock,
 } = vi.hoisted(() => ({
   subscribeUserSessionChangesMock: vi.fn(() => () => {}),
   notifyUserSessionChangedMock: vi.fn(),
   getAuthRedirectPathMock: vi.fn(() => null),
   isAdminRoutePathMock: vi.fn((path) => path.startsWith('/super-admin')),
   clearAiSettingsServerStateMock: vi.fn(),
+  clearWordLookupSessionMock: vi.fn(),
 }));
 
 vi.mock('vue-router', () => ({
@@ -43,6 +45,14 @@ vi.mock('../components/AlarmClock.vue', () => ({
   default: {
     template: '<div class="alarm-clock-stub" />',
   },
+}));
+
+vi.mock('../components/WordLookupPopover.vue', () => ({
+  default: { template: '<div class="word-lookup-stub" />' },
+}));
+
+vi.mock('../composables/wordLookup.js', () => ({
+  clearWordLookupSession: (...args) => clearWordLookupSessionMock(...args),
 }));
 
 vi.mock('../components/AppMobileNav.vue', () => ({

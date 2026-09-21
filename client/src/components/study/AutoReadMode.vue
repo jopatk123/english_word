@@ -18,7 +18,7 @@
 
       <div v-if="card.word.examples && card.word.examples.length > 0" class="card-examples">
         <div v-for="ex in card.word.examples" :key="ex.id" class="card-example">
-          <p class="example-en">{{ ex.sentence }}</p>
+          <p class="example-en"><ClickableSentence :text="ex.sentence" /></p>
           <p class="example-zh">{{ ex.translation }}</p>
         </div>
       </div>
@@ -29,6 +29,7 @@
 </template>
 
 <script setup>
+  import ClickableSentence from '../ClickableSentence.vue';
   import WordImage from '../WordImage.vue';
 
   defineProps({

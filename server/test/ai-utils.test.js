@@ -15,8 +15,10 @@ import {
   buildExamplePrompt,
   buildAnalyzeWordPrompt,
   buildAnalyzeSentencePrompt,
+  buildLookupWordPrompt,
   sanitizeAnalyzeWordResult,
   sanitizeAnalyzeSentenceResult,
+  sanitizeLookupWordResult,
 } from '../utils/aiPrompts.js';
 
 // ================================================================
@@ -443,5 +445,51 @@ describe('sanitizeAnalyzeSentenceResult', () => {
     const parsed = { sentence: '', translation: '翻译', grammar: '', vocabulary: [] };
     const result = sanitizeAnalyzeSentenceResult(parsed, 'Fallback sentence.');
     expect(result.sentence).toBe('Fallback sentence.');
+  });
+});
+
+describe('buildLookupWordPrompt', () => {
+  it('没有句子时要求给出常见义项', () => {
+    const { userPrompt } = buildLookupWordPrompt('run');
+    expect(userPrompt).toContain('run');
+    expect(userPrompt).toContain('最常见');
+  });
+
+  it('有句子时要求优先句中用法', () => {
+    const { userPrompt } = buildLookupWordPrompt('run', 'She runs a shop.');
+    expect(userPrompt).toContain('She runs a shop.');
+    expect(userPrompt).toContain('第一项');
+  });
+});
+
+describe('sanitizeLookupWordResult', () => {
+  it('保留合法词性并截断到两项', () => {
+    const result = sanitizeLookupWordResult(
+      {
+        meaning: '跑；经营',
+        phonetic: '/rʌn/',
+        partOfSpeech: [
+          { type: 'v.', meaning: '跑' },
+          { type: 'N.', meaning: '跑步' },
+          { type: 'adj.', meaning: '第三项应丢弃' },
+          { type: 'xyz', meaning: '非法词性' },
+        ],
+      },
+      'run'
+    );
+    expect(result).toEqual({
+      word: 'run',
+      phonetic: '/rʌn/',
+      meaning: '跑；经营',
+      partOfSpeech: [
+        { type: 'v.', meaning: '跑' },
+        { type: 'n.', meaning: '跑步' },
+      ],
+    });
+  });
+
+  it('没有释义时返回 null', () => {
+    expect(sanitizeLookupWordResult({ phonetic: '/x/' }, 'run')).toBeNull();
+    expect(sanitizeLookupWordResult(null, 'run')).toBeNull();
   });
 });

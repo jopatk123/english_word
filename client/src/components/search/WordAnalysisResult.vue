@@ -167,7 +167,7 @@
           <div class="example-content">
             <div class="example-sentence">
               <div class="cell-with-speak">
-                <span>{{ ex.sentence }}</span>
+                <ClickableSentence :text="ex.sentence" />
                 <SpeakButton :text="ex.sentence" />
               </div>
             </div>
@@ -218,6 +218,7 @@
   import { ref, computed } from 'vue';
   import { ElMessage } from 'element-plus';
   import { createRoot, createWord, createExample, getRoots } from '../../api/index.js';
+  import ClickableSentence from '../ClickableSentence.vue';
   import SpeakButton from '../SpeakButton.vue';
 
   const props = defineProps({

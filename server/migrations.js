@@ -391,6 +391,33 @@ async function m020_words_add_image_ext() {
   console.log('[migration] M020: words.image_ext 已添加');
 }
 
+// M021：点词查询缓存，避免同一个生词反复请求 AI
+async function m021_create_word_lookups() {
+  const tables = await qi.showAllTables().catch(() => []);
+  if (!tables.includes('word_lookups')) {
+    await qi.createTable('word_lookups', {
+      id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      user_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: { model: 'users', key: 'id' },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+      },
+      word: { type: DataTypes.STRING(60), allowNull: false },
+      phonetic: { type: DataTypes.STRING, allowNull: true },
+      meaning: { type: DataTypes.STRING(80), allowNull: false },
+      part_of_speech: { type: DataTypes.TEXT, allowNull: false, defaultValue: '[]' },
+      create_time: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+      update_time: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+    });
+    console.log('[migration] M021: word_lookups 表已创建');
+  }
+  await sequelize.query(
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_word_lookups_user_word_unique ON word_lookups (user_id, word)'
+  );
+}
+
 /**
  * 按顺序执行所有迁移。每个迁移函数都是幂等的，可以安全重复运行。
  */
@@ -415,4 +442,5 @@ export async function runMigrations() {
   await m018_create_api_tokens();
   await m019_study_sessions_add_end_reason();
   await m020_words_add_image_ext();
+  await m021_create_word_lookups();
 }

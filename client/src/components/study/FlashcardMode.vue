@@ -40,7 +40,8 @@
           <div v-for="ex in card.word.examples" :key="ex.id" class="card-example">
             <div class="example-main">
               <p class="example-en">
-                {{ ex.sentence }} <SpeakButton :text="ex.sentence" class="example-speak" />
+                <ClickableSentence :text="ex.sentence" />
+                <SpeakButton :text="ex.sentence" class="example-speak" />
               </p>
               <p class="example-zh">{{ ex.translation }}</p>
             </div>
@@ -72,12 +73,16 @@
       >
     </div>
     <div v-else class="keyboard-hint">
-      快捷键：<kbd>空格</kbd> 翻牌并朗读单词与例句，翻牌后 <kbd>空格</kbd> 重播，<kbd>1</kbd>-<kbd>4</kbd> 评分
+      快捷键：<kbd>空格</kbd> 翻牌并朗读单词与例句，翻牌后 <kbd>空格</kbd> 重播，<kbd>1</kbd>-<kbd
+        >4</kbd
+      >
+      评分
     </div>
   </div>
 </template>
 
 <script setup>
+  import ClickableSentence from '../ClickableSentence.vue';
   import SpeakButton from '../SpeakButton.vue';
   import WordImage from '../WordImage.vue';
   import { useFlashcardSwipe } from '../../composables/useFlashcardSwipe.js';

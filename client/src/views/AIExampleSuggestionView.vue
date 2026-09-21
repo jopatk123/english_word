@@ -62,7 +62,7 @@
             shadow="hover"
           >
             <div class="example-content">
-              <p class="example-sentence">{{ item.sentence }}</p>
+              <p class="example-sentence"><ClickableSentence :text="item.sentence" /></p>
               <p class="example-translation">{{ item.translation }}</p>
             </div>
             <div class="example-actions">
@@ -92,6 +92,7 @@
   import { useRoute } from 'vue-router';
   import { ElMessage } from 'element-plus';
   import { createExample, getAiExampleSuggestions, getExamples, getWord } from '../api/index.js';
+  import ClickableSentence from '../components/ClickableSentence.vue';
   import SpeakButton from '../components/SpeakButton.vue';
   import {
     findAiProviderById,

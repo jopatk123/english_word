@@ -73,7 +73,7 @@
     <div v-loading="examplesLoading" class="example-list">
       <el-card v-for="example in examples" :key="example.id" class="example-card" shadow="hover">
         <div class="example-content">
-          <p class="example-sentence">{{ example.sentence }}</p>
+          <p class="example-sentence"><ClickableSentence :text="example.sentence" /></p>
           <p class="example-translation">{{ example.translation }}</p>
           <p v-if="example.remark" class="example-remark">
             <el-tag size="small" type="info">{{ example.remark }}</el-tag>
@@ -188,6 +188,7 @@
 <script setup>
   import { computed } from 'vue';
   import { useRoute } from 'vue-router';
+  import ClickableSentence from '../components/ClickableSentence.vue';
   import SpeakButton from '../components/SpeakButton.vue';
   import WordImageManager from '../components/WordImageManager.vue';
   import { useWordDetail } from '../composables/useWordDetail.js';

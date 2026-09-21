@@ -32,6 +32,7 @@
     <el-main class="app-main">
       <router-view />
     </el-main>
+    <WordLookupPopover />
     <AppMobileNav
       :visible="Boolean(user) && !isStudySession"
       :active="activeTab"
@@ -50,6 +51,8 @@
   import { useRouter, useRoute } from 'vue-router';
   import AlarmClock from './components/AlarmClock.vue';
   import AppMobileNav from './components/AppMobileNav.vue';
+  import WordLookupPopover from './components/WordLookupPopover.vue';
+  import { clearWordLookupSession } from './composables/wordLookup.js';
   import { notifyUserSessionChanged, subscribeUserSessionChanges } from './utils/authSync.js';
   import { clearAiSettingsServerState } from './utils/aiSettings.js';
   import { getAuthRedirectPath, isAdminRoutePath } from './utils/authRouteAccess.js';
@@ -155,6 +158,7 @@
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     clearAiSettingsServerState();
+    clearWordLookupSession();
     notifyUserSessionChanged({ type: 'logout' });
     user.value = null;
     router.push('/login');

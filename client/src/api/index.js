@@ -151,6 +151,12 @@ export const analyzeWord = (word, config, options = {}) =>
   });
 export const analyzeSentence = (sentence, config) =>
   aiApi.post('/ai/analyze-sentence', { sentence, config });
+export const lookupWord = (word, config, options = {}) =>
+  aiApi.post('/ai/lookup-word', {
+    word,
+    config,
+    sentence: options.sentence || '',
+  });
 
 // ========== 学习计时 API ==========
 export const startStudySession = (note = '') => api.post('/study-sessions/start', { note });

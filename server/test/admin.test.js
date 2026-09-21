@@ -6,6 +6,8 @@
  *   - PUT  /api/admin/users/:id/status
  *   - DELETE /api/admin/users/:id
  */
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import express from 'express';
 import request from 'supertest';
@@ -22,6 +24,7 @@ import {
   StudySession,
   UserAiSetting,
   ApiToken,
+  WordLookup,
 } from '../models/index.js';
 import authRouter from '../routes/auth.js';
 import adminRouter from '../routes/admin.js';
@@ -254,6 +257,13 @@ describe('DELETE /api/admin/users/:id', () => {
       tokenHash: 'b'.repeat(64),
       tokenPrefix: 'ewt_bbbbbbbbbbbb',
     });
+    await WordLookup.create({
+      userId: deleteTargetUser.id,
+      word: `lookup_${suffix()}`,
+      meaning: '查询',
+      phonetic: '/lʊk/',
+      partOfSpeech: '[]',
+    });
 
     survivorUser = await User.create({
       username: `admin_survivor_${suffix()}`,
@@ -289,6 +299,7 @@ describe('DELETE /api/admin/users/:id', () => {
       studySessions: 1,
       aiSettings: 1,
       apiTokens: 1,
+      wordLookups: 1,
     });
 
     expect(await User.findByPk(deleteTargetUser.id)).toBeNull();
@@ -299,6 +310,7 @@ describe('DELETE /api/admin/users/:id', () => {
     expect(await StudySession.count({ where: { userId: deleteTargetUser.id } })).toBe(0);
     expect(await UserAiSetting.count({ where: { userId: deleteTargetUser.id } })).toBe(0);
     expect(await ApiToken.count({ where: { userId: deleteTargetUser.id } })).toBe(0);
+    expect(await WordLookup.count({ where: { userId: deleteTargetUser.id } })).toBe(0);
     expect(await WordRoot.count({ where: { rootId: deleteTargetRoot.id } })).toBe(0);
     expect(await WordRoot.count({ where: { wordId: deleteTargetWord.id } })).toBe(0);
     expect(await Example.count({ where: { wordId: deleteTargetWord.id } })).toBe(0);
@@ -370,6 +382,21 @@ describe('getDbPath', () => {
     const original = process.env.DB_PATH;
     process.env.DB_PATH = '/tmp/english-word-test.db';
     expect(getDbPath()).toBe('/tmp/english-word-test.db');
+    restoreEnv('DB_PATH', original);
+  });
+
+  it('相对路径相对于项目根目录解析', () => {
+    const original = process.env.DB_PATH;
+    process.env.DB_PATH = './data/words.db';
+    const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+    expect(getDbPath()).toBe(path.join(root, 'data/words.db'));
+    restoreEnv('DB_PATH', original);
+  });
+
+  it(':memory: 保持原样', () => {
+    const original = process.env.DB_PATH;
+    process.env.DB_PATH = ':memory:';
+    expect(getDbPath()).toBe(':memory:');
     restoreEnv('DB_PATH', original);
   });
 

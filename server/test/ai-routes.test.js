@@ -484,3 +484,87 @@ describe('POST /ai/analyze-sentence', () => {
     expect(res.body.msg).not.toContain('gpt-4');
   });
 });
+
+const letterId = () =>
+  `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`.replace(/[^a-z]/g, '') ||
+  'lookupword';
+
+describe('POST /ai/lookup-word', () => {
+  it('非法单词返回 400 且不调用 AI', async () => {
+    const res = await request(app).post('/ai/lookup-word').send({ word: '123' });
+    expect(res.status).toBe(400);
+    expect(requestAiJson).not.toHaveBeenCalled();
+  });
+
+  it('词库已有单词时直接返回，不调用 AI', async () => {
+    const name = `glance${letterId()}`;
+    await Word.create({
+      name,
+      meaning: '一瞥',
+      phonetic: '/ɡlæns/',
+      userId,
+    });
+
+    const res = await request(app).post('/ai/lookup-word').send({ word: name.toUpperCase() });
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({
+      word: name,
+      meaning: '一瞥',
+      phonetic: '/ɡlæns/',
+      source: 'library',
+    });
+    expect(res.body.data.wordId).toEqual(expect.any(Number));
+    expect(requestAiJson).not.toHaveBeenCalled();
+  });
+
+  it('所有格会查词干，未收录时调用 AI 并在第二次命中缓存', async () => {
+    const stem = `parcel${letterId()}`;
+    requestAiJson.mockResolvedValue({
+      word: 'ignored',
+      phonetic: '/ˈpɑːsl/',
+      meaning: '包裹',
+      partOfSpeech: [
+        { type: 'n.', meaning: '包裹' },
+        { type: 'v.', meaning: '打包' },
+        { type: 'adj.', meaning: '不应保留' },
+      ],
+    });
+
+    const first = await request(app)
+      .post('/ai/lookup-word')
+      .send({
+        word: `${stem}'s`,
+        sentence: `This ${stem} arrived today.`,
+        config: validConfig,
+      });
+    expect(first.status).toBe(200);
+    expect(first.body.data).toMatchObject({
+      word: stem,
+      meaning: '包裹',
+      source: 'ai',
+      wordId: null,
+    });
+    expect(first.body.data.partOfSpeech).toEqual([
+      { type: 'n.', meaning: '包裹' },
+      { type: 'v.', meaning: '打包' },
+    ]);
+    expect(requestAiJson).toHaveBeenCalledTimes(1);
+    expect(requestAiJson.mock.calls[0][1].userPrompt).toContain(`This ${stem} arrived today.`);
+
+    const second = await request(app)
+      .post('/ai/lookup-word')
+      .send({ word: stem, config: validConfig });
+    expect(second.status).toBe(200);
+    expect(second.body.data.source).toBe('cache');
+    expect(second.body.data.meaning).toBe('包裹');
+    expect(requestAiJson).toHaveBeenCalledTimes(1);
+  });
+
+  it('AI 返回空释义时返回 400', async () => {
+    requestAiJson.mockResolvedValue({ meaning: '   ', phonetic: '/x/' });
+    const res = await request(app)
+      .post('/ai/lookup-word')
+      .send({ word: `blank${letterId()}`, config: validConfig });
+    expect(res.status).toBe(400);
+  });
+});

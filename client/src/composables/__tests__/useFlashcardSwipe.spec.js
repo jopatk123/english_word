@@ -44,6 +44,12 @@ describe('useFlashcardSwipe', () => {
     expect(rate).toHaveBeenCalledWith(1);
   });
 
+  it('does not flip when the click starts on an interactive control', () => {
+    const { onCardClick, flip } = createHandlers();
+    onCardClick({ target: { closest: () => ({}) } });
+    expect(flip).not.toHaveBeenCalled();
+  });
+
   it('does not start a gesture from interactive controls', () => {
     const { onTouchStart, onTouchEnd, flip } = createHandlers();
     onTouchStart(

@@ -7,10 +7,12 @@
  *   buildExamplePrompt       - 推荐例句
  *   buildAnalyzeWordPrompt   - 分析单词
  *   buildAnalyzeSentencePrompt - 分析句子
+ *   buildLookupWordPrompt    - 句中点词的简短释义
  *
  * 净化器（将 AI 原始返回 sanitize 为受信任的结构）：
  *   sanitizeAnalyzeWordResult
  *   sanitizeAnalyzeSentenceResult
+ *   sanitizeLookupWordResult
  */
 
 // ── 系统提示共用片段 ───────────────────────────────────────────
@@ -201,6 +203,31 @@ partOfSpeech的值数量不限，但必须包含所有常见词性；roots字段
   };
 };
 
+export const buildLookupWordPrompt = (word, sentence = '') => {
+  const context = sentence
+    ? `这个词出现在下面的句子里。partOfSpeech 第一项必须对应该句中的实际用法：\n${sentence}`
+    : '没有具体句子，给出最常见的义项即可。';
+
+  return {
+    systemPrompt: JSON_ONLY_SYSTEM_PROMPT,
+    userPrompt: `快速解释英语单词【${word}】，供学习时扫一眼。${context}
+
+规则（必须严格遵守）：
+1. meaning 用一句简短中文概括，不超过 40 个字。
+2. partOfSpeech 最多 2 项。词性只能使用：n./v./adj./adv./prep./pron./conj./interj./num./art./aux.。
+3. phonetic 使用国际音标，并用斜线包住。
+4. 只返回标准 JSON，格式如下：
+{
+  "word": "${word}",
+  "phonetic": "/音标/",
+  "meaning": "简短中文释义",
+  "partOfSpeech": [
+    { "type": "n.", "meaning": "该词性下的简短释义" }
+  ]
+}`,
+  };
+};
+
 export const buildAnalyzeSentencePrompt = (sentence) => ({
   systemPrompt: `你是专业英语教学助手。
 **必须只返回合法JSON，绝对不能输出：解释、说明、markdown、代码块、多余文字、思考过程。**
@@ -325,4 +352,35 @@ export const sanitizeAnalyzeSentenceResult = (parsed, sentence) => {
   }
 
   return result.translation ? result : null;
+};
+
+/**
+ * 将点词查询的 AI 结果净化为短释义。
+ * @param {unknown} parsed
+ * @param {string} word - 已规范化的查询词
+ * @returns {object|null}
+ */
+export const sanitizeLookupWordResult = (parsed, word) => {
+  if (!parsed || typeof parsed !== 'object') return null;
+
+  const meaning = (parsed.meaning || '').trim().slice(0, 80);
+  if (!meaning) return null;
+
+  const result = {
+    word,
+    phonetic: (parsed.phonetic || '').trim().slice(0, 80),
+    meaning,
+    partOfSpeech: [],
+  };
+
+  for (const item of Array.isArray(parsed.partOfSpeech) ? parsed.partOfSpeech : []) {
+    const type = (item?.type || '').trim().toLowerCase();
+    const itemMeaning = (item?.meaning || '').trim().slice(0, 80);
+    if (VALID_POS_TYPES.has(type) && itemMeaning) {
+      result.partOfSpeech.push({ type, meaning: itemMeaning });
+      if (result.partOfSpeech.length >= 2) break;
+    }
+  }
+
+  return result;
 };

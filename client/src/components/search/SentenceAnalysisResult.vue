@@ -9,7 +9,7 @@
     <!-- 原句 + 朗读 -->
     <div class="sentence-original">
       <div class="cell-with-speak">
-        <span class="sentence-text">{{ result.analysis.sentence }}</span>
+        <span class="sentence-text"><ClickableSentence :text="result.analysis.sentence" /></span>
         <SpeakButton :text="result.analysis.sentence" />
       </div>
     </div>
@@ -47,6 +47,7 @@
 </template>
 
 <script setup>
+  import ClickableSentence from '../ClickableSentence.vue';
   import SpeakButton from '../SpeakButton.vue';
 
   defineProps({

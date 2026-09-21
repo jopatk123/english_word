@@ -1,8 +1,7 @@
 const INTERACTIVE_SELECTOR = 'button, a, input, textarea, select, .speak-btn, .el-button';
 const MIN_DISTANCE = 56;
 
-const isInteractiveTarget = (target) =>
-  Boolean(target?.closest?.(INTERACTIVE_SELECTOR));
+const isInteractiveTarget = (target) => Boolean(target?.closest?.(INTERACTIVE_SELECTOR));
 
 /**
  * 闪卡触摸手势：左右滑翻牌；已翻开时左滑「再来一遍」、右滑「认识」。
@@ -47,11 +46,12 @@ export function useFlashcardSwipe({ isAnswerShown, isSubmitting, flip, rate }) {
     rate(dx < 0 ? 1 : 3);
   };
 
-  const onCardClick = () => {
+  const onCardClick = (event) => {
     if (suppressClick) {
       suppressClick = false;
       return;
     }
+    if (isInteractiveTarget(event?.target)) return;
     if (!isAnswerShown()) {
       flip();
     }

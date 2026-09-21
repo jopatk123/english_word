@@ -11,11 +11,20 @@ import {
   buildAnalyzeSentencePrompt,
   buildAnalyzeWordPrompt,
   buildExamplePrompt,
+  buildLookupWordPrompt,
   buildRootPrompt,
   buildWordPrompt,
   sanitizeAnalyzeSentenceResult,
   sanitizeAnalyzeWordResult,
+  sanitizeLookupWordResult,
 } from '../utils/aiPrompts.js';
+import {
+  findCachedLookup,
+  findLibraryLookup,
+  normalizeLookupWord,
+  saveCachedLookup,
+  toLookupResponse,
+} from '../services/word-lookup.js';
 import { success, error, resolveClientErrorStatus } from '../utils/response.js';
 import { fetchProviderModels } from '../services/ai-models.js';
 import { resolveUserAiConfig, resolveUserAiConfigForModels } from '../services/user-ai-settings.js';
@@ -393,6 +402,50 @@ router.post('/analyze-word', async (req, res) => {
     success(res, { analysis, existingWord: null, existingRoots, debug: withDuration(debugInfo) });
   } catch (e) {
     handleAiError(res, req, startedAt, 'analyze-word', e);
+  }
+});
+
+// ── 句中点词：短释义 ──────────────────────────────────────────
+
+router.post('/lookup-word', async (req, res) => {
+  const startedAt = Date.now();
+  try {
+    const word = normalizeLookupWord(req.body?.word);
+    if (!word) return error(res, '请选择合法的英文单词', 400);
+
+    const libraryWord = await findLibraryLookup(req.userId, word);
+    if (libraryWord) {
+      return success(res, toLookupResponse(libraryWord, 'library'));
+    }
+
+    const cached = await findCachedLookup(req.userId, word);
+    if (cached) {
+      return success(res, toLookupResponse(cached, 'cache'));
+    }
+
+    const sentence =
+      typeof req.body?.sentence === 'string'
+        ? req.body.sentence.trim().replace(/\s+/g, ' ').slice(0, 300)
+        : '';
+    const validatedConfig = await resolveUserAiConfig(req.userId, req.body?.config || {});
+    const debugInfo = createDebugInfo(req, validatedConfig, startedAt);
+    logAiInfo('lookup-word.start', debugInfo, { word, hasSentence: Boolean(sentence) });
+
+    const payload = await requestAiJson(validatedConfig, buildLookupWordPrompt(word, sentence));
+    const gloss = sanitizeLookupWordResult(payload, word);
+    if (!gloss) return error(res, 'AI 返回的释义无效，请重试', 400);
+
+    const saved = await saveCachedLookup(req.userId, gloss);
+    logAiInfo('lookup-word.success', debugInfo, { word });
+    success(res, {
+      ...toLookupResponse(saved || gloss, 'ai'),
+      word: gloss.word,
+      phonetic: gloss.phonetic,
+      meaning: gloss.meaning,
+      partOfSpeech: gloss.partOfSpeech,
+    });
+  } catch (e) {
+    handleAiError(res, req, startedAt, 'lookup-word', e);
   }
 });
 
