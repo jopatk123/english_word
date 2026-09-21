@@ -2,7 +2,11 @@
 node_modules
 dist
 data/*.db
+data/*.db-wal
+data/*.db-shm
 server/data/*.db
+server/data/*.db-wal
+server/data/*.db-shm
 data/uploads/
 server/data/uploads/
 client/dist

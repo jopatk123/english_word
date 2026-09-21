@@ -15,6 +15,9 @@ const UserAiSetting = sequelize.define(
       unique: true,
       field: 'user_id',
       comment: '所属用户 ID',
+      references: { model: 'users', key: 'id' },
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
     },
     encryptedPayload: {
       type: DataTypes.TEXT,

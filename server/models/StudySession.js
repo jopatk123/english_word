@@ -13,6 +13,9 @@ const StudySession = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       field: 'user_id',
+      references: { model: 'users', key: 'id' },
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
     },
     startedAt: {
       type: DataTypes.DATE,

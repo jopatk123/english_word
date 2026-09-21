@@ -1,4 +1,4 @@
-import sequelize from '../config/database.js';
+import sequelize, { configureSqlite } from '../config/database.js';
 import { runMigrations } from '../migrations.js';
 import User from './User.js';
 import Root from './Root.js';
@@ -35,8 +35,18 @@ Root.belongsToMany(Word, {
 });
 
 // WordRoot 直接关联（用于独立查询关联表）
-WordRoot.belongsTo(Root, { foreignKey: 'root_id', as: 'root' });
-WordRoot.belongsTo(Word, { foreignKey: 'word_id', as: 'word' });
+WordRoot.belongsTo(Root, {
+  foreignKey: 'root_id',
+  as: 'root',
+  onDelete: 'CASCADE',
+  onUpdate: 'CASCADE',
+});
+WordRoot.belongsTo(Word, {
+  foreignKey: 'word_id',
+  as: 'word',
+  onDelete: 'CASCADE',
+  onUpdate: 'CASCADE',
+});
 
 // 单词 -> 例句 (一对多)
 Word.hasMany(Example, { foreignKey: 'word_id', as: 'examples', onDelete: 'CASCADE' });
@@ -60,7 +70,12 @@ ReviewHistory.belongsTo(Word, { foreignKey: 'word_id', as: 'word' });
 
 // 用户 -> 学习计时记录 (一对多)
 User.hasMany(StudySession, { foreignKey: 'user_id', as: 'studySessions', onDelete: 'CASCADE' });
-StudySession.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+StudySession.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+  onDelete: 'CASCADE',
+  onUpdate: 'CASCADE',
+});
 
 // 用户 -> AI 设置（单条加密配置）
 User.hasOne(UserAiSetting, {
@@ -77,6 +92,7 @@ User.hasMany(WordLookup, { foreignKey: 'user_id', as: 'wordLookups', onDelete: '
 WordLookup.belongsTo(User, { foreignKey: 'user_id', as: 'user', onDelete: 'CASCADE' });
 
 const initDB = async () => {
+  await configureSqlite();
   const qi = sequelize.getQueryInterface();
   const existingTables = await qi.showAllTables().catch(() => []);
   const hasAppTables = Array.isArray(existingTables)

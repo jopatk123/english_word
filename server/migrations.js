@@ -6,6 +6,7 @@
  *   迁移检查：先 describeTable，列存在则跳过。
  */
 
+import { QueryTypes } from 'sequelize';
 import sequelize from './config/database.js';
 
 const qi = sequelize.getQueryInterface();
@@ -418,6 +419,161 @@ async function m021_create_word_lookups() {
   );
 }
 
+async function selectRows(sql) {
+  const result = await sequelize.query(sql, { type: QueryTypes.SELECT });
+  return Array.isArray(result) ? result : [];
+}
+
+async function foreignKeyDeleteAction(table, column) {
+  const rows = await selectRows(`PRAGMA foreign_key_list(${table})`);
+  const match = rows.find((row) => row.from === column);
+  return match ? String(match.on_delete).toUpperCase() : '';
+}
+
+async function columnIsNotNull(table, column) {
+  const rows = await selectRows(`PRAGMA table_info(${table})`);
+  const match = rows.find((row) => row.name === column);
+  return Boolean(match && Number(match.notnull) === 1);
+}
+
+async function withForeignKeysDisabled(work) {
+  await sequelize.query('PRAGMA foreign_keys = OFF');
+  try {
+    await sequelize.transaction(work);
+  } finally {
+    await sequelize.query('PRAGMA foreign_keys = ON');
+  }
+}
+
+// M022：收紧关联删除行为，并去掉已无模型的空表与重复索引
+async function m022_repair_foreign_keys_and_legacy_tables() {
+  const tables = await qi.showAllTables().catch(() => []);
+  if (!Array.isArray(tables) || tables.length === 0) return;
+
+  if (tables.includes('word_roots')) {
+    const wordDelete = await foreignKeyDeleteAction('word_roots', 'word_id');
+    const rootDelete = await foreignKeyDeleteAction('word_roots', 'root_id');
+    const wordNotNull = await columnIsNotNull('word_roots', 'word_id');
+    const rootNotNull = await columnIsNotNull('word_roots', 'root_id');
+    if (wordDelete !== 'CASCADE' || rootDelete !== 'CASCADE' || !wordNotNull || !rootNotNull) {
+      await withForeignKeysDisabled(async (transaction) => {
+        await sequelize.query(
+          `CREATE TABLE word_roots_m022 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            word_id INTEGER NOT NULL REFERENCES words(id) ON DELETE CASCADE ON UPDATE CASCADE,
+            root_id INTEGER NOT NULL REFERENCES roots(id) ON DELETE CASCADE ON UPDATE CASCADE,
+            create_time DATETIME NOT NULL
+          )`,
+          { transaction }
+        );
+        await sequelize.query(
+          `INSERT INTO word_roots_m022 (id, word_id, root_id, create_time)
+           SELECT id, word_id, root_id, create_time
+           FROM word_roots
+           WHERE word_id IS NOT NULL AND root_id IS NOT NULL`,
+          { transaction }
+        );
+        await sequelize.query('DROP TABLE word_roots', { transaction });
+        await sequelize.query('ALTER TABLE word_roots_m022 RENAME TO word_roots', { transaction });
+        await sequelize.query(
+          'CREATE UNIQUE INDEX IF NOT EXISTS word_roots_word_id_root_id ON word_roots (word_id, root_id)',
+          { transaction }
+        );
+      });
+      console.log('[migration] M022: word_roots 外键已改为 ON DELETE CASCADE');
+    }
+  }
+
+  if (tables.includes('study_sessions')) {
+    const userDelete = await foreignKeyDeleteAction('study_sessions', 'user_id');
+    if (userDelete !== 'CASCADE') {
+      await withForeignKeysDisabled(async (transaction) => {
+        await sequelize.query(
+          `CREATE TABLE study_sessions_m022 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+            started_at DATETIME NOT NULL,
+            ended_at DATETIME,
+            duration_seconds INTEGER,
+            note VARCHAR(100),
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            end_reason VARCHAR(32)
+          )`,
+          { transaction }
+        );
+        await sequelize.query(
+          `INSERT INTO study_sessions_m022 (
+            id, user_id, started_at, ended_at, duration_seconds, note, created_at, updated_at, end_reason
+          )
+          SELECT id, user_id, started_at, ended_at, duration_seconds, note, created_at, updated_at, end_reason
+          FROM study_sessions`,
+          { transaction }
+        );
+        await sequelize.query('DROP TABLE study_sessions', { transaction });
+        await sequelize.query('ALTER TABLE study_sessions_m022 RENAME TO study_sessions', {
+          transaction,
+        });
+        await sequelize.query(
+          `CREATE UNIQUE INDEX IF NOT EXISTS idx_study_sessions_active
+           ON study_sessions (user_id) WHERE ended_at IS NULL`,
+          { transaction }
+        );
+      });
+      console.log('[migration] M022: study_sessions.user_id 外键已补上');
+    }
+  }
+
+  if (tables.includes('user_ai_settings')) {
+    const userDelete = await foreignKeyDeleteAction('user_ai_settings', 'user_id');
+    if (userDelete !== 'CASCADE') {
+      await withForeignKeysDisabled(async (transaction) => {
+        await sequelize.query(
+          `CREATE TABLE user_ai_settings_m022 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+            encrypted_payload TEXT NOT NULL,
+            iv VARCHAR(255) NOT NULL,
+            auth_tag VARCHAR(255) NOT NULL,
+            create_time DATETIME NOT NULL,
+            update_time DATETIME NOT NULL
+          )`,
+          { transaction }
+        );
+        await sequelize.query(
+          `INSERT INTO user_ai_settings_m022 (
+            id, user_id, encrypted_payload, iv, auth_tag, create_time, update_time
+          )
+          SELECT id, user_id, encrypted_payload, iv, auth_tag, create_time, update_time
+          FROM user_ai_settings`,
+          { transaction }
+        );
+        await sequelize.query('DROP TABLE user_ai_settings', { transaction });
+        await sequelize.query('ALTER TABLE user_ai_settings_m022 RENAME TO user_ai_settings', {
+          transaction,
+        });
+      });
+      console.log('[migration] M022: user_ai_settings.user_id 外键已补上');
+    }
+  }
+
+  if (tables.includes('image_assets')) {
+    const [countRows] = await sequelize.query('SELECT COUNT(*) AS count FROM image_assets');
+    const count = Number(countRows?.[0]?.count || 0);
+    if (count === 0) {
+      await sequelize.query('DROP TABLE image_assets');
+      console.log('[migration] M022: 已删除空的遗留表 image_assets');
+    } else {
+      console.warn(`[migration] M022: image_assets 仍有 ${count} 行，未删除`);
+    }
+  }
+
+  await sequelize.query('DROP INDEX IF EXISTS api_tokens_user_id');
+  await sequelize.query('DROP INDEX IF EXISTS api_tokens_expires_at');
+  await sequelize.query('DROP INDEX IF EXISTS api_tokens_token_prefix');
+  await sequelize.query('DROP INDEX IF EXISTS api_tokens_token_hash');
+}
+
 /**
  * 按顺序执行所有迁移。每个迁移函数都是幂等的，可以安全重复运行。
  */
@@ -443,4 +599,5 @@ export async function runMigrations() {
   await m019_study_sessions_add_end_reason();
   await m020_words_add_image_ext();
   await m021_create_word_lookups();
+  await m022_repair_foreign_keys_and_legacy_tables();
 }

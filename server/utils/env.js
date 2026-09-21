@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(__dirname, '../..');
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env'), quiet: true });
 
@@ -89,9 +90,14 @@ export const getApiTokenPepper = () => {
 
 export const getDbPath = () => {
   const dbPath = readEnv('DB_PATH');
-  if (dbPath) return dbPath;
+  if (!dbPath) {
+    throw new Error(missingEnvMessage('DB_PATH'));
+  }
 
-  throw new Error(missingEnvMessage('DB_PATH'));
+  // :memory: 与绝对路径保持原样。相对路径固定相对项目根目录，
+  // 避免 ./start.sh 进入 server/ 后写到另一份 SQLite 文件。
+  if (dbPath === ':memory:' || path.isAbsolute(dbPath)) return dbPath;
+  return path.resolve(projectRoot, dbPath);
 };
 
 export const getServerPort = () => {

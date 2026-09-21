@@ -14,6 +14,9 @@ const ApiToken = sequelize.define(
       allowNull: false,
       field: 'user_id',
       comment: '所属用户 ID',
+      references: { model: 'users', key: 'id' },
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
     },
     name: {
       type: DataTypes.STRING(100),
@@ -52,10 +55,9 @@ const ApiToken = sequelize.define(
     createdAt: 'create_time',
     updatedAt: 'update_time',
     indexes: [
-      { fields: ['user_id'] },
-      { fields: ['expires_at'] },
-      { fields: ['token_prefix'] },
-      { unique: true, fields: ['token_hash'] },
+      { name: 'idx_api_tokens_user_id', fields: ['user_id'] },
+      { name: 'idx_api_tokens_expires_at', fields: ['expires_at'] },
+      { name: 'idx_api_tokens_token_prefix', fields: ['token_prefix'] },
     ],
   }
 );

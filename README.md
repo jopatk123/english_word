@@ -41,7 +41,7 @@
 - 项目已移除运行时和 Docker 部署层的默认值；任一变量缺失或为空，部署会直接失败
 - 管理员登录密码只以 bcrypt 哈希形式配置，不再支持明文环境变量
 - Docker 部署时，`DB_PATH` 应填写容器内持久化目录，例如 `/app/data/words.db`
-- 本地开发时，`DB_PATH` 应填写宿主机路径，例如 `./data/words.dev.db`
+- 本地开发时，`DB_PATH` 应填写宿主机路径，例如 `./data/words.db`。相对路径相对于项目根目录，不随 `./start.sh` 或 `cd server` 改变
 - `PORT` 同时用于服务监听端口和 Docker 对外映射端口
 
 ## Docker 部署
@@ -122,7 +122,7 @@ cp .env.example .env
 
 ```env
 PORT=3010
-DB_PATH=./data/words.dev.db
+DB_PATH=./data/words.db
 JWT_SECRET=replace-with-a-long-random-secret
 AI_SETTINGS_SECRET=replace-with-another-long-random-secret
 API_TOKEN_PEPPER=replace-with-another-long-random-secret
@@ -178,7 +178,7 @@ npm run test:coverage
 | 变量名                | 是否必填 | 说明                                                                                               |
 | --------------------- | -------- | -------------------------------------------------------------------------------------------------- |
 | `PORT`                | 是       | 服务监听端口；Docker 对外映射也使用同一个端口                                                      |
-| `DB_PATH`             | 是       | SQLite 文件路径；Docker 建议 `/app/data/words.db`，本地建议 `./data/words.dev.db`                  |
+| `DB_PATH`             | 是       | SQLite 文件路径；Docker 建议 `/app/data/words.db`，本地建议 `./data/words.db`。相对路径相对于项目根目录 |
 | `JWT_SECRET`          | 是       | 普通用户登录 JWT 的签名密钥                                                                        |
 | `AI_SETTINGS_SECRET`  | 是       | 服务端加密保存 AI Key 的独立密钥，建议与 `JWT_SECRET` 不同                                         |
 | `API_TOKEN_PEPPER`    | 是       | 用户 API Token 的 HMAC pepper，必须与 `JWT_SECRET` 不同；改密或轮换 JWT 密钥不会撤销已有 API Token |

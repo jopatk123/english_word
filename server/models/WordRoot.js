@@ -14,12 +14,18 @@ const WordRoot = sequelize.define(
       allowNull: false,
       field: 'word_id',
       comment: '关联单词ID',
+      references: { model: 'words', key: 'id' },
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
     },
     rootId: {
       type: DataTypes.INTEGER,
       allowNull: false,
       field: 'root_id',
       comment: '关联词根ID',
+      references: { model: 'roots', key: 'id' },
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
     },
   },
   {
@@ -27,7 +33,7 @@ const WordRoot = sequelize.define(
     timestamps: true,
     createdAt: 'create_time',
     updatedAt: false,
-    indexes: [{ unique: true, fields: ['word_id', 'root_id'] }],
+    indexes: [{ name: 'word_roots_word_id_root_id', unique: true, fields: ['word_id', 'root_id'] }],
   }
 );
 
