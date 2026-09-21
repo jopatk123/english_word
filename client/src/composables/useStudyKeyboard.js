@@ -3,7 +3,7 @@
  *
  * 将键盘逻辑从 useStudySession 中解耦，使其可独立测试。
  * 各模式的快捷键行为：
- *   闪卡  —— Space 翻牌/重播；1/2/3/4 快速评分
+ *   闪卡  —— Space 翻牌并朗读单词+全部例句 / 重播；1/2/3/4 快速评分
  *   选择题 —— a/b/c/d 或 1/2/3/4 选择；Enter/Space 下一题
  *   拼写   —— Enter 确认/下一题
  *   听力   —— Space 重播发音；Enter 确认/下一题
@@ -19,6 +19,7 @@
  * @param {Object}                    deps.choice         - { choiceAnswered, choiceOptions, handleChoice, choiceNext }
  * @param {Object}                    deps.spelling       - { spellingAnswered, checkSpelling, spellingNext }
  * @param {Function}                  deps.flipCard
+ * @param {Function}                  deps.replayCard     - 闪卡翻牌后重播：朗读单词及全部例句
  * @param {Function}                  deps.submitRating
  */
 export function useStudyKeyboard({
@@ -32,6 +33,7 @@ export function useStudyKeyboard({
   choice,
   spelling,
   flipCard,
+  replayCard,
   submitRating,
 }) {
   function handleKeyDown(e) {
@@ -46,7 +48,7 @@ export function useStudyKeyboard({
         if (!showAnswer.value) {
           flipCard();
         } else {
-          speak(currentCard.value.word.name);
+          replayCard(currentCard.value);
         }
         return;
       }

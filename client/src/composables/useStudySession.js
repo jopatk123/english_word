@@ -165,7 +165,7 @@ export function useStudySession() {
     }
   };
 
-  const { stopAutoRead, toggleAutoReadPause, isAutoReadPaused, speak } = useAutoRead({
+  const { stopAutoRead, toggleAutoReadPause, isAutoReadPaused, speak, speakSequence } = useAutoRead({
     currentCard,
     studyMode,
     modeSelected,
@@ -282,11 +282,18 @@ export function useStudySession() {
     resetSession();
   };
 
+  // 闪卡朗读：先读单词，再按顺序读全部例句（句间停顿 1 秒）
+  const speakCardAll = (card) => {
+    if (!card?.word?.name) return;
+    const sentences = (card.word.examples || [])
+      .map((example) => example?.sentence?.trim())
+      .filter(Boolean);
+    void speakSequence([card.word.name, ...sentences], 'en-US', 1000);
+  };
+
   const flipCard = () => {
     showAnswer.value = true;
-    if (currentCard.value) {
-      speak(currentCard.value.word.name);
-    }
+    speakCardAll(currentCard.value);
   };
 
   const seekToIndex = (targetIndex) =>
@@ -409,6 +416,7 @@ export function useStudySession() {
       spellingNext: spelling.spellingNext,
     },
     flipCard,
+    replayCard: speakCardAll,
     submitRating,
   });
 

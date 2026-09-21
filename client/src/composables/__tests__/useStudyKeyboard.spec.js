@@ -16,6 +16,7 @@ function makeEvent(code, key = code, tag = 'BODY') {
 function makeDefaultDeps(overrides = {}) {
   const speak = vi.fn();
   const flipCard = vi.fn();
+  const replayCard = vi.fn();
   const submitRating = vi.fn();
 
   const choice = {
@@ -47,11 +48,12 @@ function makeDefaultDeps(overrides = {}) {
     choice,
     spelling,
     flipCard,
+    replayCard,
     submitRating,
     ...overrides,
   };
 
-  return { deps, speak, flipCard, submitRating, choice, spelling };
+  return { deps, speak, flipCard, replayCard, submitRating, choice, spelling };
 }
 
 // ── 前置条件守卫 ──────────────────────────────────────────────
@@ -94,12 +96,19 @@ describe('flashcard 模式', () => {
     expect(flipCard).toHaveBeenCalledTimes(1);
   });
 
-  it('showAnswer=true 时 Space 重播发音', () => {
-    const { deps, speak } = makeDefaultDeps({ studyMode: ref('flashcard') });
+  it('showAnswer=true 时 Space 重播单词及全部例句', () => {
+    const { deps, replayCard } = makeDefaultDeps({ studyMode: ref('flashcard') });
+    deps.currentCard.value = {
+      word: {
+        name: 'inspect',
+        examples: [{ sentence: 'inspect the room' }, { sentence: ' ' }],
+      },
+    };
     deps.showAnswer.value = true;
     const { handleKeyDown } = useStudyKeyboard(deps);
     handleKeyDown(makeEvent('Space'));
-    expect(speak).toHaveBeenCalledWith('inspect');
+    expect(replayCard).toHaveBeenCalledTimes(1);
+    expect(replayCard).toHaveBeenCalledWith(deps.currentCard.value);
   });
 
   it('showAnswer=true 时按数字 1-4 触发 submitRating', () => {

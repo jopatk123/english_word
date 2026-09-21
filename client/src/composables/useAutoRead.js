@@ -187,5 +187,5 @@ export function useAutoRead({ currentCard, studyMode, modeSelected, sessionStats
     void releaseWakeLock();
   });
 
-  return { stopAutoRead, toggleAutoReadPause, isAutoReadPaused, speak };
+  return { stopAutoRead, toggleAutoReadPause, isAutoReadPaused, speak, speakSequence };
 }

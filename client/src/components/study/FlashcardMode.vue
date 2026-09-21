@@ -72,7 +72,7 @@
       >
     </div>
     <div v-else class="keyboard-hint">
-      快捷键：<kbd>空格</kbd> 翻牌，翻牌后 <kbd>空格</kbd> 发音，<kbd>1</kbd>-<kbd>4</kbd> 评分
+      快捷键：<kbd>空格</kbd> 翻牌并朗读单词与例句，翻牌后 <kbd>空格</kbd> 重播，<kbd>1</kbd>-<kbd>4</kbd> 评分
     </div>
   </div>
 </template>
