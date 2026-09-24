@@ -82,9 +82,7 @@ describe('wordImageCache', () => {
   });
 
   it('替换图片后使缓存失效', async () => {
-    getWordImageBlobMock
-      .mockResolvedValueOnce(jpeg('old'))
-      .mockResolvedValueOnce(jpeg('new'));
+    getWordImageBlobMock.mockResolvedValueOnce(jpeg('old')).mockResolvedValueOnce(jpeg('new'));
     const oldBlob = await getCachedWordImageBlob(11);
     invalidateWordImageCache(11);
     const nextBlob = await getCachedWordImageBlob(11);

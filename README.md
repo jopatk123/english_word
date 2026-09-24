@@ -175,18 +175,18 @@ npm run test:coverage
 
 ## 环境变量说明
 
-| 变量名                | 是否必填 | 说明                                                                                               |
-| --------------------- | -------- | -------------------------------------------------------------------------------------------------- |
-| `PORT`                | 是       | 服务监听端口；Docker 对外映射也使用同一个端口                                                      |
+| 变量名                | 是否必填 | 说明                                                                                                    |
+| --------------------- | -------- | ------------------------------------------------------------------------------------------------------- |
+| `PORT`                | 是       | 服务监听端口；Docker 对外映射也使用同一个端口                                                           |
 | `DB_PATH`             | 是       | SQLite 文件路径；Docker 建议 `/app/data/words.db`，本地建议 `./data/words.db`。相对路径相对于项目根目录 |
-| `JWT_SECRET`          | 是       | 普通用户登录 JWT 的签名密钥                                                                        |
-| `AI_SETTINGS_SECRET`  | 是       | 服务端加密保存 AI Key 的独立密钥，建议与 `JWT_SECRET` 不同                                         |
-| `API_TOKEN_PEPPER`    | 是       | 用户 API Token 的 HMAC pepper，必须与 `JWT_SECRET` 不同；改密或轮换 JWT 密钥不会撤销已有 API Token |
-| `ADMIN_JWT_SECRET`    | 是       | 超级管理员 token 的签名密钥，必须与 `JWT_SECRET` 不同                                              |
-| `ADMIN_PASSWORD_HASH` | 是       | 超级管理员登录密码的 bcrypt 哈希，对应页面为 `/super-admin`                                        |
-| `ALLOWED_ORIGINS`     | 否       | 允许跨域的来源白名单（逗号分隔）；留空表示仅允许同源请求                                           |
-| `TRUST_PROXY`         | 否       | 反向代理层数，决定 Express 如何解析客户端真实 IP；未设置时生产环境默认 `1`，其他环境 `false`       |
-| `UPLOAD_DIR`          | 否       | 单词记忆图片目录；未设置时使用 `DB_PATH` 所在目录下的 `uploads/`                                   |
+| `JWT_SECRET`          | 是       | 普通用户登录 JWT 的签名密钥                                                                             |
+| `AI_SETTINGS_SECRET`  | 是       | 服务端加密保存 AI Key 的独立密钥，建议与 `JWT_SECRET` 不同                                              |
+| `API_TOKEN_PEPPER`    | 是       | 用户 API Token 的 HMAC pepper，必须与 `JWT_SECRET` 不同；改密或轮换 JWT 密钥不会撤销已有 API Token      |
+| `ADMIN_JWT_SECRET`    | 是       | 超级管理员 token 的签名密钥，必须与 `JWT_SECRET` 不同                                                   |
+| `ADMIN_PASSWORD_HASH` | 是       | 超级管理员登录密码的 bcrypt 哈希，对应页面为 `/super-admin`                                             |
+| `ALLOWED_ORIGINS`     | 否       | 允许跨域的来源白名单（逗号分隔）；留空表示仅允许同源请求                                                |
+| `TRUST_PROXY`         | 否       | 反向代理层数，决定 Express 如何解析客户端真实 IP；未设置时生产环境默认 `1`，其他环境 `false`            |
+| `UPLOAD_DIR`          | 否       | 单词记忆图片目录；未设置时使用 `DB_PATH` 所在目录下的 `uploads/`                                        |
 
 ### 反向代理与限流（`TRUST_PROXY`）
 

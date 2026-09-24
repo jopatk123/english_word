@@ -165,13 +165,15 @@ export function useStudySession() {
     }
   };
 
-  const { stopAutoRead, toggleAutoReadPause, isAutoReadPaused, speak, speakSequence } = useAutoRead({
-    currentCard,
-    studyMode,
-    modeSelected,
-    sessionStats,
-    advanceCard,
-  });
+  const { stopAutoRead, toggleAutoReadPause, isAutoReadPaused, speak, speakSequence } = useAutoRead(
+    {
+      currentCard,
+      studyMode,
+      modeSelected,
+      sessionStats,
+      advanceCard,
+    }
+  );
 
   const selectMode = (mode) => {
     stopAutoRead();
