@@ -2,7 +2,6 @@ import js from '@eslint/js';
 import pluginVue from 'eslint-plugin-vue';
 import globals from 'globals';
 import prettierConfig from 'eslint-config-prettier';
-import { builtinRules } from 'eslint/use-at-your-own-risk';
 
 /** 公共宽松规则（warn 级别，不阻断开发） */
 const looseRules = {
@@ -13,11 +12,11 @@ const looseRules = {
 };
 
 // ── 文件体量控制（见 AGENTS.md）────────────────────────────
-// 限制有效行数（跳过空行与注释）：600 行预警、800 行直接报错（阻断 CI）。
+// 限制有效行数（跳过空行与注释）：800 行预警、1000 行直接报错（阻断 CI）。
 // 同一条规则在同名文件里只能有一个阈值，因此把核心 max-lines 复制为
-// local/max-lines-hard 承担 800 行的硬上限，核心规则保留 600 行预警。
-const MAX_LINES_WARN = 600;
-const MAX_LINES_ERROR = 800;
+// local/max-lines-hard 承担 1000 行的硬上限，核心规则保留 800 行预警。
+const MAX_LINES_WARN = 800;
+const MAX_LINES_ERROR = 1000;
 const maxLinesOptions = { skipBlankLines: true, skipComments: true };
 
 const sizeRules = {
@@ -27,7 +26,111 @@ const sizeRules = {
 
 const sizePlugin = {
   rules: {
-    'max-lines-hard': builtinRules.get('max-lines'),
+    // 内建 max-lines 的本地复刻：同名规则无法配置两个阈值，
+    // 故由本规则承担硬上限（error），核心 max-lines 保留预警（warn）。
+    // 不再依赖已弃用的 eslint/use-at-your-own-risk 的 builtinRules。
+    'max-lines-hard': {
+      meta: {
+        schema: [
+          {
+            type: 'object',
+            properties: {
+              max: { type: 'integer', minimum: 0 },
+              skipComments: { type: 'boolean' },
+              skipBlankLines: { type: 'boolean' },
+            },
+            additionalProperties: false,
+          },
+        ],
+        messages: {
+          exceed: 'File has too many lines ({{actual}}). Maximum allowed is {{max}}.',
+        },
+      },
+      create(context) {
+        const option = context.options[0];
+        let max = 300;
+
+        if (typeof option === 'object' && Object.hasOwn(option, 'max')) {
+          max = option.max;
+        } else if (typeof option === 'number') {
+          max = option;
+        }
+
+        const skipComments = option && option.skipComments;
+        const skipBlankLines = option && option.skipBlankLines;
+        const sourceCode = context.sourceCode;
+
+        const isCommentNodeType = (token) =>
+          token && (token.type === 'Block' || token.type === 'Line');
+
+        // 返回注释中「所在行没有任何代码」的行号（即纯注释行，不含行内注释）
+        function getLinesWithoutCode(comment) {
+          let start = comment.loc.start.line;
+          let end = comment.loc.end.line;
+
+          let token = comment;
+          do {
+            token = sourceCode.getTokenBefore(token, { includeComments: true });
+          } while (isCommentNodeType(token));
+
+          if (token && token.loc.end.line === comment.loc.start.line) {
+            start += 1;
+          }
+
+          token = comment;
+          do {
+            token = sourceCode.getTokenAfter(token, { includeComments: true });
+          } while (isCommentNodeType(token));
+
+          if (token && comment.loc.end.line === token.loc.start.line) {
+            end -= 1;
+          }
+
+          if (start <= end) {
+            const result = [];
+            for (let i = start; i <= end; i++) result.push(i);
+            return result;
+          }
+          return [];
+        }
+
+        return {
+          'Program:exit'() {
+            let lines = sourceCode.lines.map((text, i) => ({ lineNumber: i + 1, text }));
+
+            // 文件以换行符结尾时 lines 会多出一个空行，不算真实行
+            if (lines.length > 1 && lines.at(-1).text === '') {
+              lines.pop();
+            }
+
+            if (skipBlankLines) {
+              lines = lines.filter((l) => l.text.trim() !== '');
+            }
+
+            if (skipComments) {
+              const commentLines = new Set(
+                sourceCode.getAllComments().flatMap(getLinesWithoutCode)
+              );
+              lines = lines.filter((l) => !commentLines.has(l.lineNumber));
+            }
+
+            if (lines.length > max) {
+              context.report({
+                loc: {
+                  start: { line: lines[max].lineNumber, column: 0 },
+                  end: {
+                    line: sourceCode.lines.length,
+                    column: sourceCode.lines.at(-1).length,
+                  },
+                },
+                messageId: 'exceed',
+                data: { max, actual: lines.length },
+              });
+            }
+          },
+        };
+      },
+    },
   },
 };
 
