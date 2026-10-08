@@ -1,15 +1,18 @@
 <template>
   <div class="alarm-wrapper">
-    <!-- 铃铛按钮 -->
-    <button
-      class="alarm-btn"
-      :class="{ 'alarm-running': isRunning }"
-      :title="isRunning ? `计时中: ${elapsedDisplay}` : '学习计时'"
-      @click.stop="togglePanel"
-    >
-      <span class="alarm-bell" :class="{ lit: isRunning }">🔔</span>
-      <span v-if="isRunning" class="alarm-badge">{{ elapsedDisplay }}</span>
-    </button>
+    <!-- 铃铛按钮：挂到顶栏锚点，离开学习页时仍保持计时实例 -->
+    <Teleport to="#study-timer-anchor" :disabled="!showButton">
+      <button
+        v-show="showButton"
+        class="alarm-btn"
+        :class="{ 'alarm-running': isRunning }"
+        :title="isRunning ? `计时中: ${elapsedDisplay}` : '学习计时'"
+        @click.stop="togglePanel"
+      >
+        <span class="alarm-bell" :class="{ lit: isRunning }">🔔</span>
+        <span v-if="isRunning" class="alarm-badge">{{ elapsedDisplay }}</span>
+      </button>
+    </Teleport>
 
     <!-- 下拉面板 -->
     <Teleport to="body">
@@ -51,12 +54,23 @@
 </template>
 
 <script setup>
-  import { ref } from 'vue';
+  import { ref, watch } from 'vue';
   import { useStudyTimer } from '../composables/useStudyTimer.js';
   import StudyTimerPanel from './study-timer/StudyTimerPanel.vue';
   import StudyTimerNotifyDlg from './study-timer/StudyTimerNotifyDlg.vue';
 
+  const props = defineProps({
+    showButton: { type: Boolean, default: true },
+  });
+
   const panelVisible = ref(false);
+
+  watch(
+    () => props.showButton,
+    (visible) => {
+      if (!visible) panelVisible.value = false;
+    }
+  );
 
   const {
     isRunning,
@@ -90,6 +104,9 @@
   }
 
   async function handleStopFromNotify() {
+    if (isRunning.value) {
+      await stopTimer();
+    }
     dismissRestAlarm();
   }
 
@@ -100,9 +117,7 @@
 
 <style scoped>
   .alarm-wrapper {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
+    display: contents;
   }
 
   .alarm-btn {

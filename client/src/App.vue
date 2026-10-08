@@ -21,7 +21,7 @@
           <el-button class="nav-btn" link @click="$router.push('/settings/api-tokens')"
             >🔑 Token</el-button
           >
-          <AlarmClock class="header-alarm" />
+          <div v-if="user" id="study-timer-anchor" class="header-alarm"></div>
           <div class="header-user">
             <span class="username">{{ user.username }}</span>
             <el-button link @click="handleLogout">退出</el-button>
@@ -44,6 +44,7 @@
       @close-more="moreOpen = false"
     />
   </div>
+  <AlarmClock v-if="user" :show-button="!isAdminRoute" />
 </template>
 
 <script setup>

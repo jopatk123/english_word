@@ -321,4 +321,80 @@ describe('useStudyTimer', () => {
 
     second.unmount();
   });
+
+  it('忽略不在预设中的已保存提醒时长', async () => {
+    localStorage.getItem.mockImplementation((key) => {
+      if (key === 'token') return 'jwt';
+      if (key === 'english-word-study-timer') {
+        return JSON.stringify({ alarmEnabled: true, alarmMinutes: 90 });
+      }
+      return null;
+    });
+    apiMocks.getStudyTimerState.mockResolvedValueOnce({ data: makeState() });
+
+    const wrapper = mountHarness();
+    await flush();
+
+    expect(wrapper.vm.alarmEnabled).toBe(true);
+    expect(wrapper.vm.alarmMinutes).toBe(30);
+    wrapper.unmount();
+  });
+
+  it('服务端在硬上限结束且刚好到达提醒时长时仍弹出休息提醒', async () => {
+    const wrapper = mountHarness();
+    await flush();
+    socket.open();
+    await flush();
+
+    wrapper.vm.alarmEnabled = true;
+    wrapper.vm.alarmMinutes = 120;
+    await nextTick();
+
+    socket.pushState(
+      makeState({
+        isRunning: false,
+        sessionId: null,
+        startedAt: null,
+        elapsedSeconds: 0,
+        endReason: 'max_duration',
+        endedDurationSeconds: 120 * 60,
+        stateChangedAtMs: Date.parse('2026-04-15T12:00:00.000Z'),
+        revision: '900:8:0',
+      })
+    );
+    await flush();
+
+    expect(wrapper.vm.isRunning).toBe(false);
+    expect(wrapper.vm.restNotifyVisible).toBe(true);
+    wrapper.unmount();
+  });
+
+  it('硬上限结束但远超所选提醒时长时不补弹休息窗', async () => {
+    const wrapper = mountHarness();
+    await flush();
+    socket.open();
+    await flush();
+
+    wrapper.vm.alarmEnabled = true;
+    wrapper.vm.alarmMinutes = 30;
+    await nextTick();
+
+    socket.pushState(
+      makeState({
+        isRunning: false,
+        sessionId: null,
+        startedAt: null,
+        elapsedSeconds: 0,
+        endReason: 'max_duration',
+        endedDurationSeconds: 120 * 60,
+        stateChangedAtMs: Date.parse('2026-04-15T12:00:00.000Z'),
+        revision: '910:8:0',
+      })
+    );
+    await flush();
+
+    expect(wrapper.vm.isRunning).toBe(false);
+    expect(wrapper.vm.restNotifyVisible).toBe(false);
+    wrapper.unmount();
+  });
 });

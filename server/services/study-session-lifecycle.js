@@ -48,12 +48,56 @@ export function getMaxDurationEndedAt(session) {
   return Number.isFinite(maxEndMs) ? new Date(maxEndMs) : new Date();
 }
 
+/**
+ * 主动结束时，若已经越过硬上限，默认记为 max_duration 并把结束时间收回到上限点。
+ * 休息提醒与硬上限同为 120 分钟，允许在越过上限后的短窗口内仍记为 rest_alarm，
+ * 避免到点提醒被静默封顶吞掉。
+ */
+export function resolveExplicitStudySessionEnd(
+  session,
+  { reason, endedAt = new Date(), boundaryGraceMs = 5000 } = {}
+) {
+  const requestedAt = endedAt instanceof Date ? endedAt : new Date(endedAt);
+  if (!shouldAutoEndForMaxDuration(session, requestedAt)) {
+    return { reason, endedAt: requestedAt };
+  }
+
+  const cappedAt = getMaxDurationEndedAt(session);
+  const overtimeMs = requestedAt.getTime() - cappedAt.getTime();
+  const restAtBoundary =
+    reason === STUDY_SESSION_END_REASONS.REST_ALARM &&
+    overtimeMs >= 0 &&
+    overtimeMs <= boundaryGraceMs;
+
+  if (restAtBoundary) {
+    return { reason: STUDY_SESSION_END_REASONS.REST_ALARM, endedAt: cappedAt };
+  }
+
+  return {
+    reason: STUDY_SESSION_END_REASONS.MAX_DURATION,
+    endedAt: cappedAt,
+  };
+}
+
+export function resolveCappedEndedAt(session, endedAt) {
+  const requestedAt = endedAt instanceof Date ? endedAt : new Date(endedAt);
+  const requestedMs = requestedAt.getTime();
+  if (!Number.isFinite(requestedMs)) return new Date();
+
+  const maxEndMs = getMaxAllowedEndMs(session);
+  if (Number.isFinite(maxEndMs) && requestedMs > maxEndMs) {
+    return new Date(maxEndMs);
+  }
+
+  return requestedAt;
+}
+
 export async function finalizeStudySession(session, { reason, endedAt }) {
   if (!session || session.endedAt) {
     return { session, ended: false };
   }
 
-  const resolvedEndedAt = endedAt instanceof Date ? endedAt : new Date(endedAt);
+  const resolvedEndedAt = resolveCappedEndedAt(session, endedAt);
   const durationSeconds = computeCappedDurationSeconds(session, resolvedEndedAt);
 
   await session.update({

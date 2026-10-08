@@ -162,6 +162,7 @@ describe('App', () => {
 
     expect(wrapper.find('.app-header').exists()).toBe(false);
     expect(wrapper.find('.router-view-stub').exists()).toBe(true);
+    expect(wrapper.find('.alarm-clock-stub').exists()).toBe(true);
 
     wrapper.unmount();
   });

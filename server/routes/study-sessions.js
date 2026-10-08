@@ -10,7 +10,7 @@ import {
 } from '../constants/study-session.js';
 import {
   finalizeStudySession,
-  settleActiveSessionIfNeeded,
+  resolveExplicitStudySessionEnd,
 } from '../services/study-session-lifecycle.js';
 import {
   closeOtherActiveStudySessions,
@@ -147,24 +147,15 @@ export function createStudySessionsRouter(options = {}) {
         );
       }
 
-      await settleActiveSessionIfNeeded(req.userId, {
-        publishTimerState,
-        activeSession,
-      });
-
-      const refreshedActive = await findActiveStudySession(req.userId);
-      if (!refreshedActive || String(refreshedActive.id) !== String(req.params.id)) {
-        return success(res, await getStudyTimerState(req.userId, { publishTimerState }));
-      }
-
-      const endReason = normalizeStudySessionEndReason(
+      const requestedReason = normalizeStudySessionEndReason(
         req.body?.reason,
         STUDY_SESSION_END_REASONS.MANUAL
       );
-      await finalizeStudySession(refreshedActive, {
-        reason: endReason,
+      const explicitEnd = resolveExplicitStudySessionEnd(activeSession, {
+        reason: requestedReason,
         endedAt: new Date(),
       });
+      await finalizeStudySession(activeSession, explicitEnd);
 
       const state = await getStudyTimerState(req.userId, { publishTimerState });
       await publishTimerState(req.userId);

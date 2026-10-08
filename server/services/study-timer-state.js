@@ -78,6 +78,8 @@ export function buildStudyTimerState({
     sessionId,
     startedAt: isRunning ? toIsoString(activeSession.startedAt) : null,
     elapsedSeconds,
+    endReason: isRunning ? null : (session?.endReason ?? null),
+    endedDurationSeconds: isRunning ? 0 : Number(session?.durationSeconds) || 0,
     serverNow: serverNow.toISOString(),
     stateChangedAtMs,
     revision: `${stateChangedAtMs}:${session?.id ?? 0}:${isRunning ? 1 : 0}`,

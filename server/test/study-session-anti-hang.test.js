@@ -19,6 +19,11 @@ import { getStudyTimerState } from '../services/study-timer-state.js';
 
 const suf = () => Date.now() + Math.random().toString(36).slice(2, 5);
 
+function expectEndedAtCapped(endedAt, startedAt) {
+  const expected = startedAt.getTime() + MAX_SESSION_DURATION_SECONDS * 1000;
+  expect(Math.abs(new Date(endedAt).getTime() - expected)).toBeLessThan(1500);
+}
+
 const buildApp = (userId, publishTimerState = async () => {}) => {
   const app = express();
   app.use(express.json());
@@ -76,6 +81,45 @@ describe('学习会话硬上限与结束原因', () => {
     expect(session.endedAt).not.toBeNull();
     expect(session.durationSeconds).toBe(MAX_SESSION_DURATION_SECONDS);
     expect(session.endReason).toBe(STUDY_SESSION_END_REASONS.MAX_DURATION);
+    expectEndedAtCapped(session.endedAt, startedAt);
+  });
+
+  it('到点休息提醒与 120 分钟硬上限重合时仍记为 rest_alarm，结束时间不超过上限', async () => {
+    const user = await User.create({ username: `restcap_${suf()}`, password: 'x' });
+    const app = buildApp(user.id);
+    const startedAt = new Date(Date.now() - (MAX_SESSION_DURATION_SECONDS * 1000 + 2000));
+    const session = await StudySession.create({ userId: user.id, startedAt });
+
+    const res = await request(app)
+      .post(`/study-sessions/${session.id}/end`)
+      .send({ reason: STUDY_SESSION_END_REASONS.REST_ALARM });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.isRunning).toBe(false);
+    expect(res.body.data.endReason).toBe(STUDY_SESSION_END_REASONS.REST_ALARM);
+    expect(res.body.data.endedDurationSeconds).toBe(MAX_SESSION_DURATION_SECONDS);
+
+    await session.reload();
+    expect(session.endReason).toBe(STUDY_SESSION_END_REASONS.REST_ALARM);
+    expect(session.durationSeconds).toBe(MAX_SESSION_DURATION_SECONDS);
+    expectEndedAtCapped(session.endedAt, startedAt);
+  });
+
+  it('明显超过硬上限后再结束，会按上限时刻封顶，避免统计按墙钟多算', async () => {
+    const user = await User.create({ username: `lateend_${suf()}`, password: 'x' });
+    const app = buildApp(user.id);
+    const startedAt = new Date(Date.now() - (MAX_SESSION_DURATION_SECONDS + 600) * 1000);
+    const session = await StudySession.create({ userId: user.id, startedAt });
+
+    await request(app)
+      .post(`/study-sessions/${session.id}/end`)
+      .send({ reason: STUDY_SESSION_END_REASONS.MANUAL });
+
+    await session.reload();
+    expect(session.endReason).toBe(STUDY_SESSION_END_REASONS.MAX_DURATION);
+    expect(session.durationSeconds).toBe(MAX_SESSION_DURATION_SECONDS);
+    expectEndedAtCapped(session.endedAt, startedAt);
+    expect(Date.now() - session.endedAt.getTime()).toBeGreaterThan(8 * 60 * 1000);
   });
 
   it('POST /end 写入 manual / page_close 等结束原因', async () => {

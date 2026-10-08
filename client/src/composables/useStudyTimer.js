@@ -6,8 +6,11 @@ import {
   getStudyTimerState,
   startStudySession,
 } from '../api/index.js';
+import { DEFAULT_ALARM_MINUTES, normalizeAlarmMinutes } from '../constants/studyTimer.js';
 
 const STORAGE_KEY = 'english-word-study-timer';
+/** 服务端硬上限扫描约每分钟一次，允许休息提醒在到点后的这个窗口内补弹。 */
+const REST_ALARM_MATCH_GRACE_SECONDS = 90;
 
 function unwrapResponse(response) {
   return response?.data ?? response;
@@ -47,7 +50,7 @@ export function useStudyTimer() {
 
   /* ── 休息提醒状态 ── */
   const alarmEnabled = ref(false);
-  const alarmMinutes = ref(30);
+  const alarmMinutes = ref(DEFAULT_ALARM_MINUTES);
   const restNotifyVisible = ref(false);
   const alarmTriggered = ref(false);
 
@@ -141,7 +144,7 @@ export function useStudyTimer() {
       if (!raw) return;
       const saved = JSON.parse(raw);
       alarmEnabled.value = Boolean(saved?.alarmEnabled);
-      alarmMinutes.value = Number(saved?.alarmMinutes) || 30;
+      alarmMinutes.value = normalizeAlarmMinutes(saved?.alarmMinutes);
     } catch {
       // 数据损坏静默忽略
     }
@@ -199,12 +202,39 @@ export function useStudyTimer() {
     }
   }
 
+  function observedStudySeconds(previousElapsed, state) {
+    return Math.max(previousElapsed, Number(state?.endedDurationSeconds) || 0);
+  }
+
+  function shouldOfferRestAlarm(previousElapsed, state, options = {}) {
+    if (options.preserveRestNotify || restNotifyVisible.value) return true;
+    if (!alarmEnabled.value || alarmTriggered.value || alarmMinutes.value <= 0) return false;
+
+    const reason = state?.endReason;
+    if (reason !== 'rest_alarm' && reason !== 'max_duration') return false;
+
+    const alarmSeconds = alarmMinutes.value * 60;
+    const observed = observedStudySeconds(previousElapsed, state);
+    return (
+      observed + 2 >= alarmSeconds && observed - alarmSeconds <= REST_ALARM_MATCH_GRACE_SECONDS
+    );
+  }
+
+  function surfaceRestAlarm() {
+    if (restNotifyVisible.value) return;
+    alarmTriggered.value = true;
+    restNotifyVisible.value = true;
+    _playAlarmSound();
+    void _sendBrowserNotification();
+  }
+
   function applyAuthoritativeState(state, options = {}) {
     if (!state || !shouldApplyState(state, options.force)) {
       return false;
     }
 
     const wasRunning = isRunning.value;
+    const previousElapsed = elapsedSeconds.value;
     _lastAppliedStateOrder = getStateOrder(state);
 
     const serverNowMs = new Date(state.serverNow).getTime();
@@ -214,7 +244,13 @@ export function useStudyTimer() {
 
     const startedAtMs = new Date(state.startedAt).getTime();
     if (!state.isRunning || !Number.isFinite(startedAtMs)) {
-      clearRunningState({ preserveRestNotify: options.preserveRestNotify });
+      const offerRest = wasRunning && shouldOfferRestAlarm(previousElapsed, state, options);
+      if (offerRest) {
+        surfaceRestAlarm();
+      }
+      clearRunningState({
+        preserveRestNotify: offerRest || Boolean(options.preserveRestNotify),
+      });
       if (wasRunning) {
         void loadStats();
       }

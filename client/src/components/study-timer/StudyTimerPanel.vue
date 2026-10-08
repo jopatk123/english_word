@@ -78,6 +78,7 @@
 
 <script setup>
   import { computed } from 'vue';
+  import { STUDY_TIMER_ALARM_PRESETS } from '../../constants/studyTimer.js';
   import StudyTimerStats from './StudyTimerStats.vue';
 
   const props = defineProps({
@@ -102,7 +103,7 @@
     'update:alarmMinutes',
   ]);
 
-  const presets = [15, 30, 45, 60];
+  const presets = STUDY_TIMER_ALARM_PRESETS;
 
   const alarmEnabledModel = computed({
     get: () => props.alarmEnabled,
@@ -262,13 +263,13 @@
 
   /* 快捷预设 */
   .stp-presets {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
-    flex-wrap: wrap;
     margin-top: 8px;
   }
   .stp-preset {
-    padding: 4px 10px;
+    padding: 4px 6px;
     background: #f0f4ff;
     color: #667eea;
     border: 1.5px solid #d0d8ff;
