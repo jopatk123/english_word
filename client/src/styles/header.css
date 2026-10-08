@@ -104,7 +104,7 @@
   transform: translateY(-1px);
 }
 
-/* 闹钟按钮锚点：计时实例挂在页面根上，按钮传送到这里 */
+/* 闹钟按钮在导航栏中的布局 */
 .header-alarm {
   display: inline-flex;
   align-items: center;

@@ -1,18 +1,15 @@
 <template>
   <div class="alarm-wrapper">
-    <!-- 铃铛按钮：挂到顶栏锚点，离开学习页时仍保持计时实例 -->
-    <Teleport to="#study-timer-anchor" :disabled="!showButton">
-      <button
-        v-show="showButton"
-        class="alarm-btn"
-        :class="{ 'alarm-running': isRunning }"
-        :title="isRunning ? `计时中: ${elapsedDisplay}` : '学习计时'"
-        @click.stop="togglePanel"
-      >
-        <span class="alarm-bell" :class="{ lit: isRunning }">🔔</span>
-        <span v-if="isRunning" class="alarm-badge">{{ elapsedDisplay }}</span>
-      </button>
-    </Teleport>
+    <button
+      v-show="showButton"
+      class="alarm-btn"
+      :class="{ 'alarm-running': isRunning }"
+      :title="isRunning ? `计时中: ${elapsedDisplay}` : '学习计时'"
+      @click.stop="togglePanel"
+    >
+      <span class="alarm-bell" :class="{ lit: isRunning }">🔔</span>
+      <span v-if="isRunning" class="alarm-badge">{{ elapsedDisplay }}</span>
+    </button>
 
     <!-- 下拉面板 -->
     <Teleport to="body">
@@ -117,7 +114,9 @@
 
 <style scoped>
   .alarm-wrapper {
-    display: contents;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
   }
 
   .alarm-btn {
