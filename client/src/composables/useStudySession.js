@@ -353,6 +353,7 @@ export function useStudySession() {
         if (target) {
           target.sentence = nextExample.sentence;
           target.translation = nextExample.translation;
+          if (nextExample.partOfSpeech) target.partOfSpeech = nextExample.partOfSpeech;
         }
       }
     }
@@ -374,6 +375,8 @@ export function useStudySession() {
       const nextExample = await requestReplacementExample({
         wordId,
         existingSentences,
+        sourceSentence: example.sentence,
+        partOfSpeech: example.partOfSpeech || '',
         config: aiSettings.value,
       });
       if (!nextExample) {

@@ -15,6 +15,7 @@ import {
   buildRootPrompt,
   buildWordPrompt,
   sanitizeAnalyzeSentenceResult,
+  normalizePartOfSpeechType,
   sanitizeAnalyzeWordResult,
   sanitizeLookupWordResult,
 } from '../utils/aiPrompts.js';
@@ -68,6 +69,9 @@ const processSuggestionResult = (payload, sanitize, existingNames) => {
     filteredCount: rawCount - items.length,
   };
 };
+
+const normalizeSourceSentence = (value) =>
+  typeof value === 'string' ? value.trim().slice(0, 400) : '';
 
 const normalizeSentenceList = (value, maxLength = 400, maxCount = 20) => {
   const list = Array.isArray(value) ? value : [];
@@ -239,6 +243,8 @@ router.post('/suggest-examples', async (req, res) => {
   const startedAt = Date.now();
   try {
     const { wordId, config = {}, excludedSentences = [] } = req.body || {};
+    const sourceSentence = normalizeSourceSentence(req.body?.sourceSentence);
+    const partOfSpeech = normalizePartOfSpeechType(req.body?.partOfSpeech);
     if (!wordId) return error(res, '缺少单词 ID', 400);
 
     const validatedConfig = await resolveUserAiConfig(req.userId, config);
@@ -264,11 +270,15 @@ router.post('/suggest-examples', async (req, res) => {
     const normalizedExcludedSentences = normalizeSentenceList(excludedSentences);
     const payload = await requestAiJson(
       validatedConfig,
-      buildExamplePrompt(word, examples, normalizedExcludedSentences)
+      buildExamplePrompt(word, examples, normalizedExcludedSentences, {
+        sourceSentence,
+        partOfSpeech,
+      })
     );
     const { rawCount, items, hasMore, filteredCount } = processSuggestionResult(
       payload,
-      sanitizeExampleSuggestions,
+      (suggestedItems, existingSentences) =>
+        sanitizeExampleSuggestions(suggestedItems, existingSentences, { partOfSpeech }),
       [...examples.map((e) => e.sentence), ...normalizedExcludedSentences]
     );
     const message = items.length
@@ -303,7 +313,16 @@ router.post('/suggest-examples', async (req, res) => {
 router.post('/analyze-word', async (req, res) => {
   const startedAt = Date.now();
   try {
-    const { word, config = {}, excludedSentences = [], singleExample = false } = req.body || {};
+    const {
+      word,
+      config = {},
+      excludedSentences = [],
+      singleExample = false,
+      sourceSentence: rawSourceSentence,
+      partOfSpeech: rawPartOfSpeech,
+    } = req.body || {};
+    const sourceSentence = normalizeSourceSentence(rawSourceSentence);
+    const partOfSpeech = normalizePartOfSpeechType(rawPartOfSpeech);
     if (!word || typeof word !== 'string' || !/^[a-zA-Z-]+$/.test(word.trim())) {
       return error(res, '请输入合法的英文单词（仅支持字母和连字符）', 400);
     }
@@ -365,6 +384,8 @@ router.post('/analyze-word', async (req, res) => {
       buildAnalyzeWordPrompt(trimmedWord, {
         excludedSentences: normalizedExcludedSentences,
         singleExample: shouldGenerateSingleExample,
+        sourceSentence,
+        partOfSpeech,
       })
     );
     const analysis = sanitizeAnalyzeWordResult(payload, trimmedWord);
@@ -377,6 +398,12 @@ router.post('/analyze-word', async (req, res) => {
       analysis.examples = analysis.examples.filter(
         (item) => !excludedSet.has(item.sentence.toLowerCase())
       );
+    }
+
+    if (shouldGenerateSingleExample && partOfSpeech) {
+      analysis.examples = analysis.examples
+        .filter((item) => !item.partOfSpeech || item.partOfSpeech === partOfSpeech)
+        .map((item) => ({ ...item, partOfSpeech }));
     }
 
     if (shouldGenerateSingleExample) {

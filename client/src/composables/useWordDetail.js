@@ -259,6 +259,8 @@ export function useWordDetail(wordId) {
       const nextExample = await requestReplacementExample({
         wordId,
         existingSentences: collectExcludedSentences(examples.value.map((item) => item?.sentence)),
+        sourceSentence: example.sentence,
+        partOfSpeech: example.partOfSpeech || '',
         config: aiSettings.value,
       });
       if (!nextExample) {

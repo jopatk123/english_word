@@ -201,4 +201,50 @@ describe('SearchView', () => {
     wrapper.unmount();
     mountedWrappers.pop(); // 已手动 unmount
   });
+
+  it('重新生成例句时带上原句，并保持该句中的词性', async () => {
+    analyzeWordMock.mockResolvedValue({
+      data: {
+        analysis: {
+          examples: [
+            {
+              sentence: 'A new book arrived.',
+              translation: '来了一本新书。',
+              partOfSpeech: 'n.',
+            },
+          ],
+        },
+      },
+    });
+
+    const wrapper = await createWrapper();
+    wrapper.vm.wordResult = {
+      analysis: {
+        word: 'book',
+        partOfSpeech: [
+          { type: 'n.', meaning: '书' },
+          { type: 'v.', meaning: '预订' },
+        ],
+        examples: [
+          { sentence: 'This book is new.', translation: '这本书是新的。', partOfSpeech: 'n.' },
+          { sentence: 'Please book a table.', translation: '请订一张桌子。', partOfSpeech: 'v.' },
+        ],
+      },
+    };
+
+    await wrapper.vm.handleRegenerateExample({ index: 0 });
+    await flushPromises();
+
+    expect(analyzeWordMock).toHaveBeenCalledWith('book', expect.any(Object), {
+      excludedSentences: ['This book is new.', 'Please book a table.'],
+      singleExample: true,
+      sourceSentence: 'This book is new.',
+      partOfSpeech: 'n.',
+    });
+    expect(wrapper.vm.wordResult.analysis.examples[0]).toMatchObject({
+      sentence: 'A new book arrived.',
+      partOfSpeech: 'n.',
+    });
+    expect(wrapper.vm.wordResult.analysis.examples[1].sentence).toBe('Please book a table.');
+  });
 });

@@ -21,13 +21,17 @@ export const collectExcludedSentences = (...sentenceLists) => {
  * @param {object} params
  * @param {number|string} params.wordId - 目标单词 ID
  * @param {string[]} [params.existingSentences] - 当前单词已有例句原文，需全部避开
+ * @param {string} [params.sourceSentence] - 被替换的原例句，用于保持其中的词性
+ * @param {string} [params.partOfSpeech] - 原例句中该单词的词性；为空时由模型根据原句判断
  * @param {object} params.config - AI 配置
  * @param {number} [params.maxAttempts] - 最多请求次数（AI 可能返回全部重复的候选）
- * @returns {Promise<{sentence: string, translation: string}|null>} 找不到不重复候选时返回 null
+ * @returns {Promise<{sentence: string, translation: string, partOfSpeech?: string}|null>} 找不到不重复候选时返回 null
  */
 export const requestReplacementExample = async ({
   wordId,
   existingSentences = [],
+  sourceSentence = '',
+  partOfSpeech = '',
   config,
   maxAttempts = 2,
 }) => {
@@ -35,7 +39,11 @@ export const requestReplacementExample = async ({
   let excludedSentences = collectExcludedSentences(existingSentences);
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const res = await getAiExampleSuggestions(wordId, config, { excludedSentences });
+    const res = await getAiExampleSuggestions(wordId, config, {
+      excludedSentences,
+      ...(sourceSentence ? { sourceSentence } : {}),
+      ...(partOfSpeech ? { partOfSpeech } : {}),
+    });
     const items = Array.isArray(res.data?.items) ? res.data.items : [];
     const candidate = items.find(
       (item) =>

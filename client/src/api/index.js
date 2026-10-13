@@ -141,6 +141,8 @@ export const getAiExampleSuggestions = (wordId, config, options = {}) =>
     wordId,
     config,
     excludedSentences: options.excludedSentences || [],
+    sourceSentence: options.sourceSentence || '',
+    partOfSpeech: options.partOfSpeech || '',
   });
 export const analyzeWord = (word, config, options = {}) =>
   aiApi.post('/ai/analyze-word', {
@@ -148,6 +150,8 @@ export const analyzeWord = (word, config, options = {}) =>
     config,
     excludedSentences: options.excludedSentences || [],
     singleExample: Boolean(options.singleExample),
+    sourceSentence: options.sourceSentence || '',
+    partOfSpeech: options.partOfSpeech || '',
   });
 export const analyzeSentence = (sentence, config) =>
   aiApi.post('/ai/analyze-sentence', { sentence, config });

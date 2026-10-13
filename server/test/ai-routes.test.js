@@ -336,6 +336,43 @@ describe('POST /ai/suggest-examples', () => {
       .send({ config: validConfig, wordId, excludedSentences: ['Old sentence.'] });
     expect(res.status).toBe(200);
   });
+
+  it('重新生成时锁定词性，并丢弃词性不符的候选', async () => {
+    requestAiJson.mockResolvedValue({
+      hasMore: true,
+      items: [
+        {
+          sentence: 'Please book a room tonight.',
+          translation: '请今晚订一个房间。',
+          partOfSpeech: 'v.',
+        },
+        {
+          sentence: 'This book is very useful.',
+          translation: '这本书很有用。',
+          partOfSpeech: 'n.',
+        },
+      ],
+    });
+
+    const res = await request(app).post('/ai/suggest-examples').send({
+      config: validConfig,
+      wordId,
+      sourceSentence: 'I read a book.',
+      partOfSpeech: '名词',
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.items).toEqual([
+      {
+        sentence: 'This book is very useful.',
+        translation: '这本书很有用。',
+        partOfSpeech: 'n.',
+      },
+    ]);
+    const prompt = requestAiJson.mock.calls.at(-1)[1];
+    expect(prompt.userPrompt).toContain('名词（n.）');
+    expect(prompt.userPrompt).toContain('I read a book.');
+  });
 });
 
 // ================================================================
@@ -404,6 +441,36 @@ describe('POST /ai/analyze-word', () => {
       .send({ config: validConfig, word: 'transport', singleExample: true });
     expect(res.status).toBe(200);
     expect(res.body.data.analysis.examples.length).toBeLessThanOrEqual(1);
+  });
+
+  it('singleExample 重新生成时只保留指定词性的例句', async () => {
+    requestAiJson.mockResolvedValue({
+      word: 'book',
+      meaning: '书；预订',
+      phonetic: '/bʊk/',
+      partOfSpeech: [
+        { type: 'n.', meaning: '书' },
+        { type: 'v.', meaning: '预订' },
+      ],
+      roots: [],
+      examples: [
+        { sentence: 'Please book a table.', translation: '请订一张桌子。', partOfSpeech: 'v.' },
+        { sentence: 'This book is new.', translation: '这本书是新的。', partOfSpeech: 'n.' },
+      ],
+    });
+
+    const res = await request(app).post('/ai/analyze-word').send({
+      config: validConfig,
+      word: 'book',
+      singleExample: true,
+      sourceSentence: 'I bought a book.',
+      partOfSpeech: 'n.',
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.analysis.examples).toEqual([
+      { sentence: 'This book is new.', translation: '这本书是新的。', partOfSpeech: 'n.' },
+    ]);
   });
 });
 

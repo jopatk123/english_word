@@ -15,6 +15,7 @@ import {
   buildExamplePrompt,
   buildAnalyzeWordPrompt,
   buildAnalyzeSentencePrompt,
+  normalizePartOfSpeechType,
   buildLookupWordPrompt,
   sanitizeAnalyzeWordResult,
   sanitizeAnalyzeSentenceResult,
@@ -174,6 +175,20 @@ describe('buildWordPrompt', () => {
   });
 });
 
+describe('normalizePartOfSpeechType', () => {
+  it('接受标准缩写、英文名和中文名', () => {
+    expect(normalizePartOfSpeechType('n.')).toBe('n.');
+    expect(normalizePartOfSpeechType('Noun')).toBe('n.');
+    expect(normalizePartOfSpeechType('名词')).toBe('n.');
+    expect(normalizePartOfSpeechType({ type: 'adj.' })).toBe('adj.');
+  });
+
+  it('无法识别时返回空字符串', () => {
+    expect(normalizePartOfSpeechType('xyz')).toBe('');
+    expect(normalizePartOfSpeechType('')).toBe('');
+  });
+});
+
 describe('buildExamplePrompt', () => {
   const word = { name: 'inspect', meaning: '检查', phonetic: '/ɪnˈspekt/', roots: [] };
 
@@ -204,6 +219,24 @@ describe('buildExamplePrompt', () => {
     expect(userPrompt).toContain('本次额外避开列表');
     expect(userPrompt).toContain('She inspects the room carefully.');
   });
+
+  it('指定词性时要求新例句保持该词性', () => {
+    const { userPrompt } = buildExamplePrompt(word, [], [], {
+      sourceSentence: 'The inspection was thorough.',
+      partOfSpeech: '名词',
+    });
+    expect(userPrompt).toContain('名词（n.）');
+    expect(userPrompt).toContain('The inspection was thorough.');
+    expect(userPrompt).toContain('"partOfSpeech": "n."');
+  });
+
+  it('只有原例句时要求根据原句判断并保持词性', () => {
+    const { userPrompt } = buildExamplePrompt(word, [], [], {
+      sourceSentence: 'She inspected the room.',
+    });
+    expect(userPrompt).toContain('先判断【inspect】在原例句中的词性');
+    expect(userPrompt).toContain('She inspected the room.');
+  });
 });
 
 describe('buildAnalyzeWordPrompt', () => {
@@ -224,6 +257,17 @@ describe('buildAnalyzeWordPrompt', () => {
     });
     expect(userPrompt).toContain('只生成 1 条日常常用英文例句');
     expect(userPrompt).toContain('She inspects the room.');
+  });
+
+  it('单条例句重生成时锁定指定词性', () => {
+    const { userPrompt } = buildAnalyzeWordPrompt('book', {
+      singleExample: true,
+      sourceSentence: 'This book is new.',
+      partOfSpeech: 'n.',
+    });
+    expect(userPrompt).toContain('名词（n.）');
+    expect(userPrompt).toContain('This book is new.');
+    expect(userPrompt).not.toContain('先判断');
   });
 });
 

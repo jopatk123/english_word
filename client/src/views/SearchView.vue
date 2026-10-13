@@ -130,13 +130,19 @@
     }
 
     const analysis = wordResult.value.analysis;
+    const currentExample = analysis.examples[index];
     const excludedSentences = analysis.examples.map((item) => item?.sentence).filter(Boolean);
+    const onlyPartOfSpeech =
+      analysis.partOfSpeech?.length === 1 ? analysis.partOfSpeech[0]?.type || '' : '';
+    const partOfSpeech = currentExample?.partOfSpeech || onlyPartOfSpeech;
 
     regeneratingExampleIndex.value = index;
     try {
       const res = await analyzeWord(analysis.word, settings.value, {
         excludedSentences,
         singleExample: true,
+        sourceSentence: currentExample?.sentence || '',
+        partOfSpeech,
       });
       const newExample = res.data?.analysis?.examples?.[0];
       if (!newExample) {

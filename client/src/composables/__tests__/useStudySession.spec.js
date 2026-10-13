@@ -438,6 +438,7 @@ describe('useStudySession 重新生成例句', () => {
 
     expect(getAiExampleSuggestionsMock).toHaveBeenCalledWith(1, expect.any(Object), {
       excludedSentences: ['Old sentence.'],
+      sourceSentence: 'Old sentence.',
     });
     expect(updateExampleMock).toHaveBeenCalledWith(11, {
       sentence: 'Brand new sentence.',

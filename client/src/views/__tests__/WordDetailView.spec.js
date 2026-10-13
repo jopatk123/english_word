@@ -230,6 +230,7 @@ describe('WordDetailView', () => {
       expect.objectContaining({ providerId: 'openai', model: 'gpt-test', hasApiKey: true }),
       {
         excludedSentences: ['The table is stable.', 'Prices remained stable.'],
+        sourceSentence: 'The table is stable.',
       }
     );
     expect(updateExampleMock).toHaveBeenCalledWith(11, {
@@ -293,6 +294,7 @@ describe('WordDetailView', () => {
       expect.objectContaining({ providerId: 'openai', model: 'gpt-test', hasApiKey: true }),
       {
         excludedSentences: ['The table is stable.', 'Prices remained stable.'],
+        sourceSentence: 'The table is stable.',
       }
     );
     expect(updateExampleMock).toHaveBeenCalledWith(11, {

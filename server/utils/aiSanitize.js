@@ -5,6 +5,8 @@
  * 防止不合规字段写入数据库。
  */
 
+import { normalizePartOfSpeechType } from './aiPrompts.js';
+
 const VALID_POS_TYPES = new Set([
   'n.',
   'v.',
@@ -82,14 +84,16 @@ export const sanitizeWordSuggestions = (items, existingNames = []) => {
   return result;
 };
 
-export const sanitizeExampleSuggestions = (items, existingSentences = []) => {
+export const sanitizeExampleSuggestions = (items, existingSentences = [], options = {}) => {
   const sentenceSet = new Set(existingSentences.map((sentence) => sentence.trim().toLowerCase()));
+  const requiredPos = normalizePartOfSpeechType(options.partOfSpeech);
   const result = [];
 
   for (const item of Array.isArray(items) ? items : []) {
     const sentence = trimText(item?.sentence, 400);
     const translation = trimText(item?.translation, 240);
     const normalizedSentence = sentence.toLowerCase();
+    const partOfSpeech = normalizePartOfSpeechType(item?.partOfSpeech);
 
     if (!sentence || !translation || sentence.length < 8) {
       continue;
@@ -97,9 +101,15 @@ export const sanitizeExampleSuggestions = (items, existingSentences = []) => {
     if (sentenceSet.has(normalizedSentence)) {
       continue;
     }
+    if (requiredPos && partOfSpeech && partOfSpeech !== requiredPos) {
+      continue;
+    }
 
     sentenceSet.add(normalizedSentence);
-    result.push({ sentence, translation });
+    const example = { sentence, translation };
+    if (partOfSpeech) example.partOfSpeech = partOfSpeech;
+    else if (requiredPos) example.partOfSpeech = requiredPos;
+    result.push(example);
     if (result.length >= 8) break;
   }
 

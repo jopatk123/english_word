@@ -64,4 +64,34 @@ describe('sanitizeExampleSuggestions', () => {
     const result = sanitizeExampleSuggestions([validExampleItem]);
     expect(result).toHaveLength(1);
   });
+
+  it('保留合法词性，并在指定词性时丢弃不符候选', () => {
+    const items = [
+      { ...validExampleItem, partOfSpeech: 'v.' },
+      {
+        sentence: 'The book on the desk is new.',
+        translation: '桌上的这本书是新的。',
+        partOfSpeech: '名词',
+      },
+      {
+        sentence: 'She needs a useful book today.',
+        translation: '她今天需要一本有用的书。',
+      },
+    ];
+
+    const result = sanitizeExampleSuggestions(items, [], { partOfSpeech: 'n.' });
+
+    expect(result).toEqual([
+      {
+        sentence: 'The book on the desk is new.',
+        translation: '桌上的这本书是新的。',
+        partOfSpeech: 'n.',
+      },
+      {
+        sentence: 'She needs a useful book today.',
+        translation: '她今天需要一本有用的书。',
+        partOfSpeech: 'n.',
+      },
+    ]);
+  });
 });

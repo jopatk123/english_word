@@ -120,4 +120,37 @@ describe('requestReplacementExample', () => {
 
     expect(result).toEqual({ sentence: 'Valid one.', translation: '有效。' });
   });
+
+  it('把原例句和词性传给建议接口，以保持词性', async () => {
+    getAiExampleSuggestionsMock.mockResolvedValue({
+      data: {
+        items: [
+          {
+            sentence: 'This book is useful.',
+            translation: '这本书很有用。',
+            partOfSpeech: 'n.',
+          },
+        ],
+      },
+    });
+
+    const result = await requestReplacementExample({
+      wordId: 1,
+      existingSentences: ['I bought a book.'],
+      sourceSentence: 'I bought a book.',
+      partOfSpeech: 'n.',
+      config,
+    });
+
+    expect(result).toEqual({
+      sentence: 'This book is useful.',
+      translation: '这本书很有用。',
+      partOfSpeech: 'n.',
+    });
+    expect(getAiExampleSuggestionsMock).toHaveBeenCalledWith(1, config, {
+      excludedSentences: ['I bought a book.'],
+      sourceSentence: 'I bought a book.',
+      partOfSpeech: 'n.',
+    });
+  });
 });
