@@ -9,6 +9,8 @@ import {
   todayStart,
   tomorrowStart,
   MAX_INTERVAL,
+  MAX_NON_KNOWN_INTERVAL,
+  MINUTES_PER_DAY,
   buildDueSchedule,
 } from '../utils/srs.js';
 
@@ -67,9 +69,41 @@ describe('srs.js 工具模块', () => {
       expect(r.perfectStreakCount).toBe(1);
     });
 
-    it('interval 不超过 MAX_INTERVAL', () => {
-      const r = getNextReview(4, 300, 2.5);
+    it('review 阶段 interval 不超过 MAX_NON_KNOWN_INTERVAL', () => {
+      const uncapped = Math.ceil(300 * 2.5 * 1.3);
+      const r = getNextReview(4, 300, 2.5, 'review');
+      expect(uncapped).toBeGreaterThan(MAX_NON_KNOWN_INTERVAL);
+      expect(r.status).toBe('review');
+      expect(r.interval).toBe(MAX_NON_KNOWN_INTERVAL);
+      expect(r.delayMinutes).toBe(MAX_NON_KNOWN_INTERVAL * MINUTES_PER_DAY);
+    });
+
+    it('review 一次 good 不能把间隔推过学习中上限', () => {
+      const r = getNextReview(3, 40, 2.5, 'review');
+      expect(Math.ceil(40 * 2.5)).toBeGreaterThan(MAX_NON_KNOWN_INTERVAL);
+      expect(r.status).toBe('review');
+      expect(r.interval).toBe(MAX_NON_KNOWN_INTERVAL);
+    });
+
+    it('known 阶段 interval 不超过 MAX_INTERVAL，且可以长于学习中上限', () => {
+      const r = getNextReview(4, 300, 2.5, 'known', 4, 4, 1);
+      expect(r.status).toBe('known');
       expect(r.interval).toBe(MAX_INTERVAL);
+      expect(r.interval).toBeGreaterThan(MAX_NON_KNOWN_INTERVAL);
+    });
+
+    it('升为 known 的那一次改用已掌握间隔上限', () => {
+      const r = getNextReview(4, 80, 2.5, 'review', 2, 2, 2);
+      expect(r.status).toBe('known');
+      expect(r.interval).toBe(Math.min(Math.ceil(80 * 2.5 * 1.3), MAX_INTERVAL));
+      expect(r.interval).toBeGreaterThan(MAX_NON_KNOWN_INTERVAL);
+    });
+
+    it('known 答 hard 退回 review 时改用学习中间隔上限', () => {
+      const r = getNextReview(2, 200, 2.5, 'known', 4, 4, 3);
+      expect(r.status).toBe('review');
+      expect(Math.ceil(200 * 1.2)).toBeGreaterThan(MAX_NON_KNOWN_INTERVAL);
+      expect(r.interval).toBe(MAX_NON_KNOWN_INTERVAL);
     });
 
     it('quality=4 连续第 3 次时 status=known', () => {

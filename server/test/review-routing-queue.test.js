@@ -81,7 +81,7 @@ describe('GET /review/due', () => {
     expect(Array.isArray(res.body.data)).toBe(true);
   });
 
-  it('未来到期的单词不会进入今日待复习列表', async () => {
+  it('最近复习过且尚未到期的单词不会进入待复习', async () => {
     const futureWord = await Word.create({
       name: `future_${createTestSuffix()}`,
       meaning: '未来到期',
@@ -96,6 +96,7 @@ describe('GET /review/due', () => {
       easeFactor: 2.5,
       dueDate: '2099-01-10',
       reviewCount: 1,
+      lastReviewedAt: new Date(),
     });
 
     const res = await request(fixture.app).get('/review/due');

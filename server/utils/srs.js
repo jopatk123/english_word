@@ -1,4 +1,6 @@
+// 已掌握可以拉长到一年；仍在学习中/复习中的单词单次成功不能把下次到期推到近一年后。
 export const MAX_INTERVAL = 365;
+export const MAX_NON_KNOWN_INTERVAL = 60;
 export const MINUTES_PER_DAY = 24 * 60;
 
 export const REVIEW_STATUS = Object.freeze({
@@ -49,7 +51,8 @@ export function getNextReview(
       newEase = easeFactor + 0.15;
     }
 
-    newInterval = Math.min(newInterval, MAX_INTERVAL);
+    const intervalCap = status === REVIEW_STATUS.KNOWN ? MAX_INTERVAL : MAX_NON_KNOWN_INTERVAL;
+    newInterval = Math.min(newInterval, intervalCap);
     return {
       interval: newInterval,
       delayMinutes: newInterval * MINUTES_PER_DAY,

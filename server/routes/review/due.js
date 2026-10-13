@@ -3,7 +3,11 @@ import { Op, literal } from 'sequelize';
 import { Word, Root, Example, WordReview } from '../../models/index.js';
 import { success, handleRouteError } from '../../utils/response.js';
 import { REVIEW_STATUS, todayStr, todayStart } from '../../utils/srs.js';
-import { countLearning, computeMinDueCount } from '../../utils/dueFiller.js';
+import {
+  ORDER_BY_OLDEST_REVIEW,
+  buildScopeDueWhere,
+  collectDuePoolIds,
+} from '../../utils/dueFiller.js';
 
 const router = Router();
 
@@ -18,14 +22,6 @@ const ORDER_BY_LAST_REVIEWED_DESC = [['lastReviewedAt', 'DESC']];
 const ORDER_BY_LEARNING_FIRST = [
   [literal("CASE WHEN status = 'known' THEN 1 ELSE 0 END"), 'ASC'],
   ...ORDER_BY_DUE_AND_EASE,
-];
-
-// 补足排序：最近复习时间越早越优先（未复习过的视为最早），相同时间下难度低的优先
-// 数据库列名为 last_reviewed_at，COALESCE 把 NULL 视为最早时间统一升序处理
-const ORDER_BY_FILLER = [
-  [literal("COALESCE(last_reviewed_at, '1970-01-01T00:00:00.000Z')"), 'ASC'],
-  ['easeFactor', 'ASC'],
-  ['id', 'ASC'],
 ];
 
 const REVIEW_INCLUDE = [
@@ -83,8 +79,6 @@ router.get('/due', async (req, res) => {
       where.status = { [Op.ne]: REVIEW_STATUS.KNOWN };
     } else if (scope === 'known' || scope === 'known-review') {
       where.status = REVIEW_STATUS.KNOWN;
-    } else if (scope === 'due') {
-      where[Op.or] = [{ dueDate: { [Op.lt]: today } }, { dueDate: today, ...dueNowForToday }];
     }
 
     let order;
@@ -92,23 +86,24 @@ router.get('/due', async (req, res) => {
       order = ORDER_BY_LAST_REVIEWED_DESC;
     } else if (scope === 'known-review') {
       // 已掌握复习：优先最久未复习的（lastReviewedAt ASC，NULL 视为最早）
-      order = ORDER_BY_FILLER;
+      order = ORDER_BY_OLDEST_REVIEW;
     } else if (scope === 'all' || scope === 'continue') {
       order = ORDER_BY_LEARNING_FIRST;
     } else {
       order = ORDER_BY_DUE_AND_EASE;
     }
 
-    // scope=due 单独处理：先查全量 due，按补足规则从 learning 中挑选补足，
-    // 合并后再统一应用 offset/limit。补足只对 due 生效，其他 scope 保持原行为。
+    // scope=due 单独处理：真到期在前，其后是补足与防饿死切片，
+    // 合并后再统一应用 offset/limit。这两段只对 due 生效。
     if (scope === 'due') {
       const merged = await fetchDueWithFiller({
         userId: req.userId,
-        where,
+        where: buildScopeDueWhere(req.userId, today, now),
         order,
         include: REVIEW_INCLUDE,
         limit,
         offset,
+        now,
       });
       return success(
         res,
@@ -186,47 +181,20 @@ router.get('/due', async (req, res) => {
 });
 
 /**
- * scope=due 专用：先查全量 due，按补足规则从 learning 中挑选补足单词，
- * 合并后再统一应用 offset/limit。
- *
- * 补足规则：
- * - 若 due 数量已 >= ceil(learningCount / 3)，不补足
- * - 否则从 learning 单词（排除已在 due 中的）里按 lastReviewedAt 升序补足至 ceil(learningCount / 3)
- * - due 在前、补足单词在后
+ * scope=due 专用：合并真到期、补足、防饿死后，再统一应用 offset/limit。
+ * 顺序始终是真到期 → 补足 → 防饿死。
  */
-async function fetchDueWithFiller({ userId, where, order, include, limit, offset }) {
-  // 1. 查全部 due id（不分页，用于补足判断）
-  const dueIdRows = await WordReview.findAll({
-    where,
-    attributes: ['id'],
-    order,
+async function fetchDueWithFiller({ userId, where, order, include, limit, offset, now }) {
+  const mergedIds = await collectDuePoolIds({
+    userId,
+    dueWhere: where,
+    dueOrder: order,
+    now,
   });
-  const dueIds = dueIdRows.map((r) => r.id);
-
-  // 2. 判断补足量
-  const learningCount = await countLearning(userId);
-  const minDueCount = computeMinDueCount(learningCount);
-  const need = Math.max(0, minDueCount - dueIds.length);
-
-  let mergedIds = dueIds;
-
-  if (need > 0) {
-    const fillerIdRows = await WordReview.findAll({
-      where: {
-        userId,
-        status: { [Op.ne]: REVIEW_STATUS.KNOWN },
-        ...(dueIds.length > 0 ? { id: { [Op.notIn]: dueIds } } : {}),
-      },
-      attributes: ['id'],
-      order: ORDER_BY_FILLER,
-      limit: need,
-    });
-    mergedIds = [...dueIds, ...fillerIdRows.map((r) => r.id)];
-  }
 
   if (mergedIds.length === 0) return [];
 
-  // 3. 应用 offset/limit（保持 due 在前、补足在后）
+  // 分页保持合并顺序：真到期 → 补足 → 防饿死
   let pagedIds = mergedIds;
   if (offset > 0) {
     pagedIds = pagedIds.slice(offset);
@@ -237,7 +205,7 @@ async function fetchDueWithFiller({ userId, where, order, include, limit, offset
 
   if (pagedIds.length === 0) return [];
 
-  // 4. 用最终 id 列表拉取完整关联数据，保持合并顺序
+  // 用最终 id 列表拉取完整关联数据，保持合并顺序
   const rows = await WordReview.findAll({
     where: { id: { [Op.in]: pagedIds } },
     include,
