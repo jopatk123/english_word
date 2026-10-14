@@ -326,7 +326,7 @@ describe('useStudyTimer', () => {
     localStorage.getItem.mockImplementation((key) => {
       if (key === 'token') return 'jwt';
       if (key === 'english-word-study-timer') {
-        return JSON.stringify({ alarmEnabled: true, alarmMinutes: 90 });
+        return JSON.stringify({ alarmEnabled: true, alarmMinutes: 75 });
       }
       return null;
     });
