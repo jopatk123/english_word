@@ -8,7 +8,10 @@
   "scripts": {
     "test:client": "npm --prefix client run test:run",
     "test:server": "npm --prefix server test",
-    "test": "npm run test:client && npm run test:server",
+    "test": "node --test scripts/*.test.mjs && npm run test:client && npm run test:server",
+    "postinstall": "node scripts/install-child-deps.mjs",
+    "prepare": "node scripts/install-git-hooks.mjs",
+    "install-git-hooks": "node scripts/install-git-hooks.mjs",
     "test:coverage": "npm run test:coverage:client && npm run test:coverage:server",
     "test:coverage:client": "npm --prefix client run test:coverage",
     "test:coverage:server": "npm --prefix server run test:coverage",

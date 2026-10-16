@@ -157,16 +157,13 @@ ADMIN_PASSWORD_HASH=replace-with-bcrypt-hash
 
 ### 2. 安装依赖
 
-```bash
-npm --prefix server install
-npm --prefix client install
-```
-
-如果你需要在根目录统一执行 `npm test`、`npm run lint` 等命令，再额外执行一次：
+在仓库根目录执行一次即可。它会安装根目录工具、前端和后端依赖，并写入 `pre-push` 钩子：之后 `git push` 会先跑与 CI 相同的 `npm run lint:check` 和 `npm test`，失败则拒绝推送。
 
 ```bash
 npm install
 ```
+
+紧急跳过这次检查可以用 `git push --no-verify`，或 `SKIP_PRE_PUSH=1 git push`。钩子丢失时执行 `npm run install-git-hooks`。
 
 ### 3. 启动开发环境
 
@@ -186,7 +183,7 @@ npm --prefix client run dev
 # 统一运行前后端测试
 npm test
 
-# 统一检查代码风格
+# 统一检查代码风格（pre-push 与 CI 都会执行）
 npm run lint
 
 # 生成覆盖率报告
@@ -195,8 +192,8 @@ npm run test:coverage
 
 ### 代码规范约束
 
-- ESLint 限制单文件体量（有效行数，跳过空行与注释）：超过 **600 行** 报 warning，超过 **800 行** 报 error（会阻断 CI）
-- 超过 800 行的文件需要拆分后再提交
+- ESLint 限制单文件体量（有效行数，跳过空行与注释）：超过 **800 行** 报 warning，超过 **1000 行** 报 error（会阻断 CI）
+- 超过 1000 行的文件需要拆分后再提交
 
 ## 环境变量说明
 
