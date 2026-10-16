@@ -41,7 +41,12 @@
         {{ option.label }}
       </button>
     </div>
-    <button type="button" class="passage-player-close" aria-label="关闭听读" @click="$emit('close')">
+    <button
+      type="button"
+      class="passage-player-close"
+      aria-label="关闭听读"
+      @click="$emit('close')"
+    >
       ×
     </button>
   </div>

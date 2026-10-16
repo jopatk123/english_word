@@ -1,9 +1,6 @@
 import { computed, onUnmounted, ref, unref } from 'vue';
 import { DEFAULT_SPEECH_RATE, useSpeech } from '../utils/speech.js';
-import {
-  PASSAGE_SPEECH_RATES,
-  PASSAGE_SPEECH_RATE_STORAGE_KEY,
-} from '../constants/passage.js';
+import { PASSAGE_SPEECH_RATES, PASSAGE_SPEECH_RATE_STORAGE_KEY } from '../constants/passage.js';
 
 const SENTENCE_GAP_MS = 350;
 

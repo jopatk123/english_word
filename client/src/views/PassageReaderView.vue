@@ -79,11 +79,7 @@
       />
     </template>
 
-    <PassageFinishDialog
-      v-model="finishDialogVisible"
-      :saving="rating"
-      @rate="handleRate"
-    />
+    <PassageFinishDialog v-model="finishDialogVisible" :saving="rating" @rate="handleRate" />
   </div>
 </template>
 

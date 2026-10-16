@@ -155,9 +155,7 @@ function startSpeech(text, lang = 'en-US', options = {}) {
   if (!isSpeechSupported()) return Promise.resolve(false);
 
   if (isPaused.value) {
-    return waitForResume().then((resumed) =>
-      resumed ? startSpeech(text, lang, options) : false
-    );
+    return waitForResume().then((resumed) => (resumed ? startSpeech(text, lang, options) : false));
   }
 
   cancelSpeech();

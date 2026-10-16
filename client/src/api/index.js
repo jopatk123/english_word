@@ -129,8 +129,7 @@ export const getPassageDueCount = () =>
   api.get('/passages/due/count', { params: { tz: getUserTz() } });
 export const getPassage = (id) => api.get(`/passages/${id}`, { params: { tz: getUserTz() } });
 export const createPassage = (data) => api.post('/passages', { ...data, tz: getUserTz() });
-export const updatePassage = (id, data) =>
-  api.put(`/passages/${id}`, { ...data, tz: getUserTz() });
+export const updatePassage = (id, data) => api.put(`/passages/${id}`, { ...data, tz: getUserTz() });
 export const deletePassage = (id) => api.delete(`/passages/${id}`);
 export const updatePassageSentence = (id, sentenceId, translation) =>
   api.put(`/passages/${id}/sentences/${sentenceId}`, { translation });
