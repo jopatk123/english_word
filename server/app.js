@@ -15,6 +15,7 @@ import wordsRouter from './routes/words.js';
 import examplesRouter from './routes/examples.js';
 import aiRouter from './routes/ai.js';
 import reviewRouter from './routes/review.js';
+import passagesRouter from './routes/passages.js';
 import { createStudySessionsRouter } from './routes/study-sessions.js';
 import { getAllowedOrigins, getTrustProxySetting } from './utils/env.js';
 import logger from './utils/logger.js';
@@ -94,6 +95,7 @@ export function createApp(options = {}) {
   app.use('/api/examples', authMiddleware, examplesRouter);
   app.use('/api/ai', authMiddleware, aiRateLimiter, aiRouter);
   app.use('/api/review', authMiddleware, reviewRouter);
+  app.use('/api/passages', authMiddleware, passagesRouter);
   app.use(
     '/api/study-sessions',
     authMiddleware,

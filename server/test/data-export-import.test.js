@@ -14,6 +14,8 @@ import {
   WordRoot,
   Example,
   WordReview,
+  Passage,
+  PassageSentence,
 } from '../models/index.js';
 import reviewDataRouter from '../routes/review/data.js';
 
@@ -80,10 +82,11 @@ describe('GET /review/data/export', () => {
   it('返回正确的 JSON 结构', async () => {
     const res = await request(app).get('/review/data/export');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('1.0');
+    expect(res.body.version).toBe('2.0');
     expect(res.body.exportedAt).toBeTruthy();
     expect(Array.isArray(res.body.roots)).toBe(true);
     expect(Array.isArray(res.body.words)).toBe(true);
+    expect(Array.isArray(res.body.passages)).toBe(true);
   });
 
   it('导出包含创建的词根', async () => {
@@ -302,7 +305,7 @@ describe('POST /review/data/import', () => {
   it('版本不匹配时返回 400', async () => {
     const res = await request(app)
       .post('/review/data/import')
-      .send({ version: '2.0', roots: [], words: [] });
+      .send({ version: '3.0', roots: [], words: [] });
     expect(res.status).toBe(400);
   });
 
@@ -383,5 +386,61 @@ describe('POST /review/data/import', () => {
     const review = await WordReview.findOne({ where: { userId, wordId: word.id } });
     expect(review.status).toBe('known'); // unchanged
     expect(review.interval).toBe(30); // unchanged
+  });
+
+  it('短文随导出往返，旧版文件仍可导入，重复导入会跳过', async () => {
+    const passage = await Passage.create({
+      userId,
+      title: 'Exported story',
+      content: 'One fish. Two fish.',
+      level: 'A2',
+      source: 'manual',
+      wordCount: 4,
+      sentenceCount: 2,
+    });
+    await PassageSentence.bulkCreate([
+      {
+        passageId: passage.id,
+        orderIndex: 0,
+        paragraphIndex: 0,
+        text: 'One fish.',
+        translation: '一条鱼。',
+      },
+      {
+        passageId: passage.id,
+        orderIndex: 1,
+        paragraphIndex: 0,
+        text: 'Two fish.',
+        translation: null,
+      },
+    ]);
+
+    const exported = await request(app).get('/review/data/export');
+    const item = exported.body.passages.find((p) => p.title === 'Exported story');
+    expect(item.sentences).toEqual([
+      { text: 'One fish.', translation: '一条鱼。' },
+      { text: 'Two fish.', translation: null },
+    ]);
+    expect(item).not.toHaveProperty('review');
+
+    const other = await User.create({ username: `import_passage_${Date.now()}`, password: 'x' });
+    const otherApp = buildApp(other.id);
+    const imported = await request(otherApp).post('/review/data/import').send(exported.body);
+    expect(imported.status).toBe(200);
+    expect(imported.body.data.passagesAdded).toBe(1);
+    const saved = await Passage.findOne({
+      where: { userId: other.id, title: 'Exported story' },
+      include: [{ model: PassageSentence, as: 'sentences' }],
+    });
+    expect(saved.sentences.map((s) => s.translation)).toEqual(['一条鱼。', null]);
+
+    const again = await request(otherApp).post('/review/data/import').send(exported.body);
+    expect(again.body.data.passagesAdded).toBe(0);
+    expect(await Passage.count({ where: { userId: other.id, title: 'Exported story' } })).toBe(1);
+
+    const legacy = await request(otherApp)
+      .post('/review/data/import')
+      .send({ version: '1.0', roots: [], words: [] });
+    expect(legacy.status).toBe(200);
   });
 });

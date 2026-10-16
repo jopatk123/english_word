@@ -1,9 +1,19 @@
 import { Router } from 'express';
 import sequelize from '../../config/database.js';
-import { Root, Word, WordRoot, Example, WordReview } from '../../models/index.js';
+import {
+  Root,
+  Word,
+  WordRoot,
+  Example,
+  WordReview,
+  Passage,
+  PassageSentence,
+} from '../../models/index.js';
 import { success, error, handleRouteError } from '../../utils/response.js';
 import { ensureWordReview } from '../../utils/wordReview.js';
 import { ensureDefaultRoot } from '../../utils/defaultRoot.js';
+import { createPassage } from '../../services/passage-store.js';
+import { splitPassage } from '../../services/passage-splitter.js';
 
 const router = Router();
 
@@ -120,11 +130,31 @@ router.get('/data/export', async (req, res) => {
       }
     }
 
+    const passages = await Passage.findAll({
+      where: { userId: req.userId },
+      include: [{ model: PassageSentence, as: 'sentences' }],
+      order: [['create_time', 'ASC']],
+    });
+
     const result = {
-      version: '1.0',
+      version: '2.0',
       exportedAt: new Date().toISOString(),
       roots: rootList,
       words: Array.from(wordMap.values()),
+      // 不含重读进度，导入后按新短文重新开始
+      passages: passages.map((passage) => ({
+        title: passage.title,
+        content: passage.content,
+        level: passage.level,
+        source: passage.source,
+        topic: passage.topic,
+        sentences: [...(passage.sentences || [])]
+          .sort((a, b) => a.orderIndex - b.orderIndex)
+          .map((sentence) => ({
+            text: sentence.text,
+            translation: sentence.translation,
+          })),
+      })),
     };
 
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -138,11 +168,24 @@ router.get('/data/export', async (req, res) => {
 // 全量导入：跳过重复数据，只导入新增项
 router.post('/data/import', async (req, res) => {
   const data = req.body;
-  if (!data || data.version !== '1.0' || !Array.isArray(data.roots) || !Array.isArray(data.words)) {
+  if (
+    !data ||
+    !['1.0', '2.0'].includes(data.version) ||
+    !Array.isArray(data.roots) ||
+    !Array.isArray(data.words) ||
+    (data.passages !== undefined && !Array.isArray(data.passages))
+  ) {
     return error(res, '导入文件格式无效，请使用本应用导出的 JSON 文件', 400);
   }
 
-  const stats = { rootsAdded: 0, wordsAdded: 0, linksAdded: 0, examplesAdded: 0, skipped: 0 };
+  const stats = {
+    rootsAdded: 0,
+    wordsAdded: 0,
+    linksAdded: 0,
+    examplesAdded: 0,
+    passagesAdded: 0,
+    skipped: 0,
+  };
 
   await sequelize.transaction(async (t) => {
     // 步骤1：处理词根
@@ -263,10 +306,40 @@ router.post('/data/import', async (req, res) => {
     }
   });
 
+  // 短文在词库事务提交后单独导入：一篇失败不影响词库，标题加规范化正文相同则跳过。
+  for (const passageData of data.passages || []) {
+    if (typeof passageData?.title !== 'string' || typeof passageData?.content !== 'string') {
+      stats.skipped++;
+      continue;
+    }
+    try {
+      const normalized = splitPassage(passageData.content).content;
+      const existing = await Passage.findOne({
+        where: { userId: req.userId, title: passageData.title.trim(), content: normalized },
+      });
+      if (existing) {
+        stats.skipped++;
+        continue;
+      }
+      await createPassage(req.userId, {
+        title: passageData.title,
+        content: passageData.content,
+        level: passageData.level || null,
+        source: passageData.source === 'ai' ? 'ai' : 'manual',
+        topic: passageData.topic || null,
+        sentenceTranslations: Array.isArray(passageData.sentences) ? passageData.sentences : null,
+      });
+      stats.passagesAdded++;
+    } catch {
+      stats.skipped++;
+    }
+  }
+
+  const passagePart = stats.passagesAdded ? `，短文 ${stats.passagesAdded} 篇` : '';
   success(
     res,
     stats,
-    `导入完成：新增词根 ${stats.rootsAdded} 个，单词 ${stats.wordsAdded} 个，例句 ${stats.examplesAdded} 条`
+    `导入完成：新增词根 ${stats.rootsAdded} 个，单词 ${stats.wordsAdded} 个，例句 ${stats.examplesAdded} 条${passagePart}`
   );
 });
 

@@ -16,6 +16,9 @@ const StudyDashboardView = () => import('../views/StudyDashboardView.vue');
 const StudySessionView = () => import('../views/StudySessionView.vue');
 const StudyReportView = () => import('../views/StudyReportView.vue');
 const AdminView = () => import('../views/AdminView.vue');
+const PassageListView = () => import('../views/PassageListView.vue');
+const PassageEditView = () => import('../views/PassageEditView.vue');
+const PassageReaderView = () => import('../views/PassageReaderView.vue');
 
 const routes = [
   { path: '/login', name: 'Login', component: LoginView, meta: { guest: true } },
@@ -39,6 +42,15 @@ const routes = [
   { path: '/study', name: 'StudyDashboard', component: StudyDashboardView },
   { path: '/study/session', name: 'StudySession', component: StudySessionView },
   { path: '/study/report', name: 'StudyReport', component: StudyReportView },
+  { path: '/reading', name: 'PassageList', component: PassageListView },
+  { path: '/reading/new', name: 'PassageCreate', component: PassageEditView },
+  {
+    path: '/reading/:id(\\d+)/edit',
+    name: 'PassageEdit',
+    component: PassageEditView,
+    props: true,
+  },
+  { path: '/reading/:id(\\d+)', name: 'PassageReader', component: PassageReaderView, props: true },
   { path: '/super-admin', name: 'SuperAdmin', component: AdminView },
   { path: '/root/:id', name: 'RootDetail', component: RootDetailView, props: true },
   { path: '/word/:id', name: 'WordDetail', component: WordDetailView, props: true },

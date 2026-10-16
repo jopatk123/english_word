@@ -15,6 +15,7 @@
           <el-button class="nav-btn" link @click="$router.push('/search')">🔍 搜索</el-button>
           <el-button class="nav-btn" link @click="$router.push('/')">📚 学单词</el-button>
           <el-button class="nav-btn" link @click="$router.push('/study')">📝 背单词</el-button>
+          <el-button class="nav-btn" link @click="$router.push('/reading')">📖 短文</el-button>
           <el-button class="nav-btn" link @click="$router.push('/ai/settings')"
             >🤖 AI 配置</el-button
           >
@@ -86,6 +87,7 @@
   const activeTab = computed(() => {
     const path = route.path;
     if (path.startsWith('/study')) return 'study';
+    if (path.startsWith('/reading')) return 'reading';
     if (path.startsWith('/search')) return 'search';
     if (path.startsWith('/ai') || path.startsWith('/settings')) return 'more';
     return 'home';
@@ -97,7 +99,7 @@
       return;
     }
     moreOpen.value = false;
-    const target = { home: '/', study: '/study', search: '/search' }[id];
+    const target = { home: '/', study: '/study', reading: '/reading', search: '/search' }[id];
     if (target) router.push(target);
   };
 

@@ -14,6 +14,9 @@ import {
   UserAiSetting,
   ApiToken,
   WordLookup,
+  Passage,
+  PassageSentence,
+  PassageReview,
 } from '../models/index.js';
 import { success, successList, error, handleRouteError } from '../utils/response.js';
 import { getAdminPasswordHash } from '../utils/env.js';
@@ -152,6 +155,9 @@ router.delete('/users/:id', adminAuthMiddleware, async (req, res) => {
         aiSettings: 0,
         apiTokens: 0,
         wordLookups: 0,
+        passages: 0,
+        passageSentences: 0,
+        passageReviews: 0,
       };
 
       if (rootIds.length) {
@@ -193,6 +199,24 @@ router.delete('/users/:id', adminAuthMiddleware, async (req, res) => {
         where: { userId: user.id },
         transaction,
       });
+
+      const passageIds = (
+        await Passage.findAll({ where: { userId: user.id }, attributes: ['id'], transaction })
+      ).map((row) => row.id);
+      counts.passageReviews += await PassageReview.destroy({
+        where: { userId: user.id },
+        transaction,
+      });
+      if (passageIds.length) {
+        counts.passageSentences += await PassageSentence.destroy({
+          where: { passageId: { [Op.in]: passageIds } },
+          transaction,
+        });
+        counts.passages += await Passage.destroy({
+          where: { id: { [Op.in]: passageIds } },
+          transaction,
+        });
+      }
 
       if (wordIds.length) {
         counts.words += await Word.destroy({

@@ -122,6 +122,24 @@ export const exportReviewData = (format = 'json') =>
 export const exportAllData = () => api.get('/review/data/export');
 export const importAllData = (data) => api.post('/review/data/import', data);
 
+// ========== 短文 API ==========
+export const getPassages = (params = {}) =>
+  api.get('/passages', { params: { tz: getUserTz(), ...params } });
+export const getPassageDueCount = () =>
+  api.get('/passages/due/count', { params: { tz: getUserTz() } });
+export const getPassage = (id) => api.get(`/passages/${id}`, { params: { tz: getUserTz() } });
+export const createPassage = (data) => api.post('/passages', { ...data, tz: getUserTz() });
+export const updatePassage = (id, data) =>
+  api.put(`/passages/${id}`, { ...data, tz: getUserTz() });
+export const deletePassage = (id) => api.delete(`/passages/${id}`);
+export const updatePassageSentence = (id, sentenceId, translation) =>
+  api.put(`/passages/${id}/sentences/${sentenceId}`, { translation });
+export const recordPassageRead = (id, rating) =>
+  api.post(`/passages/${id}/read`, { rating, tz: getUserTz() });
+export const addPassageWord = (id, data) =>
+  api.post(`/passages/${id}/words`, { ...data, tz: getUserTz() });
+export const lookupWordStatuses = (words) => api.post('/words/status-lookup', { words });
+
 // ========== AI API ==========
 export const getAiSettingsSummary = () => api.get('/ai-settings');
 export const saveAiSettingsKey = (data) => api.put('/ai-settings', data);
@@ -161,6 +179,11 @@ export const lookupWord = (word, config, options = {}) =>
     config,
     sentence: options.sentence || '',
   });
+export const generatePassage = (options, config) =>
+  aiApi.post('/ai/generate-passage', { ...options, config });
+// 长文会分批翻译，单次请求可能远超普通 AI 超时
+export const translatePassage = (passageId, config) =>
+  aiApi.post('/ai/translate-passage', { passageId, config }, { timeout: 300000 });
 
 // ========== 学习计时 API ==========
 export const startStudySession = (note = '') => api.post('/study-sessions/start', { note });

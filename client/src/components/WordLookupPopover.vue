@@ -45,7 +45,16 @@
             已在词库，查看
           </button>
           <button
-            v-else
+            v-if="state.result.source === 'library' && state.context?.passageId"
+            type="button"
+            class="lookup-action"
+            :disabled="state.adding || state.exampleSaved"
+            @click="addLookupSentenceAsExample"
+          >
+            {{ state.exampleSaved ? '已加为例句' : state.adding ? '保存中…' : '把这句加为例句' }}
+          </button>
+          <button
+            v-else-if="state.result.source !== 'library'"
             type="button"
             class="lookup-action"
             :disabled="state.adding"
@@ -65,6 +74,7 @@
   import { useRoute, useRouter } from 'vue-router';
   import SpeakButton from './SpeakButton.vue';
   import {
+    addLookupSentenceAsExample,
     addLookupWordToLibrary,
     closeWordLookup,
     openWordLookup,
@@ -106,6 +116,7 @@
       word: state.word,
       sentence: state.sentence,
       anchor: state.anchor,
+      context: state.context,
     });
   };
 

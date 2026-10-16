@@ -25,6 +25,9 @@ import {
   UserAiSetting,
   ApiToken,
   WordLookup,
+  Passage,
+  PassageSentence,
+  PassageReview,
 } from '../models/index.js';
 import authRouter from '../routes/auth.js';
 import adminRouter from '../routes/admin.js';
@@ -264,6 +267,20 @@ describe('DELETE /api/admin/users/:id', () => {
       phonetic: '/lʊk/',
       partOfSpeech: '[]',
     });
+    const deleteTargetPassage = await Passage.create({
+      userId: deleteTargetUser.id,
+      title: 'delete-target-passage',
+      content: 'One. Two.',
+    });
+    await PassageSentence.bulkCreate([
+      { passageId: deleteTargetPassage.id, orderIndex: 0, text: 'One.' },
+      { passageId: deleteTargetPassage.id, orderIndex: 1, text: 'Two.' },
+    ]);
+    await PassageReview.create({
+      userId: deleteTargetUser.id,
+      passageId: deleteTargetPassage.id,
+      dueDate: '2099-12-31',
+    });
 
     survivorUser = await User.create({
       username: `admin_survivor_${suffix()}`,
@@ -300,6 +317,9 @@ describe('DELETE /api/admin/users/:id', () => {
       aiSettings: 1,
       apiTokens: 1,
       wordLookups: 1,
+      passages: 1,
+      passageSentences: 2,
+      passageReviews: 1,
     });
 
     expect(await User.findByPk(deleteTargetUser.id)).toBeNull();

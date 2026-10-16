@@ -18,8 +18,12 @@ describe('AppMobileNav', () => {
     await tabs[1].trigger('click');
     expect(wrapper.emitted('select')[0]).toEqual(['study']);
 
-    await tabs[3].trigger('click');
-    expect(wrapper.emitted('select')[1]).toEqual(['more']);
+    await tabs[2].trigger('click');
+    expect(wrapper.emitted('select')[1]).toEqual(['reading']);
+
+    expect(tabs).toHaveLength(5);
+    await tabs[4].trigger('click');
+    expect(wrapper.emitted('select')[2]).toEqual(['more']);
     expect(document.body.textContent).toContain('Alice');
     expect(document.body.textContent).toContain('AI 配置');
     wrapper.unmount();

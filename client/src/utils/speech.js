@@ -149,11 +149,15 @@ function resumeSpeech() {
   releasePauseWaiters(true);
 }
 
-function startSpeech(text, lang = 'en-US') {
+export const DEFAULT_SPEECH_RATE = 0.85;
+
+function startSpeech(text, lang = 'en-US', options = {}) {
   if (!isSpeechSupported()) return Promise.resolve(false);
 
   if (isPaused.value) {
-    return waitForResume().then((resumed) => (resumed ? startSpeech(text, lang) : false));
+    return waitForResume().then((resumed) =>
+      resumed ? startSpeech(text, lang, options) : false
+    );
   }
 
   cancelSpeech();
@@ -169,7 +173,7 @@ function startSpeech(text, lang = 'en-US') {
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = lang;
-      utterance.rate = 0.85;
+      utterance.rate = options.rate ?? DEFAULT_SPEECH_RATE;
 
       const voice = pickEnglishVoice();
       if (voice) utterance.voice = voice;
@@ -202,7 +206,7 @@ export function useSpeech() {
     void startSpeech(text, lang);
   };
 
-  const speakAsync = (text, lang = 'en-US') => startSpeech(text, lang);
+  const speakAsync = (text, lang = 'en-US', options = {}) => startSpeech(text, lang, options);
 
   const speakSequence = async (texts, lang = 'en-US', delayMs = 0, delayAfterLast = false) => {
     if (!isSpeechSupported()) return true;

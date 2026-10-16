@@ -78,6 +78,15 @@
       </div>
     </div>
 
+    <button
+      v-if="passageDueCount > 0"
+      type="button"
+      class="passage-due-banner"
+      @click="router.push({ path: '/reading', query: { status: 'due' } })"
+    >
+      📖 今日有 <strong>{{ passageDueCount }}</strong> 篇短文待重读，去读一读
+    </button>
+
     <!-- 开始学习按钮 -->
     <div class="start-section start-section-centered">
       <el-button
@@ -186,6 +195,7 @@
     getReviewHistorySummary,
     exportAllData,
     importAllData,
+    getPassageDueCount,
   } from '../api/index.js';
 
   const router = useRouter();
@@ -209,6 +219,7 @@
   const importFileInput = ref(null);
   const streak = ref(0);
   const totalReviews30d = ref(0);
+  const passageDueCount = ref(0);
   let statsRefreshTimer = null;
   let lastStatsDate = '';
 
@@ -228,6 +239,16 @@
       ElMessage.error('获取学习统计失败');
     } finally {
       statsLoading.value = false;
+    }
+  };
+
+  // 只是提醒入口，失败时静默隐藏，不打扰背单词主流程
+  const fetchPassageDueCount = async () => {
+    try {
+      const res = await getPassageDueCount();
+      passageDueCount.value = res.data.count || 0;
+    } catch {
+      passageDueCount.value = 0;
     }
   };
 
@@ -333,6 +354,7 @@
       ElMessage.success(res.msg || '导入成功');
       fetchStats();
       fetchRootsProgress();
+      fetchPassageDueCount();
     } catch (e) {
       ElMessage.error(e?.response?.data?.msg || '导入失败');
     } finally {
@@ -344,6 +366,7 @@
     lastStatsDate = getLocalDateKey();
     fetchStats();
     fetchRootsProgress();
+    fetchPassageDueCount();
     statsRefreshTimer = window.setInterval(refreshStatsOnInterval, 60 * 1000);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleWindowFocus);

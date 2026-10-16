@@ -3,13 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../../api/index.js', () => ({
   lookupWord: vi.fn(),
   createWord: vi.fn(),
+  addPassageWord: vi.fn(),
 }));
 
 vi.mock('../../utils/aiSettings.js', () => ({
   loadAiSettings: () => ({ providerId: 'openai', model: 'gpt-test' }),
 }));
 
-const { lookupWord, createWord } = await import('../../api/index.js');
+const { lookupWord, createWord, addPassageWord } = await import('../../api/index.js');
 const { addLookupWordToLibrary, clearWordLookupSession, openWordLookup, wordLookupState } =
   await import('../wordLookup.js');
 
@@ -70,6 +71,32 @@ describe('wordLookup', () => {
     });
     expect(saved.wordId).toBe(42);
     expect(wordLookupState.result.source).toBe('library');
+  });
+
+  it('从短文加入词库时改走短文接口并带上句子', async () => {
+    lookupWord.mockResolvedValue({
+      data: { word: 'harbor', meaning: '港口', phonetic: '', source: 'ai', wordId: null },
+    });
+    addPassageWord.mockResolvedValue({ data: { word: { id: 7 }, exampleAdded: true } });
+    const onAdded = vi.fn();
+
+    await openWordLookup({
+      word: 'harbor',
+      sentence: 'He walks to the harbor.',
+      anchor: anchor(),
+      context: { passageId: 3, sentenceId: 9, onAdded },
+    });
+    const saved = await addLookupWordToLibrary();
+    expect(createWord).not.toHaveBeenCalled();
+    expect(addPassageWord).toHaveBeenCalledWith(3, {
+      name: 'harbor',
+      meaning: '港口',
+      phonetic: '',
+      sentenceId: 9,
+    });
+    expect(saved.wordId).toBe(7);
+    expect(onAdded).toHaveBeenCalledWith(expect.objectContaining({ word: 'harbor' }));
+    expect(wordLookupState.exampleSaved).toBe(true);
   });
 
   it('请求失败时保留错误信息', async () => {

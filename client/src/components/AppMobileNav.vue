@@ -21,6 +21,15 @@
     <button
       type="button"
       class="mobile-tab"
+      :class="{ active: active === 'reading' }"
+      @click="$emit('select', 'reading')"
+    >
+      <span class="mobile-tab-icon" aria-hidden="true">📖</span>
+      <span>短文</span>
+    </button>
+    <button
+      type="button"
+      class="mobile-tab"
       :class="{ active: active === 'search' }"
       @click="$emit('select', 'search')"
     >

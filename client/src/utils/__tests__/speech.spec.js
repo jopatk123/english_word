@@ -10,7 +10,7 @@
  * 或在 beforeEach 中 unstubAllGlobals + clearAllMocks。
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useSpeech } from '../speech.js';
+import { DEFAULT_SPEECH_RATE, useSpeech } from '../speech.js';
 
 const makeVoice = (name, lang) => ({ name, lang });
 
@@ -252,5 +252,23 @@ describe('语音选择策略', () => {
     expect(speakMock).toHaveBeenCalled();
     const utterance = speakMock.mock.calls[0][0];
     expect(utterance.voice?.lang.startsWith('en')).toBe(true);
+  });
+});
+
+// ─── 语速 ────────────────────────────────────────────────────
+describe('useSpeech() 语速', () => {
+  it('不传 rate 时使用默认语速', () => {
+    const { speakMock } = setupSpeechMock([makeVoice('Samantha', 'en-US')]);
+    const { speak } = useSpeech();
+    speak('rate-default-test');
+    expect(speakMock.mock.calls[0][0].rate).toBe(DEFAULT_SPEECH_RATE);
+  });
+
+  it('speakAsync 可指定语速', () => {
+    const { speakMock } = setupSpeechMock([makeVoice('Samantha', 'en-US')]);
+    const { speakAsync, cancelSpeech } = useSpeech();
+    speakAsync('rate-custom-test', 'en-US', { rate: 1.2 });
+    expect(speakMock.mock.calls[0][0].rate).toBe(1.2);
+    cancelSpeech();
   });
 });

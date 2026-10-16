@@ -6,7 +6,7 @@ import {
   sanitizeRootSuggestions,
   sanitizeWordSuggestions,
 } from '../utils/aiSanitize.js';
-import { createDebugInfo, logAiError, logAiInfo, withDuration } from '../utils/aiDebug.js';
+import { createDebugInfo, handleAiError, logAiInfo, withDuration } from '../utils/aiDebug.js';
 import {
   buildAnalyzeSentencePrompt,
   buildAnalyzeWordPrompt,
@@ -26,32 +26,16 @@ import {
   saveCachedLookup,
   toLookupResponse,
 } from '../services/word-lookup.js';
-import { success, error, resolveClientErrorStatus } from '../utils/response.js';
+import { success, error } from '../utils/response.js';
 import { fetchProviderModels } from '../services/ai-models.js';
 import { resolveUserAiConfig, resolveUserAiConfigForModels } from '../services/user-ai-settings.js';
+import passageAiRouter from './ai/passage.js';
 
 const router = Router();
 
+router.use('/', passageAiRouter);
+
 // ── 工具函数 ──────────────────────────────────────────────────
-
-/**
- * 统一处理路由异常，避免各路由重复相同的 catch 逻辑。
- */
-const AI_UNEXPECTED_FAILURE_MSG = 'AI 服务暂时不可用，请稍后重试';
-
-const handleAiError = (res, req, startedAt, route, e, extra = {}) => {
-  const debugInfo = createDebugInfo(req, req.body?.config || {}, startedAt);
-  logAiError(`${route}.error`, debugInfo, e, extra);
-
-  const clientStatus = resolveClientErrorStatus(e);
-  if (clientStatus && e?.message) {
-    return error(res, e.message, clientStatus);
-  }
-
-  const statusCode = Number.isInteger(e?.statusCode) ? e.statusCode : 502;
-  const safeStatus = statusCode >= 500 ? statusCode : 502;
-  error(res, `${AI_UNEXPECTED_FAILURE_MSG} [requestId=${debugInfo.requestId}]`, safeStatus);
-};
 
 /**
  * 处理 AI 建议型接口的公共结果统计逻辑。

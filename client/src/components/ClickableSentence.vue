@@ -5,7 +5,7 @@
         v-if="token.word"
         type="button"
         class="lookup-word"
-        :class="{ 'is-active': isActive(token.word) }"
+        :class="[{ 'is-active': isActive(token.word) }, wordClass?.(token.word)]"
         :aria-label="`查询 ${token.word}`"
         @click.stop="onLookup(token.word, $event)"
       >
@@ -23,6 +23,10 @@
 
   const props = defineProps({
     text: { type: String, default: '' },
+    // 按单词返回额外的 class，例如短文里按词库状态高亮
+    wordClass: { type: Function, default: null },
+    // 透传给查词弹窗，决定「加入词库」的去向（例如从短文加词并写例句）
+    lookupContext: { type: Object, default: null },
   });
 
   const tokens = computed(() => tokenizeSentence(props.text));
@@ -37,6 +41,7 @@
       word,
       sentence: props.text,
       anchor: event.currentTarget,
+      context: props.lookupContext,
     });
   };
 </script>

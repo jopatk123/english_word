@@ -11,6 +11,9 @@ import StudySession from './StudySession.js';
 import UserAiSetting from './UserAiSetting.js';
 import ApiToken from './ApiToken.js';
 import WordLookup from './WordLookup.js';
+import Passage from './Passage.js';
+import PassageSentence from './PassageSentence.js';
+import PassageReview from './PassageReview.js';
 
 // 用户 -> 词根 (一对多)
 User.hasMany(Root, { foreignKey: 'user_id', as: 'roots', onDelete: 'CASCADE' });
@@ -91,6 +94,28 @@ ApiToken.belongsTo(User, { foreignKey: 'user_id', as: 'user', onDelete: 'CASCADE
 User.hasMany(WordLookup, { foreignKey: 'user_id', as: 'wordLookups', onDelete: 'CASCADE' });
 WordLookup.belongsTo(User, { foreignKey: 'user_id', as: 'user', onDelete: 'CASCADE' });
 
+// 用户 -> 短文 -> 分句 / 重读进度
+User.hasMany(Passage, { foreignKey: 'user_id', as: 'passages', onDelete: 'CASCADE' });
+Passage.belongsTo(User, { foreignKey: 'user_id', as: 'user', onDelete: 'CASCADE' });
+Passage.hasMany(PassageSentence, {
+  foreignKey: 'passage_id',
+  as: 'sentences',
+  onDelete: 'CASCADE',
+});
+PassageSentence.belongsTo(Passage, {
+  foreignKey: 'passage_id',
+  as: 'passage',
+  onDelete: 'CASCADE',
+});
+Passage.hasOne(PassageReview, { foreignKey: 'passage_id', as: 'review', onDelete: 'CASCADE' });
+PassageReview.belongsTo(Passage, {
+  foreignKey: 'passage_id',
+  as: 'passage',
+  onDelete: 'CASCADE',
+});
+User.hasMany(PassageReview, { foreignKey: 'user_id', as: 'passageReviews', onDelete: 'CASCADE' });
+PassageReview.belongsTo(User, { foreignKey: 'user_id', as: 'user', onDelete: 'CASCADE' });
+
 const initDB = async () => {
   await configureSqlite();
   const qi = sequelize.getQueryInterface();
@@ -123,5 +148,8 @@ export {
   UserAiSetting,
   ApiToken,
   WordLookup,
+  Passage,
+  PassageSentence,
+  PassageReview,
   initDB,
 };
