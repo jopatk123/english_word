@@ -1,6 +1,6 @@
 import dns from 'dns/promises';
 import net from 'net';
-import { buildThinkingDisableParams, isThinkingModel } from './aiThinking.js';
+import { buildThinkingParamCandidates, isThinkingModel } from './aiThinking.js';
 
 const OPENAI_COMPATIBLE_PROVIDERS = new Set([
   'openai',
@@ -309,14 +309,109 @@ const resolveMaxTokens = ({ providerId, providerType, providerMode, model }) =>
 
 /**
  * 正文为空且输出被截断 / 仅返回思考过程时，抛出带操作指引的错误提示。
+ * 思考模型的推理同样计入输出额度（reasoning_tokens），额度耗尽时正文为空。
+ * 注意：思考禁用参数已在请求侧自动注入，用户无需（也无法）手动开关。
  * @param {string} content - 归一化后的正文
  * @param {boolean} isTruncated - 截断或仅有思考内容的标记（OpenAI finish_reason==='length' 或存在 reasoning_content，Anthropic stop_reason==='max_tokens'）
  */
 const assertNotTruncated = (content, isTruncated) => {
   if (content || !isTruncated) return;
-  throw new AiUpstreamError(
-    'AI 输出被截断或仅返回思考过程：思考模型的推理也消耗输出额度，可在 AI 配置中开启「跳过思考」后重试'
-  );
+  throw new AiUpstreamError('AI 输出被截断或仅返回思考过程，请更换模型或重试');
+};
+
+// 上游因「注入的思考参数」被拒时通常返回 400/422，且错误信息会点名字段。
+// 命中即认为该候选参数不被支持，可安全降级到下一个候选；其余 4xx（鉴权/限流等）
+// 不做重试，避免用兜底文案掩盖真实原因。
+const THINKING_PARAM_REJECT_HINT =
+  /thinking|reasoning_effort|reasoning_format|enable_thinking|output_config|unsupported|not supported|unknown|unrecognized|extra_forbidden/i;
+
+const isThinkingParamRejected = (status, errorMessage) => {
+  if (status !== 400 && status !== 422) return false;
+  const text = String(errorMessage || '');
+  // 无错误细节时保守降级（400/422 往往就是参数问题）。
+  if (!text || text === 'AI 服务调用失败') return true;
+  return THINKING_PARAM_REJECT_HINT.test(text);
+};
+
+/**
+ * 发起一次 JSON 请求并归一化响应：网络异常 / 超时统一转成 AiUpstreamError / AiTimeoutError，
+ * 无论成功失败都返回解析后的 payload，交由调用方判定。
+ */
+const sendJsonRequest = async ({ url, headers, body }) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
+
+  let response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      signal: controller.signal,
+      headers,
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    if (e?.name === 'AbortError') {
+      throw new AiTimeoutError();
+    }
+    throw new AiUpstreamError('AI 服务网络连接失败，请稍后重试');
+  } finally {
+    clearTimeout(timer);
+  }
+
+  const payload = await response.json().catch(() => ({}));
+  return { response, payload };
+};
+
+/**
+ * 按候选思考参数链（关闭思考 → 最低强度 → 不注入）依次尝试请求。
+ *
+ * 仅当上游以 400/422 拒绝「注入的思考参数」时才切换到下一个候选重试；
+ * 鉴权（401/403）、限流（429）、服务端（5xx）、超时与网络错误直接抛出。
+ *
+ * @param {Object} params
+ * @param {(args: { maxTokens: number, thinkingParams: Object }) => Object} params.buildBody
+ * @returns {Promise<Object>} 成功时的响应 payload
+ */
+const requestWithThinkingFallback = async ({
+  providerId,
+  providerType,
+  providerMode,
+  model,
+  url,
+  headers,
+  buildBody,
+}) => {
+  const candidates = buildThinkingParamCandidates({
+    providerId,
+    providerType,
+    providerMode,
+    model,
+  });
+  const maxTokens = resolveMaxTokens({ providerId, providerType, providerMode, model });
+
+  let lastError;
+  for (let index = 0; index < candidates.length; index += 1) {
+    const thinkingParams = candidates[index];
+    const { response, payload } = await sendJsonRequest({
+      url,
+      headers,
+      body: buildBody({ maxTokens, thinkingParams }),
+    });
+
+    if (response.ok) {
+      return payload;
+    }
+
+    const errorMessage = payload?.error?.message || payload?.message || 'AI 服务调用失败';
+    const isLastCandidate = index === candidates.length - 1;
+    if (!isLastCandidate && isThinkingParamRejected(response.status, errorMessage)) {
+      lastError = new AiUpstreamError(errorMessage, mapAiResponseStatus(response.status));
+      continue;
+    }
+    throw new AiUpstreamError(errorMessage, mapAiResponseStatus(response.status));
+  }
+
+  throw lastError || new AiUpstreamError('AI 服务调用失败');
 };
 
 const callOpenAICompatible = async ({
@@ -330,55 +425,31 @@ const callOpenAICompatible = async ({
   providerType,
   providerMode,
 }) => {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
-
-  const thinkingParams = buildThinkingDisableParams({
+  const payload = await requestWithThinkingFallback({
     providerId,
     providerType,
     providerMode,
     model,
+    url: `${baseUrl}/chat/completions`,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    buildBody: ({ maxTokens, thinkingParams }) => ({
+      model,
+      max_tokens: maxTokens,
+      temperature: typeof temperature === 'number' ? temperature : 0.2,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      ...thinkingParams,
+    }),
   });
-  const maxTokens = resolveMaxTokens({ providerId, providerType, providerMode, model });
-
-  let response;
-  try {
-    response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: maxTokens,
-        temperature: typeof temperature === 'number' ? temperature : 0.2,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        ...thinkingParams,
-      }),
-    });
-  } catch (e) {
-    if (e?.name === 'AbortError') {
-      throw new AiTimeoutError();
-    }
-    throw new AiUpstreamError('AI 服务网络连接失败，请稍后重试');
-  } finally {
-    clearTimeout(timer);
-  }
-
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const errorMessage = payload?.error?.message || payload?.message || 'AI 服务调用失败';
-    throw new AiUpstreamError(errorMessage, mapAiResponseStatus(response.status));
-  }
 
   const message = payload?.choices?.[0]?.message;
   const content = normalizeContentText(message?.content);
-  // 正文为空且存在思考内容 / 被截断时，提示用户开启「跳过思考」。
+  // 正文为空且存在思考内容 / 被截断时，抛出截断提示（思考禁用参数已自动注入）。
   assertNotTruncated(
     content,
     payload?.choices?.[0]?.finish_reason === 'length' || Boolean(message?.reasoning_content)
@@ -397,50 +468,26 @@ const callAnthropic = async ({
   providerType,
   providerMode,
 }) => {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
-
-  const thinkingParams = buildThinkingDisableParams({
+  const payload = await requestWithThinkingFallback({
     providerId,
     providerType,
     providerMode,
     model,
+    url: `${baseUrl}/messages`,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    buildBody: ({ maxTokens, thinkingParams }) => ({
+      model,
+      max_tokens: maxTokens,
+      temperature: typeof temperature === 'number' ? temperature : 0.2,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+      ...thinkingParams,
+    }),
   });
-  const maxTokens = resolveMaxTokens({ providerId, providerType, providerMode, model });
-
-  let response;
-  try {
-    response = await fetch(`${baseUrl}/messages`, {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: maxTokens,
-        temperature: typeof temperature === 'number' ? temperature : 0.2,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
-        ...thinkingParams,
-      }),
-    });
-  } catch (e) {
-    if (e?.name === 'AbortError') {
-      throw new AiTimeoutError();
-    }
-    throw new AiUpstreamError('AI 服务网络连接失败，请稍后重试');
-  } finally {
-    clearTimeout(timer);
-  }
-
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const errorMessage = payload?.error?.message || payload?.message || 'AI 服务调用失败';
-    throw new AiUpstreamError(errorMessage, mapAiResponseStatus(response.status));
-  }
 
   const content = normalizeContentText(payload?.content);
   // Anthropic 的截断 stop_reason 为 'max_tokens'，与 OpenAI 的 finish_reason: 'length' 区分。

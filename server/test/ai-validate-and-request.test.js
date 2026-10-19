@@ -465,7 +465,7 @@ describe('requestAiJson 思考模型自动禁用思考（无用户开关）', ()
     expect(body.thinking).toEqual({ type: 'disabled' });
   });
 
-  it('Anthropic Claude Opus 4.6：body 不含 thinking（4.6+ 已废弃，默认不思考）', async () => {
+  it('Anthropic Claude Opus 4.6：body 含 thinking disabled（disabled 仍有效）', async () => {
     mockAnthropicOk();
     await requestAiJson(
       {
@@ -478,6 +478,41 @@ describe('requestAiJson 思考模型自动禁用思考（无用户开关）', ()
       validPrompts
     );
     const body = getLastBody();
+    expect(body.thinking).toEqual({ type: 'disabled' });
+  });
+
+  it('OpenAI gpt-5（非 pro）：body 含 reasoning_effort none', async () => {
+    mockOk();
+    await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'openai',
+        providerType: 'openai-compatible',
+        baseUrl: 'https://api.openai.com/v1',
+        model: 'gpt-5',
+      },
+      validPrompts
+    );
+    const body = getLastBody();
+    expect(body.reasoning_effort).toBe('none');
+    expect(body).not.toHaveProperty('thinking');
+    expect(body).not.toHaveProperty('enable_thinking');
+  });
+
+  it('GLM-5.3 传 disabled 会报错：首轮即使用最低强度 low', async () => {
+    mockOk();
+    await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'zhipu',
+        providerType: 'openai-compatible',
+        baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+        model: 'glm-5.3-flash',
+      },
+      validPrompts
+    );
+    const body = getLastBody();
+    expect(body.reasoning_effort).toBe('low');
     expect(body).not.toHaveProperty('thinking');
   });
 
@@ -495,6 +530,158 @@ describe('requestAiJson 思考模型自动禁用思考（无用户开关）', ()
     );
     const body = getLastBody();
     expect(body).not.toHaveProperty('thinking');
+  });
+});
+
+describe('requestAiJson 思考参数被拒自动降级', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+    dnsLookupMock.mockResolvedValue([{ address: '203.0.113.10' }]);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const okPayload = {
+    choices: [{ message: { content: '{"message":"ok","items":[]}' }, finish_reason: 'stop' }],
+  };
+
+  const getBodyAt = (index) => JSON.parse(fetch.mock.calls[index][1].body);
+
+  it('首选参数被 400 拒绝时降级到次选并成功', async () => {
+    // gpt-5 候选链：[{reasoning_effort:'none'}, {reasoning_effort:'minimal'}, {}]
+    fetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({ error: { message: 'Unsupported value: reasoning_effort none' } }),
+      })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => okPayload });
+
+    const result = await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'openai',
+        providerType: 'openai-compatible',
+        baseUrl: 'https://api.openai.com/v1',
+        model: 'gpt-5',
+      },
+      validPrompts
+    );
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(getBodyAt(0).reasoning_effort).toBe('none');
+    expect(getBodyAt(1).reasoning_effort).toBe('minimal');
+    expect(result).toEqual({ message: 'ok', items: [] });
+  });
+
+  it('首选与次选均被拒时兜底到不注入并成功', async () => {
+    fetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({ error: { message: 'Invalid reasoning_effort' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({ error: { message: 'Invalid reasoning_effort' } }),
+      })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => okPayload });
+
+    const result = await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'openai',
+        providerType: 'openai-compatible',
+        baseUrl: 'https://api.openai.com/v1',
+        model: 'gpt-5',
+      },
+      validPrompts
+    );
+
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(getBodyAt(2)).not.toHaveProperty('reasoning_effort');
+    expect(result).toEqual({ message: 'ok', items: [] });
+  });
+
+  it('鉴权错误（401）不降级、只请求一次', async () => {
+    fetch.mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: { message: 'Invalid API key' } }),
+    });
+
+    await expect(
+      requestAiJson(
+        {
+          ...baseAiConfig,
+          providerId: 'openai',
+          providerType: 'openai-compatible',
+          baseUrl: 'https://api.openai.com/v1',
+          model: 'gpt-5',
+        },
+        validPrompts
+      )
+    ).rejects.toThrow('Invalid API key');
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('400 但错误信息与思考参数无关时也不降级（避免掩盖真实原因）', async () => {
+    fetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: { message: 'messages must not be empty' } }),
+    });
+
+    await expect(
+      requestAiJson(
+        {
+          ...baseAiConfig,
+          providerId: 'openai',
+          providerType: 'openai-compatible',
+          baseUrl: 'https://api.openai.com/v1',
+          model: 'gpt-5',
+        },
+        validPrompts
+      )
+    ).rejects.toThrow('messages must not be empty');
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('Anthropic 首选 thinking disabled 被拒后降级到 adaptive', async () => {
+    fetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({ error: { message: 'thinking.type disabled is not supported' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          content: [{ type: 'text', text: '{"message":"ok","items":[]}' }],
+          stop_reason: 'end_turn',
+        }),
+      });
+
+    const result = await requestAiJson(
+      {
+        ...baseAiConfig,
+        providerId: 'anthropic',
+        providerType: 'anthropic',
+        baseUrl: 'https://api.anthropic.com/v1',
+        model: 'claude-opus-4-6',
+      },
+      validPrompts
+    );
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(getBodyAt(0).thinking).toEqual({ type: 'disabled' });
+    expect(getBodyAt(1).thinking).toEqual({ type: 'adaptive' });
+    expect(getBodyAt(1).output_config).toEqual({ effort: 'low' });
+    expect(result).toEqual({ message: 'ok', items: [] });
   });
 });
 
@@ -640,7 +827,7 @@ describe('requestAiJson 输出截断错误提示', () => {
         },
         validPrompts
       )
-    ).rejects.toThrow('跳过思考');
+    ).rejects.toThrow('输出被截断');
   });
 
   it('OpenAI compatible: 正文为空但仅有思考内容（无 finish_reason=length）同样提示', async () => {
@@ -662,7 +849,7 @@ describe('requestAiJson 输出截断错误提示', () => {
         },
         validPrompts
       )
-    ).rejects.toThrow('跳过思考');
+    ).rejects.toThrow('输出被截断');
   });
 
   it('OpenAI compatible: 正文非空且带思考内容时不误报截断', async () => {
@@ -714,6 +901,6 @@ describe('requestAiJson 输出截断错误提示', () => {
         },
         validPrompts
       )
-    ).rejects.toThrow('跳过思考');
+    ).rejects.toThrow('输出被截断');
   });
 });

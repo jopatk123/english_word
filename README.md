@@ -297,16 +297,34 @@ curl -H "Authorization: Bearer ewt_your_token" \
 
 ### 思考模型自动禁用思考
 
-翻译与单词分析属于简单任务，不需要推理链。部分模型（DeepSeek-Reasoner/R1/V4 系列（含 V4-Flash/V4-Pro）、Qwen3/QwQ、OpenAI o1/o3/o4/gpt-5、Claude 3.7+/4/4.5、GLM-Z1/4.5/4.6、Kimi-K1/K2、Doubao-Seed 等）会产生隐藏的 reasoning tokens，导致响应慢、token 浪费。后端识别到思考模型时会自动按厂商注入禁用参数，无需用户配置：
+翻译与单词分析属于简单任务，不需要推理链。部分模型（DeepSeek-Reasoner/R1/V4 系列（含 V4-Flash/V4-Pro）、deepseek-flash 新命名、Qwen3/QwQ、OpenAI o1/o3/o4/gpt-5、Claude 3.7+/4 系列、GLM-Z1/4.5/4.6/4.7/5、Kimi-K1/K2/K3、Doubao-Seed、Groq gpt-oss 等）会产生隐藏的 reasoning tokens，导致响应慢、token 浪费。
 
-| 厂商 / 模型                                      | 禁用参数                         |
-| ------------------------------------------------ | -------------------------------- |
-| DeepSeek / GLM / Kimi / 豆包 / Claude 3.7+/4/4.5 | `thinking: { type: "disabled" }` |
-| DashScope Qwen3 系列                             | `enable_thinking: false`         |
-| OpenAI o1/o3/o4 / gpt-5                          | `reasoning_effort: "low"`        |
-| Claude 4.6+                                      | 不注入（已废弃，传了会 400）     |
+后端识别到思考模型后会**按候选参数链依次尝试**注入，无需用户配置：
 
-非思考模型不受影响。此外思考模型的 reasoning tokens 计入 `max_tokens` 输出额度，后端对思考模型自动放宽输出上限（1800 → 8192），兜底应对个别不支持禁用思考的模型。
+1. **首选「关闭思考」**：如 `thinking: { type: "disabled" }`、`enable_thinking: false`、OpenAI `reasoning_effort: "none"`；
+2. **次选「最低思考强度」**：如 DeepSeek `reasoning_effort: "low"`、Claude 4.6+ `thinking: { type: "adaptive" } + output_config: { effort: "low" }`、OpenAI o 系列 `reasoning_effort: "low"`、GPT-5 pro `reasoning_effort: "medium"`、GLM `reasoning_effort: "minimal"`；
+3. **兜底「不注入」**：对少数无法关闭思考的模型（如 GLM-5.3、GLM-4.7、Kimi-K2.7-Code、QwQ / 纯思考 Qwen3、Claude-Mythos）直接不注入。
+
+若首选参数被上游以 4xx 拒绝（厂商字段改名 / 模型不支持该参数），后端会**自动降级**到下一个候选参数重试；鉴权（401/403）、限流（429）、网络与服务端错误不做重试，避免用兜底文案掩盖真实原因。各厂商当前规则：
+
+- **DeepSeek**：首选 `thinking: { type: "disabled" }`，次选 `reasoning_effort: "low"`。
+- **智谱 GLM（4.6/5.2 及以下）**：首选 `thinking: { type: "disabled" }`，次选 `reasoning_effort: "minimal"`。
+- **智谱 GLM-5.3**：不支持 `disabled`（会报错），次选 `reasoning_effort: "low"`。
+- **智谱 GLM-4.7**：强制思考且不支持 `reasoning_effort`，不注入。
+- **Moonshot Kimi-K2.5/K2.6**：首选 `thinking: { type: "disabled" }`，无次选。
+- **Moonshot Kimi-K3**：已无 `thinking` 字段，只用顶层 `reasoning_effort: "low"`。
+- **Moonshot Kimi-K2.7-Code**：恒思考，无法降级，不注入。
+- **DashScope Qwen3（混合）**：首选 `enable_thinking: false`，无次选。
+- **DashScope QwQ / 纯思考 Qwen3**：不可关闭，不注入。
+- **OpenAI o1/o3/o4**：不接受 `none`（会 400），次选 `reasoning_effort: "low"`。
+- **OpenAI gpt-5 非 pro**：首选 `reasoning_effort: "none"`，次选 `"minimal"`。
+- **OpenAI gpt-5.x-pro**：仅接受 medium/high/xhigh，次选 `reasoning_effort: "medium"`。
+- **Claude 3.7+/4 系列（含 4.6+）**：首选 `thinking: { type: "disabled" }`（仍有效），次选 `thinking: { type: "adaptive" } + output_config: { effort: "low" }`。
+- **Claude-Mythos**：不支持 `disabled`，默认即不思考，不注入。
+- **Doubao-Seed**：首选 `thinking: { type: "disabled" }`，无次选。
+- **Groq gpt-oss**：首选 `reasoning_effort: "low" + reasoning_format: "hidden"`，无次选。
+
+自定义 / 未知厂商若模型名可归属到上述厂商族（如自建代理转发 `deepseek-reasoner`），会复用对应规则。非思考模型不做任何注入。此外思考模型的 reasoning tokens 计入 `max_tokens` 输出额度，后端对思考模型自动放宽输出上限（1800 → 8192），兜底应对个别不支持关闭思考的模型。
 
 ## 项目结构
 
