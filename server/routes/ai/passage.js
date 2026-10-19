@@ -11,7 +11,7 @@ import { resolveUserAiConfig } from '../../services/user-ai-settings.js';
 import { PASSAGE_LEVELS } from '../../services/passage-store.js';
 import {
   buildGeneratedPreview,
-  pickLearningWords,
+  pickTargetWords,
   translateMissingSentences,
 } from '../../services/passage-ai.js';
 
@@ -34,7 +34,7 @@ router.post('/generate-passage', async (req, res) => {
     const topic = rawTopic.trim();
     const validatedConfig = await resolveUserAiConfig(req.userId, req.body?.config || {});
     const targetWords =
-      req.body?.useLearningWords === true ? await pickLearningWords(req.userId) : [];
+      req.body?.useLearningWords === true ? await pickTargetWords(req.userId) : [];
     const debugInfo = createDebugInfo(req, validatedConfig, startedAt);
     logAiInfo('generate-passage.start', debugInfo, {
       level,

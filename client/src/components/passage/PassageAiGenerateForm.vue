@@ -36,7 +36,7 @@
         </el-form-item>
       </div>
       <el-checkbox v-model="options.useLearningWords">
-        嵌入我正在学的单词（随机挑选最多 8 个）
+        嵌入已掌握单词（随机挑选最多 8 个，不足时补充其他单词）
       </el-checkbox>
       <div class="passage-form-actions">
         <el-button type="primary" :loading="generating" :disabled="!aiReady" @click="generate">

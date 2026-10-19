@@ -125,7 +125,7 @@ describe('POST /ai/generate-passage', () => {
     ]);
   });
 
-  it('勾选在学单词时只挑未掌握、未暂停的词，并标出实际用到的词', async () => {
+  it('勾选目标单词时优先挑已掌握的词，不足再用未掌握的词补齐', async () => {
     const make = async (name, status, paused = false) => {
       const word = await Word.create({ name, meaning: 'x', userId });
       await WordReview.create({ userId, wordId: word.id, status, dueDate: '2099-01-01', paused });
@@ -141,9 +141,70 @@ describe('POST /ai/generate-passage', () => {
     });
     const res = await generate({ useLearningWords: true });
     const { targetWords, usedWords } = res.body.data.passage;
-    expect([...targetWords].sort()).toEqual(['harvest', 'lantern']);
+    // 已掌握的 glacier 优先，剩余名额从未掌握、未暂停的 harvest/lantern 里补齐
+    expect([...targetWords].sort()).toEqual(['glacier', 'harvest', 'lantern']);
     expect(usedWords).toEqual(['harvest']);
+    expect(requestAiJson.mock.calls[0][1].userPrompt).toContain('glacier');
     expect(requestAiJson.mock.calls[0][1].userPrompt).toContain('harvest');
+  });
+
+  it('已掌握单词足够时只挑已掌握的词', async () => {
+    const fresh = await User.create({ username: `air_${suf()}`, password: 'x' });
+    const freshApp = buildApp(fresh.id);
+    const addWord = async (name, status) => {
+      const word = await Word.create({ name, meaning: 'x', userId: fresh.id });
+      await WordReview.create({ userId: fresh.id, wordId: word.id, status, dueDate: '2099-01-01' });
+    };
+    for (let i = 0; i < 10; i += 1) await addWord(`known${i}`, 'known');
+    await addWord('learningx', 'learning');
+
+    requestAiJson.mockResolvedValue({
+      title: 'T',
+      paragraphs: [[{ en: 'Hello world.', zh: '你好世界。' }]],
+    });
+    const res = await request(freshApp).post('/ai/generate-passage').send({
+      config: baseAiConfig,
+      topic: 't',
+      level: 'A2',
+      length: 'short',
+      useLearningWords: true,
+    });
+    const { targetWords } = res.body.data.passage;
+    expect(targetWords).toHaveLength(8);
+    expect(targetWords.every((word) => word.startsWith('known'))).toBe(true);
+  });
+
+  it('已掌握为空时退回未掌握的单词，两者都没有则不限定词汇', async () => {
+    const fresh = await User.create({ username: `ais_${suf()}`, password: 'x' });
+    const freshApp = buildApp(fresh.id);
+    requestAiJson.mockResolvedValue({
+      title: 'T',
+      paragraphs: [[{ en: 'Hello world.', zh: '你好世界。' }]],
+    });
+    const ask = () =>
+      request(freshApp).post('/ai/generate-passage').send({
+        config: baseAiConfig,
+        topic: 't',
+        level: 'A2',
+        length: 'short',
+        useLearningWords: true,
+      });
+
+    // 词库为空：目标词为空数组，Prompt 走「不需要指定词汇」分支
+    const empty = await ask();
+    expect(empty.body.data.passage.targetWords).toEqual([]);
+    expect(requestAiJson.mock.calls.at(-1)[1].userPrompt).toContain('不需要指定词汇');
+
+    // 只有未掌握的词：退回未掌握的词
+    const word = await Word.create({ name: 'orbit', meaning: 'x', userId: fresh.id });
+    await WordReview.create({
+      userId: fresh.id,
+      wordId: word.id,
+      status: 'learning',
+      dueDate: '2099-01-01',
+    });
+    const res = await ask();
+    expect(res.body.data.passage.targetWords).toEqual(['orbit']);
   });
 
   it.each([

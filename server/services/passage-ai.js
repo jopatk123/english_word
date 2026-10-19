@@ -16,15 +16,32 @@ import {
 export const TARGET_WORD_LIMIT = 8;
 const TRANSLATE_CHUNK_SIZE = 40;
 
-/** 从未掌握、未暂停的单词里随机挑选，用作 AI 生成短文的目标词。 */
-export async function pickLearningWords(userId, limit = TARGET_WORD_LIMIT) {
+/** 按条件随机取若干单词名（限当前用户）。 */
+const pickWords = async (userId, where, limit) => {
   const reviews = await WordReview.findAll({
-    where: { userId, status: { [Op.ne]: REVIEW_STATUS.KNOWN }, paused: false },
+    where: { userId, ...where },
     include: [{ model: Word, as: 'word', attributes: ['name'], where: { userId } }],
     order: sequelize.random(),
     limit,
   });
   return reviews.map((review) => review.word.name);
+};
+
+/**
+ * 挑选 AI 生成短文的目标词：
+ *   1. 优先取已掌握的单词；
+ *   2. 已掌握的数量不足时，用未掌握、未暂停的单词补齐；
+ *   3. 两类都取不到时返回空数组，由调用方按「不限定词汇」处理。
+ */
+export async function pickTargetWords(userId, limit = TARGET_WORD_LIMIT) {
+  const known = await pickWords(userId, { status: REVIEW_STATUS.KNOWN }, limit);
+  if (known.length >= limit) return known;
+  const learning = await pickWords(
+    userId,
+    { status: { [Op.ne]: REVIEW_STATUS.KNOWN }, paused: false },
+    limit - known.length
+  );
+  return [...known, ...learning];
 }
 
 const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
