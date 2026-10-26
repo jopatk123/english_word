@@ -33,8 +33,8 @@
           <button
             type="button"
             class="passage-sentence-tool"
-            aria-label="从这句开始朗读"
-            @click="$emit('play-from', sentence.orderIndex)"
+            aria-label="只读这一句"
+            @click="$emit('play-sentence', sentence.orderIndex)"
           >
             ▶
           </button>
@@ -71,7 +71,7 @@
     wordAddedHandler: { type: Function, default: null },
   });
 
-  defineEmits(['toggle-translation', 'play-from', 'edit-translation']);
+  defineEmits(['toggle-translation', 'play-sentence', 'edit-translation']);
 
   const rootRef = ref(null);
   const paragraphs = computed(() => groupSentencesByParagraph(props.sentences));

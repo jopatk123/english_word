@@ -47,7 +47,7 @@
 
       <p class="passage-reader-legend">
         点任意单词查释义；<span class="is-vocab-learning">黄色</span>
-        是词库里还在学的词。每句末尾的「译」显示译文，「▶」从这句开始朗读。
+        是词库里还在学的词。每句末尾的「译」显示译文，「▶」只读这一句。
       </p>
 
       <PassageText
@@ -59,7 +59,7 @@
         :word-class="vocab.wordClass"
         :word-added-handler="onWordAdded"
         @toggle-translation="toggleTranslation"
-        @play-from="playFrom"
+        @play-sentence="playSentence"
         @edit-translation="editTranslation"
       />
 
@@ -156,9 +156,9 @@
     playback.play(0);
   };
 
-  const playFrom = (index) => {
+  const playSentence = (index) => {
     listening.value = true;
-    playback.play(index);
+    playback.playSentence(index);
   };
 
   const toggleAllTranslations = () => {
