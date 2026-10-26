@@ -70,6 +70,54 @@ describe('usePassagePlayback', () => {
     playback.stop();
   });
 
+  it('句末按钮只朗读被点的那一句，读完即停', async () => {
+    speakAsync.mockResolvedValue(true);
+    const onFinished = vi.fn();
+    const playback = usePassagePlayback(sentences, { onFinished });
+    playback.toggleLoop();
+    playback.playSentence(0);
+
+    await vi.advanceTimersByTimeAsync(800);
+
+    expect(speakAsync.mock.calls.map((call) => call[0])).toEqual(['One.']);
+    expect(playback.playing.value).toBe(false);
+    expect(playback.currentIndex.value).toBe(0);
+    expect(onFinished).not.toHaveBeenCalled();
+
+    playback.toggleLoop();
+    playback.play();
+    await vi.advanceTimersByTimeAsync(800);
+    expect(speakAsync.mock.calls.map((call) => call[0])).toEqual(['One.', 'One.', 'Two.']);
+    expect(onFinished).toHaveBeenCalledTimes(1);
+    playback.stop();
+  });
+
+  it('连续朗读中点某一句，只把那一句读完', async () => {
+    const pending = [];
+    speakAsync.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          pending.push(resolve);
+        })
+    );
+    const playback = usePassagePlayback(sentences);
+    playback.play(0);
+    playback.playSentence(1);
+
+    expect(speakAsync.mock.calls.map((call) => call[0])).toEqual(['One.', 'Two.']);
+    expect(playback.currentIndex.value).toBe(1);
+
+    pending[0](true);
+    await Promise.resolve();
+    pending[1](true);
+    await vi.advanceTimersByTimeAsync(800);
+
+    expect(speakAsync.mock.calls.map((call) => call[0])).toEqual(['One.', 'Two.']);
+    expect(playback.playing.value).toBe(false);
+    expect(playback.currentIndex.value).toBe(1);
+    playback.stop();
+  });
+
   it('读完最后一句后停止并通知', async () => {
     speakAsync.mockResolvedValue(true);
     const onFinished = vi.fn();

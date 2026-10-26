@@ -13,6 +13,7 @@ const loadRate = () => {
 
 /**
  * 逐句朗读状态机。
+ * play 从指定句起连续朗读到结尾；playSentence 只朗读那一句，结束后停住。
  * 暂停时直接取消当前句、记住位置，继续时从这句开头重读：
  * 部分移动端浏览器不支持 speechSynthesis.pause，这样行为在各端一致。
  */
@@ -34,13 +35,15 @@ export function usePassagePlayback(sentencesSource, options = {}) {
       setTimeout(() => resolve(id === runId), ms);
     });
 
+  const clampIndex = (index, length) => Math.min(Math.max(index, 0), length - 1);
+
   const run = async (startIndex) => {
     const id = ++runId;
     const list = sentences.value;
     if (!list.length) return;
 
     playing.value = true;
-    let index = Math.min(Math.max(startIndex, 0), list.length - 1);
+    let index = clampIndex(startIndex, list.length);
     while (id === runId && index < list.length) {
       currentIndex.value = index;
       const spoken = await speakAsync(list[index].text, 'en-US', { rate: rate.value });
@@ -69,6 +72,24 @@ export function usePassagePlayback(sentencesSource, options = {}) {
 
   const play = (index = currentIndex.value >= 0 ? currentIndex.value : 0) => {
     void run(index);
+  };
+
+  // 句末 ▶：只读这一句。不循环、不前进，也不当作整篇听完。
+  const playSentence = (index) => {
+    const list = sentences.value;
+    if (!list.length) return;
+
+    const id = ++runId;
+
+    const target = clampIndex(index, list.length);
+    playing.value = true;
+    currentIndex.value = target;
+
+    void (async () => {
+      await speakAsync(list[target].text, 'en-US', { rate: rate.value });
+      if (id !== runId) return;
+      playing.value = false;
+    })();
   };
 
   const pause = () => halt();
@@ -107,6 +128,7 @@ export function usePassagePlayback(sentencesSource, options = {}) {
     loop,
     rate,
     play,
+    playSentence,
     pause,
     toggle,
     stop,
