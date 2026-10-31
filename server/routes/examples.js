@@ -1,13 +1,23 @@
 import { Router } from 'express';
+import { Op } from 'sequelize';
 import { Example, Word } from '../models/index.js';
 import { success, successList, error, handleRouteError } from '../utils/response.js';
 import { isString, isOptionalString } from '../utils/validation.js';
 
 const router = Router();
+const MAX_BULK_EXAMPLES = 100;
 
 // 辅助函数：检查单词是否属于当前用户
 const isWordOwnedByUser = async (wordId, userId) => {
   return Word.findOne({ where: { id: wordId, userId } });
+};
+
+const normalizeExampleItem = (item) => {
+  const wordId = Number.parseInt(item?.wordId, 10);
+  const sentence = isString(item?.sentence) ? item.sentence.trim() : item?.sentence;
+  const translation = isString(item?.translation) ? item.translation.trim() : item?.translation;
+  const remark = item?.remark;
+  return { wordId, sentence, translation, remark };
 };
 
 // 获取指定单词下的例句列表（支持 limit/offset 分页）
@@ -94,6 +104,105 @@ router.post('/', async (req, res) => {
       remark: remark?.trim(),
     });
     success(res, example, '添加成功');
+  } catch (e) {
+    handleRouteError(res, e);
+  }
+});
+
+// 批量添加例句：校验归属、跳过重复，不因「词条未出现在句中」失败
+router.post('/bulk', async (req, res) => {
+  try {
+    const { items } = req.body;
+    if (!Array.isArray(items)) return error(res, 'items 必须为数组', 400);
+    if (items.length > MAX_BULK_EXAMPLES) {
+      return error(res, `一次最多提交 ${MAX_BULK_EXAMPLES} 条例句`, 400);
+    }
+
+    const created = [];
+    const skipped = [];
+    const errors = [];
+    if (!items.length) {
+      return success(res, { created, skipped, errors }, '未提交例句');
+    }
+
+    const parsed = items.map((item, index) => ({ index, ...normalizeExampleItem(item) }));
+    const wordIds = [
+      ...new Set(parsed.map((row) => row.wordId).filter((id) => Number.isInteger(id))),
+    ];
+    const ownedWords = wordIds.length
+      ? await Word.findAll({
+          where: { id: wordIds, userId: req.userId },
+          attributes: ['id'],
+        })
+      : [];
+    const ownedIds = new Set(ownedWords.map((word) => word.id));
+
+    const existing = wordIds.length
+      ? await Example.findAll({
+          where: { wordId: { [Op.in]: wordIds } },
+          attributes: ['wordId', 'sentence'],
+        })
+      : [];
+    const existingKeys = new Set(existing.map((row) => `${row.wordId}\n${row.sentence}`));
+    const pendingKeys = new Set();
+    const toCreate = [];
+
+    for (const row of parsed) {
+      if (!Number.isInteger(row.wordId) || !row.sentence || !row.translation) {
+        errors.push({
+          index: row.index,
+          wordId: row.wordId || null,
+          reason: '单词ID、例句原文和翻译为必填项',
+        });
+        continue;
+      }
+      if (!isString(items[row.index]?.sentence) || !isString(items[row.index]?.translation)) {
+        errors.push({ index: row.index, wordId: row.wordId, reason: '例句原文和翻译必须为字符串' });
+        continue;
+      }
+      if (!isOptionalString(row.remark)) {
+        errors.push({ index: row.index, wordId: row.wordId, reason: '备注必须为字符串' });
+        continue;
+      }
+      if (!ownedIds.has(row.wordId)) {
+        errors.push({ index: row.index, wordId: row.wordId, reason: '关联的单词不存在' });
+        continue;
+      }
+      const key = `${row.wordId}\n${row.sentence}`;
+      if (existingKeys.has(key) || pendingKeys.has(key)) {
+        skipped.push({
+          index: row.index,
+          wordId: row.wordId,
+          sentence: row.sentence,
+          reason: 'duplicate',
+        });
+        continue;
+      }
+      pendingKeys.add(key);
+      toCreate.push({
+        wordId: row.wordId,
+        sentence: row.sentence,
+        translation: row.translation,
+        remark: isString(row.remark) ? row.remark.trim() : undefined,
+        _index: row.index,
+      });
+    }
+
+    if (toCreate.length) {
+      const rows = await Example.bulkCreate(
+        toCreate.map(({ wordId, sentence, translation, remark }) => ({
+          wordId,
+          sentence,
+          translation,
+          remark,
+        }))
+      );
+      rows.forEach((example, i) => {
+        created.push({ index: toCreate[i]._index, example });
+      });
+    }
+
+    success(res, { created, skipped, errors }, '批量处理完成');
   } catch (e) {
     handleRouteError(res, e);
   }

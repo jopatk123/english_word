@@ -13,6 +13,7 @@ import apiTokensRouter from './routes/api-tokens.js';
 import rootsRouter from './routes/roots.js';
 import wordsRouter from './routes/words.js';
 import examplesRouter from './routes/examples.js';
+import vocabularyRouter from './routes/vocabulary.js';
 import aiRouter from './routes/ai.js';
 import reviewRouter from './routes/review.js';
 import passagesRouter from './routes/passages.js';
@@ -93,6 +94,7 @@ export function createApp(options = {}) {
   app.use('/api/roots', authMiddleware, rootsRouter);
   app.use('/api/words', authMiddleware, wordsRouter);
   app.use('/api/examples', authMiddleware, examplesRouter);
+  app.use('/api/vocabulary', authMiddleware, vocabularyRouter);
   app.use('/api/ai', authMiddleware, aiRateLimiter, aiRouter);
   app.use('/api/review', authMiddleware, reviewRouter);
   app.use('/api/passages', authMiddleware, passagesRouter);
