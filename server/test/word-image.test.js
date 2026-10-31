@@ -138,4 +138,33 @@ describe('单词记忆图片', () => {
     expect(del.status).toBe(200);
     await expect(fs.access(filePath)).rejects.toThrow();
   });
+
+  it('删除词根导致孤立单词被删除时，同步清理其记忆图片文件', async () => {
+    const root = await Root.create({
+      name: `imgroot_del_${suf()}`,
+      meaning: '待删',
+      userId: user.id,
+    });
+    const orphanWord = await Word.create({
+      name: `imgdel_${suf()}`,
+      meaning: '待删',
+      userId: user.id,
+    });
+    await WordRoot.create({ wordId: orphanWord.id, rootId: root.id });
+
+    const jpeg = await makeJpeg(800, 800);
+    await request(app)
+      .post(`/api/words/${orphanWord.id}/image`)
+      .set(auth(jwtToken))
+      .attach('image', jpeg, { filename: 'memory.jpg', contentType: 'image/jpeg' });
+
+    const filePath = getWordImagePath(user.id, orphanWord.id);
+    await fs.access(filePath);
+
+    const del = await request(app).delete(`/api/roots/${root.id}`).set(auth(jwtToken));
+    expect(del.status).toBe(200);
+
+    expect(await Word.findByPk(orphanWord.id)).toBeNull();
+    await expect(fs.access(filePath)).rejects.toThrow();
+  });
 });

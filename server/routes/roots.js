@@ -12,6 +12,8 @@ import { success, error, handleRouteError } from '../utils/response.js';
 import { isString, isOptionalString } from '../utils/validation.js';
 import { ensureDefaultRoot } from '../utils/defaultRoot.js';
 import { buildKeywordSearch } from '../utils/search.js';
+import { removeWordImageFile } from '../services/word-image-store.js';
+import logger from '../utils/logger.js';
 
 const router = Router();
 
@@ -164,7 +166,7 @@ router.put('/:id', async (req, res) => {
 // 删除词根（清理关联，删除孤立单词）
 router.delete('/:id', async (req, res) => {
   try {
-    await sequelize.transaction(async (transaction) => {
+    const orphanedWordIds = await sequelize.transaction(async (transaction) => {
       const root = await Root.findByPk(req.params.id, { transaction });
       if (!root || root.userId !== req.userId) {
         const notFoundError = new Error('词根不存在');
@@ -189,6 +191,7 @@ router.delete('/:id', async (req, res) => {
       await WordRoot.destroy({ where: { rootId: root.id }, transaction });
 
       // 找出现在没有任何词根关联的孤立单词并删除
+      let orphanedIds = [];
       if (wordIds.length) {
         const remainingAssocs = await WordRoot.findAll({
           where: { wordId: wordIds },
@@ -196,7 +199,7 @@ router.delete('/:id', async (req, res) => {
           transaction,
         });
         const stillLinkedIds = new Set(remainingAssocs.map((wr) => wr.wordId));
-        const orphanedIds = wordIds.filter((id) => !stillLinkedIds.has(id));
+        orphanedIds = wordIds.filter((id) => !stillLinkedIds.has(id));
 
         if (orphanedIds.length) {
           await Example.destroy({ where: { wordId: orphanedIds }, transaction });
@@ -207,7 +210,21 @@ router.delete('/:id', async (req, res) => {
       }
 
       await root.destroy({ transaction });
+      return orphanedIds;
     });
+
+    // 数据库事务提交后再清理图片文件：文件删除不可回滚，不能放进事务里。
+    await Promise.all(
+      orphanedWordIds.map((wordId) =>
+        removeWordImageFile(req.userId, wordId).catch((cleanupErr) => {
+          logger.warn('word-image-cleanup-failed', {
+            userId: req.userId,
+            wordId,
+            message: cleanupErr.message,
+          });
+        })
+      )
+    );
 
     success(res, null, '删除成功');
   } catch (e) {
