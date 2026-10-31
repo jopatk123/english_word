@@ -265,6 +265,36 @@ AI 配置页（`/ai/settings`）支持多厂商切换、模型选择与温度调
 curl -H "Authorization: Bearer ewt_your_token" http://localhost:3010/api/roots
 ```
 
+### Agent 词库巡检（轻量接口）
+
+日常核对例句数量、仅挂「未分类」的单词、孤儿词根时，不要拉 `GET /api/review/data/export`。下列接口均为用户 JWT / `ewt_` Token 可访问的普通业务 API（不是 `/api/admin`），且不改动复习队列。
+
+```bash
+# 例句偏少、仅未分类、有无记忆图、复习状态
+curl -H "Authorization: Bearer ewt_your_token" \
+  "http://localhost:3010/api/words?maxExamples=1&onlyDefaultRoot=1&hasImage=0&scope=learning&limit=50"
+
+# 单词详情按需带少量例句正文（默认不返回 examples）
+curl -H "Authorization: Bearer ewt_your_token" \
+  "http://localhost:3010/api/words/123?includeExamples=1&exampleLimit=5"
+
+# 列出没有单词的词根（默认「未分类」可用 excludeDefault=1 排除）
+curl -H "Authorization: Bearer ewt_your_token" \
+  "http://localhost:3010/api/roots?orphan=1&excludeDefault=1"
+
+# 一次拿到计数 + 每类最多 20 条 id/name 样本，不含例句正文
+curl -H "Authorization: Bearer ewt_your_token" \
+  "http://localhost:3010/api/vocabulary/audit?minExamples=2&sampleLimit=20"
+
+# 批量补例句：重复句跳过，词条未出现在句中只会出现在审计报告里，不会 400
+curl -H "Authorization: Bearer ewt_your_token" \
+  -H "Content-Type: application/json" \
+  -d '{"items":[{"wordId":123,"sentence":"The cat sat.","translation":"猫坐下了。"}]}' \
+  http://localhost:3010/api/examples/bulk
+```
+
+`GET /api/words` 额外支持 `minExamples`、`maxExamples`、`onlyDefaultRoot`、`hasImage`、`status`（`new|learning|review|known`）、`scope=learning`（非已掌握）。列表项在原有 `exampleCount` 之外会带 `status`。`GET /api/roots` 额外支持 `orphan` / `maxWordCount`、`excludeDefault`。`GET /api/vocabulary/audit` 的 `lemmaCheck=0` 可跳过「例句是否包含词条」软检查。`POST /api/examples/bulk` 一次最多 100 条，响应为 `{ created, skipped, errors }`。
+
 单词记忆图片接口同样接受登录 JWT 或 API Token：
 
 ```bash

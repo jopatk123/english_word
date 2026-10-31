@@ -76,6 +76,33 @@ describe('POST /examples/', () => {
   });
 });
 
+describe('POST /examples/bulk', () => {
+  it('批量创建、跳过重复并收集错误', async () => {
+    const sentence = `Bulk unique ${suf()}`;
+    const res = await request(app)
+      .post('/examples/bulk')
+      .send({
+        items: [
+          { wordId, sentence, translation: '批量一' },
+          { wordId, sentence, translation: '重复应跳过' },
+          { wordId: 99999999, sentence: 'No owner.', translation: '无主' },
+          { wordId, sentence: 'Missing translation' },
+        ],
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.data.created).toHaveLength(1);
+    expect(res.body.data.created[0].example.sentence).toBe(sentence);
+    expect(res.body.data.skipped).toHaveLength(1);
+    expect(res.body.data.skipped[0].reason).toBe('duplicate');
+    expect(res.body.data.errors.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('items 非数组返回 400', async () => {
+    const res = await request(app).post('/examples/bulk').send({ items: 'nope' });
+    expect(res.status).toBe(400);
+  });
+});
+
 // ─── GET /examples/ ───────────────────────────────────────────
 describe('GET /examples/', () => {
   beforeAll(async () => {

@@ -9,7 +9,16 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { initDB, User, Root, Word, WordRoot, WordReview, ReviewHistory } from '../models/index.js';
+import {
+  initDB,
+  User,
+  Root,
+  Word,
+  WordRoot,
+  WordReview,
+  ReviewHistory,
+  Example,
+} from '../models/index.js';
 import wordsRouter from '../routes/words.js';
 import { ensureDefaultRoot } from '../utils/defaultRoot.js';
 
@@ -172,6 +181,97 @@ describe('GET /words/', () => {
     expect(typeof res.body.total).toBe('number');
     expect(res.body.total).toBeGreaterThanOrEqual(res.body.data.length);
   });
+
+  it('maxExamples 只返回例句数不超过上限的单词', async () => {
+    const fewName = `fewex_${suf()}`;
+    const manyName = `manyex_${suf()}`;
+    const few = await request(app)
+      .post('/words/')
+      .send({ name: fewName, meaning: '少例句', rootIds: [rootId] });
+    const many = await request(app)
+      .post('/words/')
+      .send({ name: manyName, meaning: '多例句', rootIds: [rootId] });
+    await Example.create({
+      wordId: many.body.data.id,
+      sentence: `The ${manyName} is used twice.`,
+      translation: '一',
+    });
+    await Example.create({
+      wordId: many.body.data.id,
+      sentence: `Another ${manyName} sentence.`,
+      translation: '二',
+    });
+
+    const res = await request(app).get(`/words/?keyword=fewex_&maxExamples=0`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.some((w) => w.id === few.body.data.id)).toBe(true);
+    expect(res.body.data.some((w) => w.id === many.body.data.id)).toBe(false);
+    expect(res.body.data.every((w) => w.exampleCount <= 0)).toBe(true);
+  });
+
+  it('minExamples 只返回达到下限的单词', async () => {
+    const name = `minex_${suf()}`;
+    const created = await request(app)
+      .post('/words/')
+      .send({ name, meaning: '够例句', rootIds: [rootId] });
+    await Example.create({
+      wordId: created.body.data.id,
+      sentence: `Use ${name} once.`,
+      translation: '用一次',
+    });
+    const hit = await request(app).get(`/words/?keyword=${name}&minExamples=1`);
+    const miss = await request(app).get(`/words/?keyword=${name}&minExamples=2`);
+    expect(hit.body.data.some((w) => w.id === created.body.data.id)).toBe(true);
+    expect(miss.body.data.some((w) => w.id === created.body.data.id)).toBe(false);
+  });
+
+  it('onlyDefaultRoot 只返回仅挂「未分类」的单词', async () => {
+    const name = `onlydef_${suf()}`;
+    const created = await request(app).post('/words/').send({ name, meaning: '无明确词根' });
+    const res = await request(app).get(`/words/?keyword=${name}&onlyDefaultRoot=1`);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].id).toBe(created.body.data.id);
+    expect(res.body.data[0].roots).toHaveLength(1);
+    expect(res.body.data[0].roots[0].name).toBe('未分类');
+
+    const classified = await request(app).get(`/words/?keyword=word&onlyDefaultRoot=1`);
+    expect(classified.body.data.every((w) => w.roots.length === 1)).toBe(true);
+  });
+
+  it('hasImage=0/1 按是否有记忆图过滤', async () => {
+    const noImg = await createWord();
+    const withImg = await createWord();
+    await Word.update({ imageExt: 'jpg' }, { where: { id: withImg.body.data.id } });
+
+    const none = await request(app).get(
+      `/words/?keyword=${encodeURIComponent(noImg.body.data.name)}&hasImage=0`
+    );
+    const some = await request(app).get(
+      `/words/?keyword=${encodeURIComponent(withImg.body.data.name)}&hasImage=1`
+    );
+    expect(none.body.data.some((w) => w.id === noImg.body.data.id)).toBe(true);
+    expect(some.body.data.some((w) => w.id === withImg.body.data.id)).toBe(true);
+    expect(some.body.data.every((w) => w.hasImage === true)).toBe(true);
+  });
+
+  it('status 与 scope=learning 可过滤复习状态', async () => {
+    const knownWord = await createWord();
+    await WordReview.update(
+      { status: 'known' },
+      { where: { userId, wordId: knownWord.body.data.id } }
+    );
+    const knownRes = await request(app).get(
+      `/words/?keyword=${encodeURIComponent(knownWord.body.data.name)}&status=known`
+    );
+    expect(knownRes.body.data.some((w) => w.id === knownWord.body.data.id)).toBe(true);
+    expect(knownRes.body.data[0].status).toBe('known');
+
+    const learningRes = await request(app).get(
+      `/words/?keyword=${encodeURIComponent(knownWord.body.data.name)}&scope=learning`
+    );
+    expect(learningRes.body.data.some((w) => w.id === knownWord.body.data.id)).toBe(false);
+  });
 });
 
 // ─── GET /words/:id ───────────────────────────────────────
@@ -190,6 +290,22 @@ describe('GET /words/:id', () => {
     expect(Array.isArray(res.body.data.roots)).toBe(true);
     expect(res.body.data.hasImage).toBe(false);
     expect(res.body.data).not.toHaveProperty('imageExt');
+    expect(res.body.data).not.toHaveProperty('examples');
+    expect(res.body.data.status).toBe('new');
+  });
+
+  it('includeExamples=1 返回有上限的例句列表', async () => {
+    await Example.create({
+      wordId,
+      sentence: `See ${wordId} in a sentence.`,
+      translation: '例句',
+    });
+    const res = await request(app).get(`/words/${wordId}?includeExamples=1&exampleLimit=5`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.exampleCount).toBeGreaterThanOrEqual(1);
+    expect(Array.isArray(res.body.data.examples)).toBe(true);
+    expect(res.body.data.examples.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.data.examples[0]).toHaveProperty('sentence');
   });
 
   it('不存在的 id 返回错误', async () => {

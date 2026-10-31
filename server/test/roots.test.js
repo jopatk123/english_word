@@ -71,6 +71,25 @@ describe('GET /roots/', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.some((item) => item.id === root.id)).toBe(true);
   });
+
+  it('orphan=1 只返回没有单词的非默认词根（配合 excludeDefault）', async () => {
+    const orphan = await Root.create({
+      name: `orphan_root_${suffix()}`,
+      meaning: '无人使用',
+      userId,
+    });
+    const res = await request(app).get('/roots/?orphan=1&excludeDefault=1');
+    expect(res.status).toBe(200);
+    expect(res.body.data.every((item) => item.wordCount === 0)).toBe(true);
+    expect(res.body.data.every((item) => item.isDefault !== true)).toBe(true);
+    expect(res.body.data.some((item) => item.id === orphan.id)).toBe(true);
+  });
+
+  it('maxWordCount=0 与 orphan=1 等价筛出空词根', async () => {
+    const res = await request(app).get('/roots/?maxWordCount=0');
+    expect(res.status).toBe(200);
+    expect(res.body.data.every((item) => item.wordCount === 0)).toBe(true);
+  });
 });
 
 // ─── GET /roots/default ───────────────────────────────────────

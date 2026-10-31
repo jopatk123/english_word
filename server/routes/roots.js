@@ -14,6 +14,8 @@ import { ensureDefaultRoot } from '../utils/defaultRoot.js';
 import { buildKeywordSearch } from '../utils/search.js';
 import { removeWordImageFile } from '../services/word-image-store.js';
 import logger from '../utils/logger.js';
+import { parseOptionalBool, parseOptionalInt } from '../utils/queryFlags.js';
+import { buildOrphanRootPredicate, pushWhereAnd } from '../utils/vocabFilters.js';
 
 const router = Router();
 
@@ -37,14 +39,22 @@ router.get('/default', async (req, res) => {
   }
 });
 
-// 获取词根列表（支持模糊搜索）
+// 获取词根列表（支持模糊搜索、孤儿词根筛选）
 router.get('/', async (req, res) => {
   try {
     const { keyword } = req.query;
+    const excludeDefault = parseOptionalBool(req.query.excludeDefault) === true;
+    const orphan = parseOptionalBool(req.query.orphan) === true;
+    const maxWordCount = parseOptionalInt(req.query.maxWordCount);
     const where = {
       userId: req.userId,
       ...buildKeywordSearch(keyword, ['name', 'meaning']),
     };
+    if (excludeDefault) where.isDefault = false;
+    const wordCountCap = orphan ? 0 : maxWordCount;
+    if (Number.isFinite(wordCountCap) && wordCountCap >= 0) {
+      pushWhereAnd(where, buildOrphanRootPredicate(req.userId, wordCountCap));
+    }
     const roots = await Root.findAll({
       where,
       include: [
