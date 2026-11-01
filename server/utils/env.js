@@ -134,7 +134,9 @@ export const getAllowedOrigins = () => {
  * 其他环境默认为 false，避免客户端伪造 X-Forwarded-For 绕过 IP 限流。
  * 若服务直接暴露公网（无反向代理），必须显式设置 TRUST_PROXY=false。
  *
- * 支持取值：false / true / 正整数（信任的代理跳数）/ Express 支持的其他写法（如 loopback、IP 网段）。
+ * 支持取值：false / 正整数（信任的代理跳数）/ Express 支持的其他写法（如 loopback、IP 网段）。
+ * `true` 会按一层代理处理（等同 `1`）：express-rate-limit 拒绝完全信任全部代理头，
+ * 否则客户端可伪造 X-Forwarded-For 绕过 IP 限流。
  */
 export const getTrustProxySetting = () => {
   const raw = readEnv('TRUST_PROXY');
@@ -144,7 +146,7 @@ export const getTrustProxySetting = () => {
 
   const normalized = raw.toLowerCase();
   if (normalized === 'false' || normalized === '0') return false;
-  if (normalized === 'true') return true;
+  if (normalized === 'true') return 1;
   if (/^\d+$/.test(normalized)) {
     const hops = Number.parseInt(normalized, 10);
     if (hops >= 1) return hops;

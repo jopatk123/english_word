@@ -216,7 +216,7 @@ npm run test:coverage
 
 - 未设置 `TRUST_PROXY` 时：`NODE_ENV=production`（Docker 镜像已默认设置）按「信任一层代理」处理，本地开发/测试环境不信任任何代理头
 - 服务**直接暴露公网**（无反向代理）时必须显式设置 `TRUST_PROXY=false`，否则客户端可伪造 `X-Forwarded-For` 绕过限流
-- 多级代理（如 CDN + Nginx）按实际跳数设置，如 `TRUST_PROXY=2`
+- 多级代理（如 CDN + Nginx）按实际跳数设置，如 `TRUST_PROXY=2`；`TRUST_PROXY=true` 会按一层代理处理，避免完全信任客户端伪造的转发头
 
 Docker 部署时该变量由 `docker-compose.yml` 透传，默认值为 `1`。
 

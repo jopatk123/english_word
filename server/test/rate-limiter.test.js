@@ -12,7 +12,7 @@ const requestWithIp = (app, path, ip, headers = {}) =>
 
 const buildAuthApp = () => {
   const app = express();
-  app.set('trust proxy', true);
+  app.set('trust proxy', 1);
   app.use('/auth', authRateLimiter);
   app.get('/auth/check', (_req, res) => {
     res.json({ ok: true });
@@ -22,7 +22,7 @@ const buildAuthApp = () => {
 
 const buildAdminApp = () => {
   const app = express();
-  app.set('trust proxy', true);
+  app.set('trust proxy', 1);
   app.use('/admin', adminLoginRateLimiter);
   app.get('/admin/login', (_req, res) => {
     res.json({ ok: true });
@@ -32,7 +32,7 @@ const buildAdminApp = () => {
 
 const buildAiApp = () => {
   const app = express();
-  app.set('trust proxy', true);
+  app.set('trust proxy', 1);
   app.use((req, _res, next) => {
     req.userId = Number(req.headers['x-user-id']) || null;
     next();

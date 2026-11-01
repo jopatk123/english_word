@@ -211,6 +211,11 @@ describe('getTrustProxySetting', () => {
     expect(getTrustProxySetting()).toBe(1);
   });
 
+  it('TRUST_PROXY=true => 1（避免完全信任代理头导致限流被绕过）', () => {
+    process.env.TRUST_PROXY = 'true';
+    expect(getTrustProxySetting()).toBe(1);
+  });
+
   it('TRUST_PROXY=2 => 2', () => {
     process.env.TRUST_PROXY = '2';
     expect(getTrustProxySetting()).toBe(2);
