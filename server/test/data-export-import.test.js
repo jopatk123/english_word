@@ -421,6 +421,7 @@ describe('POST /review/data/import', () => {
       { text: 'One fish.', translation: '一条鱼。' },
       { text: 'Two fish.', translation: null },
     ]);
+    expect(item.archived).toBe(false);
     expect(item).not.toHaveProperty('review');
 
     const other = await User.create({ username: `import_passage_${Date.now()}`, password: 'x' });

@@ -72,6 +72,15 @@ describe('POST /passages/:id/read', () => {
     expect(detail.body.data.review.readCount).toBe(2);
   });
 
+  it('归档短文读完后仍保持归档，进度会更新', async () => {
+    const passage = await createPassage();
+    await request(app).put(`/passages/${passage.id}/archive`).send({ archived: true });
+    const res = await request(app).post(`/passages/${passage.id}/read`).send({ rating: 'good' });
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('archived');
+    expect(res.body.data.review.readCount).toBe(1);
+  });
+
   it('自评不合法返回 400', async () => {
     const passage = await createPassage();
     const res = await request(app).post(`/passages/${passage.id}/read`).send({ rating: 'great' });

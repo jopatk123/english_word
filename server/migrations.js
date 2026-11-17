@@ -574,6 +574,18 @@ async function m022_repair_foreign_keys_and_legacy_tables() {
   await sequelize.query('DROP INDEX IF EXISTS api_tokens_token_hash');
 }
 
+// M023：短文增加归档标记，已归档的不再进入待重读
+async function m023_passages_add_archived() {
+  const info = await qi.describeTable('passages').catch(() => ({}));
+  if (info.archived !== undefined || Object.keys(info).length === 0) return;
+  await qi.addColumn('passages', 'archived', {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  });
+  console.log('[migration] M023: passages.archived 已添加');
+}
+
 /**
  * 按顺序执行所有迁移。每个迁移函数都是幂等的，可以安全重复运行。
  */
@@ -600,4 +612,5 @@ export async function runMigrations() {
   await m020_words_add_image_ext();
   await m021_create_word_lookups();
   await m022_repair_foreign_keys_and_legacy_tables();
+  await m023_passages_add_archived();
 }

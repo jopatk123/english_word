@@ -7,8 +7,9 @@ export const PASSAGE_MAX_TITLE_LENGTH = 120;
 export const PASSAGE_STATUS_OPTIONS = Object.freeze([
   { value: 'unread', label: '未读', tagType: 'info' },
   { value: 'due', label: '待重读', tagType: 'danger' },
-  { value: 'learning', label: '学习中', tagType: 'warning' },
   { value: 'mastered', label: '熟练', tagType: 'success' },
+  { value: 'learning', label: '学习中', tagType: 'warning' },
+  { value: 'archived', label: '归档' },
 ]);
 
 export const PASSAGE_STATUS_MAP = Object.freeze(

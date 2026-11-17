@@ -230,6 +230,18 @@
   margin-left: 0;
 }
 
+.passage-reader-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.passage-reader-footer .el-button + .el-button {
+  margin-left: 0;
+}
+
 .passage-reader-legend {
   color: #909399;
   font-size: 13px;

@@ -148,6 +148,7 @@ router.get('/data/export', async (req, res) => {
         level: passage.level,
         source: passage.source,
         topic: passage.topic,
+        archived: Boolean(passage.archived),
         sentences: [...(passage.sentences || [])]
           .sort((a, b) => a.orderIndex - b.orderIndex)
           .map((sentence) => ({
@@ -327,6 +328,7 @@ router.post('/data/import', async (req, res) => {
         level: passageData.level || null,
         source: passageData.source === 'ai' ? 'ai' : 'manual',
         topic: passageData.topic || null,
+        archived: Boolean(passageData.archived),
         sentenceTranslations: Array.isArray(passageData.sentences) ? passageData.sentences : null,
       });
       stats.passagesAdded++;

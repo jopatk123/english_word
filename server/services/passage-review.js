@@ -9,6 +9,7 @@ export const PASSAGE_STATUS = Object.freeze({
   DUE: 'due',
   LEARNING: 'learning',
   MASTERED: 'mastered',
+  ARCHIVED: 'archived',
 });
 
 const FIRST_READ_STAGE = Object.freeze({ hard: 0, good: 1, easy: 2 });
@@ -41,8 +42,9 @@ export function computeNextPassageReview(previous, rating, today) {
   return { stage, dueDate: addDays(today, PASSAGE_REVIEW_INTERVALS[stage]) };
 }
 
-/** 状态优先级：未读 > 待重读 > 熟练 > 学习中。 */
-export function derivePassageStatus(review, today) {
+/** 状态优先级：归档 > 未读 > 待重读 > 熟练 > 学习中。 */
+export function derivePassageStatus(review, today, archived = false) {
+  if (archived) return PASSAGE_STATUS.ARCHIVED;
   if (!review) return PASSAGE_STATUS.UNREAD;
   if (review.dueDate <= today) return PASSAGE_STATUS.DUE;
   if (review.stage >= PASSAGE_MASTERED_STAGE) return PASSAGE_STATUS.MASTERED;

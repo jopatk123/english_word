@@ -10,6 +10,7 @@ import {
   loadPassageDetail,
   parsePassageInput,
   serializeSentence,
+  setPassageArchived,
   updatePassage,
 } from '../../services/passage-store.js';
 
@@ -43,6 +44,19 @@ router.put('/:id', async (req, res) => {
       res,
       { ...detail, translationAligned },
       alignmentMessage('保存成功', translationAligned)
+    );
+  } catch (e) {
+    handleRouteError(res, e);
+  }
+});
+
+router.put('/:id/archive', async (req, res) => {
+  try {
+    await setPassageArchived(req.userId, req.params.id, req.body.archived);
+    success(
+      res,
+      await loadPassageDetail(req.userId, req.params.id, todayStr(req.body.tz)),
+      req.body.archived ? '已归档' : '已取消归档'
     );
   } catch (e) {
     handleRouteError(res, e);

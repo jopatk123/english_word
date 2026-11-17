@@ -131,6 +131,8 @@ export const getPassage = (id) => api.get(`/passages/${id}`, { params: { tz: get
 export const createPassage = (data) => api.post('/passages', { ...data, tz: getUserTz() });
 export const updatePassage = (id, data) => api.put(`/passages/${id}`, { ...data, tz: getUserTz() });
 export const deletePassage = (id) => api.delete(`/passages/${id}`);
+export const setPassageArchived = (id, archived) =>
+  api.put(`/passages/${id}/archive`, { archived, tz: getUserTz() });
 export const updatePassageSentence = (id, sentenceId, translation) =>
   api.put(`/passages/${id}/sentences/${sentenceId}`, { translation });
 export const recordPassageRead = (id, rating) =>

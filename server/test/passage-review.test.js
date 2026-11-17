@@ -59,7 +59,7 @@ describe('computeNextPassageReview', () => {
 });
 
 describe('derivePassageStatus', () => {
-  it('按未读、待重读、熟练、学习中的优先级判定', () => {
+  it('按归档、未读、待重读、熟练、学习中的优先级判定', () => {
     expect(derivePassageStatus(null, TODAY)).toBe(PASSAGE_STATUS.UNREAD);
     expect(derivePassageStatus({ stage: 5, dueDate: TODAY }, TODAY)).toBe(PASSAGE_STATUS.DUE);
     expect(derivePassageStatus({ stage: 5, dueDate: '2026-11-01' }, TODAY)).toBe(
@@ -68,5 +68,9 @@ describe('derivePassageStatus', () => {
     expect(derivePassageStatus({ stage: 2, dueDate: '2026-11-01' }, TODAY)).toBe(
       PASSAGE_STATUS.LEARNING
     );
+    expect(derivePassageStatus({ stage: 5, dueDate: TODAY }, TODAY, true)).toBe(
+      PASSAGE_STATUS.ARCHIVED
+    );
+    expect(derivePassageStatus(null, TODAY, true)).toBe(PASSAGE_STATUS.ARCHIVED);
   });
 });

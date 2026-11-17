@@ -17,7 +17,10 @@
           <span class="passage-card-meta">
             {{ passage.wordCount }} 词 · {{ passage.sentenceCount }} 句
             <template v-if="passage.review">
-              · 已读 {{ passage.review.readCount }} 次 · 下次重读 {{ passage.review.dueDate }}
+              · 已读 {{ passage.review.readCount }} 次
+              <template v-if="passage.status !== 'archived'">
+                · 下次重读 {{ passage.review.dueDate }}
+              </template>
             </template>
           </span>
         </div>
@@ -32,9 +35,29 @@
             AI 补全译文（{{ missingCount }} 句）
           </el-button>
           <el-button @click="$router.push(`/reading/${passage.id}/edit`)">编辑</el-button>
-          <el-button type="success" plain @click="finishDialogVisible = true">读完了</el-button>
+          <el-button @click="handleArchive">
+            {{ passage.status === 'archived' ? '取消归档' : '归档' }}
+          </el-button>
+          <el-button
+            v-if="passage.status !== 'archived'"
+            type="success"
+            plain
+            @click="finishDialogVisible = true"
+          >
+            读完了
+          </el-button>
+          <el-button v-if="passage.next" type="primary" plain @click="goNext"> 下一篇 </el-button>
         </div>
       </header>
+
+      <el-alert
+        v-if="passage.status === 'archived'"
+        type="info"
+        show-icon
+        :closable="false"
+        class="passage-reader-alert"
+        title="这篇短文已归档，不会进入待重读。仍可阅读和听读。"
+      />
 
       <el-alert
         v-if="misaligned"
@@ -62,6 +85,19 @@
         @play-sentence="playSentence"
         @edit-translation="editTranslation"
       />
+
+      <div class="passage-reader-footer">
+        <el-button
+          v-if="passage.status !== 'archived'"
+          type="success"
+          @click="finishDialogVisible = true"
+        >
+          读完了
+        </el-button>
+        <el-button v-if="passage.next" type="primary" @click="goNext">
+          下一篇：{{ passage.next.title }}
+        </el-button>
+      </div>
 
       <PassagePlayerBar
         v-if="listening"
@@ -95,6 +131,7 @@
   import {
     getPassage,
     recordPassageRead,
+    setPassageArchived,
     translatePassage,
     updatePassageSentence,
   } from '../api/index.js';
@@ -220,14 +257,39 @@
     }
   };
 
+  const handleArchive = async () => {
+    const archived = passage.value.status !== 'archived';
+    try {
+      const res = await setPassageArchived(passage.value.id, archived);
+      passage.value = res.data;
+      ElMessage.success(archived ? '已归档，不再进入待重读' : '已取消归档');
+    } catch (error) {
+      ElMessage.error(error?.response?.data?.msg || (archived ? '归档失败' : '取消归档失败'));
+    }
+  };
+
+  const goNext = () => {
+    const next = passage.value?.next;
+    if (!next) return;
+    playback.stop();
+    listening.value = false;
+    router.push(`/reading/${next.id}`);
+  };
+
   const handleRate = async (value) => {
     rating.value = true;
     try {
       const res = await recordPassageRead(passage.value.id, value);
       passage.value.review = res.data.review;
       passage.value.status = res.data.status;
+      if (res.data.next !== undefined) passage.value.next = res.data.next;
       finishDialogVisible.value = false;
-      ElMessage.success(`已记录，下次重读：${res.data.review.dueDate}`);
+      const nextTitle = res.data.next?.title;
+      ElMessage.success(
+        nextTitle
+          ? `已记录，下次重读：${res.data.review.dueDate}。可点「下一篇」继续《${nextTitle}》`
+          : `已记录，下次重读：${res.data.review.dueDate}`
+      );
     } catch (error) {
       ElMessage.error(error?.response?.data?.msg || '记录失败');
     } finally {

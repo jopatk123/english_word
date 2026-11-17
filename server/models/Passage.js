@@ -58,6 +58,12 @@ const Passage = sequelize.define(
       field: 'sentence_count',
       comment: '句子数',
     },
+    archived: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: '归档后不再进入待重读和学习队列',
+    },
   },
   {
     tableName: 'passages',

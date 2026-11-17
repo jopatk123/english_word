@@ -80,10 +80,16 @@
           <span class="passage-card-meta">
             {{ passage.wordCount }} 词 · {{ passage.sentenceCount }} 句
             <template v-if="passage.review">
-              · 已读 {{ passage.review.readCount }} 次 · 下次重读 {{ passage.review.dueDate }}
+              · 已读 {{ passage.review.readCount }} 次
+              <template v-if="passage.status !== 'archived'">
+                · 下次重读 {{ passage.review.dueDate }}
+              </template>
             </template>
           </span>
           <span class="passage-card-actions" @click.stop>
+            <el-button link type="primary" @click="handleArchive(passage)">
+              {{ passage.status === 'archived' ? '取消归档' : '归档' }}
+            </el-button>
             <el-button link type="primary" @click="$router.push(`/reading/${passage.id}/edit`)">
               编辑
             </el-button>
@@ -118,7 +124,12 @@
   import { computed, onMounted, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { ElMessage } from 'element-plus';
-  import { deletePassage, getPassageDueCount, getPassages } from '../api/index.js';
+  import {
+    deletePassage,
+    getPassageDueCount,
+    getPassages,
+    setPassageArchived,
+  } from '../api/index.js';
   import {
     PASSAGE_LEVELS,
     PASSAGE_STATUS_MAP,
@@ -184,6 +195,18 @@
       dueCount.value = res.data.count;
     } catch {
       dueCount.value = 0;
+    }
+  };
+
+  const handleArchive = async (passage) => {
+    const archived = passage.status !== 'archived';
+    try {
+      await setPassageArchived(passage.id, archived);
+      ElMessage.success(archived ? '已归档，不再进入待重读' : '已取消归档');
+      fetchPassages();
+      fetchDueCount();
+    } catch (error) {
+      ElMessage.error(error?.response?.data?.msg || (archived ? '归档失败' : '取消归档失败'));
     }
   };
 

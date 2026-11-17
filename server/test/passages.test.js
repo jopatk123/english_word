@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { initDB, User, PassageSentence, PassageReview } from '../models/index.js';
+import { initDB, User, Passage, PassageSentence, PassageReview } from '../models/index.js';
 import passagesRouter from '../routes/passages.js';
 
 const buildApp = (userId) => {
@@ -159,6 +159,115 @@ describe('GET /passages', () => {
     const otherCount = await request(otherApp).get('/passages/due/count');
     expect(otherCount.body.data.count).toBe(0);
   });
+
+  it('归档后排在默认列表末尾，不计入待重读，取消归档后恢复', async () => {
+    const tag = `arc${suf()}`;
+    const created = await createPassage({ title: `${tag} keep` });
+    const id = created.body.data.id;
+    await request(app).post(`/passages/${id}/read`).send({ rating: 'good' });
+    await PassageReview.update({ dueDate: '2000-01-01' }, { where: { passageId: id } });
+
+    const before = await request(app).get('/passages/due/count');
+    const dueBefore = before.body.data.count;
+
+    const archived = await request(app).put(`/passages/${id}/archive`).send({ archived: true });
+    expect(archived.status).toBe(200);
+    expect(archived.body.data.status).toBe('archived');
+    expect(archived.body.data.archived).toBe(true);
+    expect(archived.body.data.review.readCount).toBe(1);
+
+    const defaultList = await request(app).get('/passages').query({ keyword: tag });
+    expect(defaultList.body.data.map((p) => p.id)).toEqual([id]);
+    expect(defaultList.body.data[0].status).toBe('archived');
+
+    const dueList = await request(app).get('/passages').query({ status: 'due' });
+    expect(dueList.body.data.some((p) => p.id === id)).toBe(false);
+
+    const archivedList = await request(app).get('/passages').query({ status: 'archived' });
+    expect(archivedList.body.data.some((p) => p.id === id && p.status === 'archived')).toBe(true);
+
+    const afterArchive = await request(app).get('/passages/due/count');
+    expect(afterArchive.body.data.count).toBe(dueBefore - 1);
+
+    const invalid = await request(app).put(`/passages/${id}/archive`).send({ archived: 'yes' });
+    expect(invalid.status).toBe(400);
+
+    const restored = await request(app).put(`/passages/${id}/archive`).send({ archived: false });
+    expect(restored.body.data.status).toBe('due');
+    const afterRestore = await request(app).get('/passages/due/count');
+    expect(afterRestore.body.data.count).toBe(dueBefore);
+  });
+
+  it('默认列表按未读、待重读、熟练、学习中、归档排序', async () => {
+    const tag = `ord${suf()}`;
+    const unread = await createPassage({ title: `${tag} unread` });
+    const due = await createPassage({ title: `${tag} due` });
+    const mastered = await createPassage({ title: `${tag} mastered` });
+    const learning = await createPassage({ title: `${tag} learning` });
+    const archived = await createPassage({ title: `${tag} archived` });
+    const userId = (await Passage.findByPk(unread.body.data.id)).userId;
+
+    await PassageReview.create({
+      userId,
+      passageId: due.body.data.id,
+      stage: 1,
+      readCount: 1,
+      dueDate: '2000-01-01',
+    });
+    await PassageReview.create({
+      userId,
+      passageId: mastered.body.data.id,
+      stage: 5,
+      readCount: 1,
+      dueDate: '2099-01-01',
+    });
+    await PassageReview.create({
+      userId,
+      passageId: learning.body.data.id,
+      stage: 2,
+      readCount: 1,
+      dueDate: '2099-01-01',
+    });
+    await request(app).put(`/passages/${archived.body.data.id}/archive`).send({ archived: true });
+
+    const list = await request(app).get('/passages').query({ keyword: tag });
+    expect(list.body.data.map((p) => p.status)).toEqual([
+      'unread',
+      'due',
+      'mastered',
+      'learning',
+      'archived',
+    ]);
+  });
+
+  it('详情和读完记录按列表顺序给出下一篇，并跳过归档', async () => {
+    const user = await User.create({ username: `pn_${suf()}`, password: 'x' });
+    const local = buildApp(user.id);
+    const make = (title) =>
+      request(local).post('/passages').send({ title, content: 'Tom has a cat. The cat is black.' });
+
+    const first = await make('story a');
+    const second = await make('story b');
+    const third = await make('story c');
+    const [a, b, c] = [first.body.data.id, second.body.data.id, third.body.data.id];
+
+    const top = await request(local).get(`/passages/${c}`);
+    expect(top.body.data.next).toMatchObject({ id: b, title: 'story b' });
+    const middle = await request(local).get(`/passages/${b}`);
+    expect(middle.body.data.next).toMatchObject({ id: a, title: 'story a' });
+    const last = await request(local).get(`/passages/${a}`);
+    expect(last.body.data.next).toBeNull();
+
+    await request(local).put(`/passages/${b}/archive`).send({ archived: true });
+    const skipArchived = await request(local).get(`/passages/${c}`);
+    expect(skipArchived.body.data.next).toMatchObject({ id: a });
+
+    const unread = await make('story d');
+    const read = await request(local).post(`/passages/${unread.body.data.id}/read`).send({
+      rating: 'good',
+    });
+    expect(read.body.data.next).toMatchObject({ id: c, title: 'story c' });
+  });
 });
 
 describe('PUT /passages/:id', () => {
@@ -243,6 +352,9 @@ describe('跨用户隔离与删除', () => {
       (await request(otherApp).put(`/passages/${id}`).send({ title: 'x', content: 'Hi.' })).status
     ).toBe(404);
     expect((await request(otherApp).delete(`/passages/${id}`)).status).toBe(404);
+    expect(
+      (await request(otherApp).put(`/passages/${id}/archive`).send({ archived: true })).status
+    ).toBe(404);
     expect(
       (await request(otherApp).post(`/passages/${id}/read`).send({ rating: 'good' })).status
     ).toBe(404);

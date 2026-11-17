@@ -39,6 +39,7 @@ vi.mock('../../api/index.js', () => ({
       },
     }),
   recordPassageRead: vi.fn(),
+  setPassageArchived: vi.fn(),
   translatePassage: vi.fn(),
   updatePassageSentence: vi.fn(),
   lookupWordStatuses: vi.fn().mockResolvedValue({ data: { items: {} } }),

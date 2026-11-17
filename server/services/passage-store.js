@@ -8,6 +8,7 @@ import {
   splitPassage,
 } from './passage-splitter.js';
 import { derivePassageStatus } from './passage-review.js';
+import { findNextPassage } from './passage-query.js';
 
 export const PASSAGE_LEVELS = Object.freeze(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']);
 export const PASSAGE_SOURCES = Object.freeze(['manual', 'ai']);
@@ -132,6 +133,7 @@ export async function createPassage(userId, input) {
         topic: input.topic,
         wordCount: split.wordCount,
         sentenceCount: rows.length,
+        archived: Boolean(input.archived),
       },
       { transaction }
     );
@@ -182,6 +184,8 @@ export async function updatePassage(userId, id, input) {
   });
 }
 
+export const isPassageArchived = (passage) => Boolean(passage?.archived);
+
 export const serializeReview = (review) =>
   review
     ? {
@@ -203,9 +207,10 @@ export const serializeSentence = (sentence) => ({
 
 export async function loadPassageDetail(userId, id, today) {
   const passage = await findOwnedPassage(userId, id);
-  const [sentences, review] = await Promise.all([
+  const [sentences, review, next] = await Promise.all([
     PassageSentence.findAll({ where: { passageId: passage.id }, order: [['orderIndex', 'ASC']] }),
     PassageReview.findOne({ where: { userId, passageId: passage.id } }),
+    findNextPassage(userId, passage.id, today),
   ]);
 
   return {
@@ -220,7 +225,16 @@ export async function loadPassageDetail(userId, id, today) {
     createTime: passage.create_time,
     updateTime: passage.update_time,
     sentences: sentences.map(serializeSentence),
+    archived: isPassageArchived(passage),
     review: serializeReview(review),
-    status: derivePassageStatus(review, today),
+    status: derivePassageStatus(review, today, isPassageArchived(passage)),
+    next,
   };
+}
+
+export async function setPassageArchived(userId, id, archived) {
+  if (typeof archived !== 'boolean') throw new PassageError('归档标记必须为布尔值');
+  const passage = await findOwnedPassage(userId, id);
+  await passage.update({ archived });
+  return passage;
 }

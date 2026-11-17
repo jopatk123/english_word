@@ -2,8 +2,9 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import PassageReaderView from '../PassageReaderView.vue';
 
-const { getPassageMock, playback } = vi.hoisted(() => ({
+const { getPassageMock, pushMock, playback } = vi.hoisted(() => ({
   getPassageMock: vi.fn(),
+  pushMock: vi.fn(),
   playback: {
     playing: { value: false },
     currentIndex: { value: -1 },
@@ -23,7 +24,7 @@ const { getPassageMock, playback } = vi.hoisted(() => ({
 }));
 
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: pushMock, replace: vi.fn() }),
 }));
 
 vi.mock('element-plus', () => ({
@@ -34,6 +35,7 @@ vi.mock('element-plus', () => ({
 vi.mock('../../api/index.js', () => ({
   getPassage: (...args) => getPassageMock(...args),
   recordPassageRead: vi.fn(),
+  setPassageArchived: vi.fn(),
   translatePassage: vi.fn(),
   updatePassageSentence: vi.fn(),
   lookupWordStatuses: vi.fn().mockResolvedValue({ data: { items: {} } }),
@@ -59,6 +61,7 @@ const passage = {
   wordCount: 4,
   sentenceCount: 3,
   review: null,
+  next: { id: 2, title: 'The Next Story', status: 'unread' },
   sentences: [
     { id: 11, orderIndex: 0, paragraphIndex: 0, text: 'One.', translation: '' },
     { id: 12, orderIndex: 1, paragraphIndex: 0, text: 'Two.', translation: '' },
@@ -95,6 +98,7 @@ describe('PassageReaderView 单句朗读', () => {
     playback.playSentence.mockReset();
     playback.toggle.mockReset();
     playback.stop.mockReset();
+    pushMock.mockReset();
   });
 
   it('点击句末按钮只朗读该句，底部播放键仍走连续听读', async () => {
@@ -124,5 +128,34 @@ describe('PassageReaderView 单句朗读', () => {
 
     expect(playback.play).toHaveBeenCalledWith(0);
     expect(playback.playSentence).not.toHaveBeenCalled();
+  });
+
+  it('点击下一篇进入列表中的下一篇短文', async () => {
+    const wrapper = await mountReader();
+    const nextButtons = wrapper
+      .findAll('button')
+      .filter((button) => button.text().includes('下一篇'));
+    expect(nextButtons.length).toBeGreaterThan(0);
+    expect(wrapper.text()).toContain('下一篇：The Next Story');
+    await nextButtons[0].trigger('click');
+    expect(playback.stop).toHaveBeenCalled();
+    expect(pushMock).toHaveBeenCalledWith('/reading/2');
+  });
+
+  it('没有下一篇时不显示下一篇按钮', async () => {
+    getPassageMock.mockResolvedValue({ data: { ...passage, next: null } });
+    const wrapper = await mountReader();
+    expect(wrapper.text()).not.toContain('下一篇');
+  });
+
+  it('归档后隐藏读完了，仍可听读', async () => {
+    getPassageMock.mockResolvedValue({
+      data: { ...passage, status: 'archived', archived: true },
+    });
+    const wrapper = await mountReader();
+    const labels = wrapper.findAll('button').map((button) => button.text());
+    expect(labels.some((text) => text.includes('取消归档'))).toBe(true);
+    expect(labels.some((text) => text.includes('读完了'))).toBe(false);
+    expect(labels.some((text) => text.includes('▶ 听读'))).toBe(true);
   });
 });

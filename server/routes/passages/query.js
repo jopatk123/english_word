@@ -1,17 +1,15 @@
 import { Router } from 'express';
-import { Op, col, literal } from 'sequelize';
+import { Op, literal } from 'sequelize';
 
 import { Passage, PassageReview } from '../../models/index.js';
 import { success, successList, handleRouteError } from '../../utils/response.js';
 import { buildKeywordSearch } from '../../utils/search.js';
 import { todayStr } from '../../utils/srs.js';
-import {
-  PASSAGE_MASTERED_STAGE,
-  PASSAGE_STATUS,
-  derivePassageStatus,
-} from '../../services/passage-review.js';
+import { PASSAGE_STATUS, derivePassageStatus } from '../../services/passage-review.js';
+import { buildPassageListOrder, buildStatusWhere } from '../../services/passage-query.js';
 import {
   PASSAGE_LEVELS,
+  isPassageArchived,
   loadPassageDetail,
   serializeReview,
 } from '../../services/passage-store.js';
@@ -32,28 +30,6 @@ const buildExcerpt = (raw) => {
   return `${trimmed.trimEnd()}…`;
 };
 const MAX_PAGE_SIZE = 100;
-
-/** 与 derivePassageStatus 保持同一套判定，下推到 SQL 做筛选。 */
-const buildStatusWhere = (status, today) => {
-  switch (status) {
-    case PASSAGE_STATUS.UNREAD:
-      return { '$review.id$': null };
-    case PASSAGE_STATUS.DUE:
-      return { '$review.due_date$': { [Op.lte]: today } };
-    case PASSAGE_STATUS.MASTERED:
-      return {
-        '$review.due_date$': { [Op.gt]: today },
-        '$review.stage$': { [Op.gte]: PASSAGE_MASTERED_STAGE },
-      };
-    case PASSAGE_STATUS.LEARNING:
-      return {
-        '$review.due_date$': { [Op.gt]: today },
-        '$review.stage$': { [Op.lt]: PASSAGE_MASTERED_STAGE },
-      };
-    default:
-      return {};
-  }
-};
 
 router.get('/', async (req, res) => {
   try {
@@ -82,6 +58,7 @@ router.get('/', async (req, res) => {
         'topic',
         'wordCount',
         'sentenceCount',
+        'archived',
         'create_time',
         'update_time',
         [literal(`substr(\`Passage\`.\`content\`, 1, ${EXCERPT_LENGTH + 80})`), 'excerpt'],
@@ -94,10 +71,7 @@ router.get('/', async (req, res) => {
           required: false,
         },
       ],
-      order:
-        status === PASSAGE_STATUS.DUE
-          ? [[col('review.due_date'), 'ASC']]
-          : [['update_time', 'DESC']],
+      order: buildPassageListOrder(today),
       limit: pageSize,
       offset: (page - 1) * pageSize,
       subQuery: false,
@@ -111,11 +85,12 @@ router.get('/', async (req, res) => {
       topic: passage.topic,
       wordCount: passage.wordCount,
       sentenceCount: passage.sentenceCount,
+      archived: isPassageArchived(passage),
       excerpt: buildExcerpt(passage.get('excerpt')),
       createTime: passage.create_time,
       updateTime: passage.update_time,
       review: serializeReview(passage.review),
-      status: derivePassageStatus(passage.review, today),
+      status: derivePassageStatus(passage.review, today, isPassageArchived(passage)),
     }));
 
     successList(res, items, count);
@@ -127,8 +102,16 @@ router.get('/', async (req, res) => {
 router.get('/due/count', async (req, res) => {
   try {
     const today = todayStr(req.query.tz);
-    const count = await PassageReview.count({
-      where: { userId: req.userId, dueDate: { [Op.lte]: today } },
+    const count = await Passage.count({
+      where: { userId: req.userId, archived: false },
+      include: [
+        {
+          model: PassageReview,
+          as: 'review',
+          required: true,
+          where: { userId: req.userId, dueDate: { [Op.lte]: today } },
+        },
+      ],
     });
     success(res, { count });
   } catch (e) {
