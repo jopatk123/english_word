@@ -174,6 +174,29 @@ describe('GET /words/', () => {
     });
   });
 
+  it('rootId 过滤时按单词名字母序返回', async () => {
+    const sortRoot = await Root.create({
+      name: `sortroot_${suf()}`,
+      meaning: '字母序',
+      userId,
+    });
+    const tag = suf();
+    // 直接写入大小写混排名称，确认按不区分大小写的字母序排列
+    const names = [`${tag}_Zebra`, `${tag}_apple`, `${tag}_brown`];
+    for (const name of names) {
+      const word = await Word.create({ name, meaning: `${name} 含义`, userId });
+      await WordRoot.create({ wordId: word.id, rootId: sortRoot.id });
+    }
+
+    const res = await request(app).get(`/words/?rootId=${sortRoot.id}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.map((w) => w.name)).toEqual([
+      `${tag}_apple`,
+      `${tag}_brown`,
+      `${tag}_Zebra`,
+    ]);
+  });
+
   it('limit/offset 分页正常工作', async () => {
     const res = await request(app).get('/words/?limit=1&offset=0');
     expect(res.status).toBe(200);

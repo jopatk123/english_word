@@ -50,6 +50,9 @@ export function useWordDetail(wordId) {
   const editingExample = ref(null);
   const exampleForm = ref({ sentence: '', translation: '', remark: '' });
   const saving = ref(false);
+  const wordDialogVisible = ref(false);
+  const wordForm = ref({ name: '', meaning: '', phonetic: '', remark: '' });
+  const savingWord = ref(false);
   const regeneratingExampleId = ref(null);
   const aiSettings = ref(loadAiSettings());
   let stopAiSettingsSync = () => {};
@@ -91,6 +94,43 @@ export function useWordDetail(wordId) {
       ElMessage.error('获取词根列表失败');
     } finally {
       allRootsLoading.value = false;
+    }
+  };
+
+  const openWordDialog = () => {
+    if (!word.value) {
+      return ElMessage.warning('请先等待单词信息加载完成');
+    }
+
+    wordForm.value = {
+      name: word.value.name,
+      meaning: word.value.meaning,
+      phonetic: word.value.phonetic || '',
+      remark: word.value.remark || '',
+    };
+    wordDialogVisible.value = true;
+  };
+
+  const handleSaveWord = async () => {
+    if (!wordForm.value.name || !wordForm.value.meaning) {
+      return ElMessage.warning('请填写单词和含义');
+    }
+
+    savingWord.value = true;
+    try {
+      await updateWord(wordId, {
+        name: wordForm.value.name,
+        meaning: wordForm.value.meaning,
+        phonetic: wordForm.value.phonetic,
+        remark: wordForm.value.remark,
+      });
+      ElMessage.success('更新成功');
+      wordDialogVisible.value = false;
+      await fetchWord();
+    } catch (e) {
+      ElMessage.error(e?.response?.data?.msg || '保存失败');
+    } finally {
+      savingWord.value = false;
     }
   };
 
@@ -313,7 +353,12 @@ export function useWordDetail(wordId) {
     editingExample,
     exampleForm,
     saving,
+    wordDialogVisible,
+    wordForm,
+    savingWord,
     regeneratingExampleId,
+    openWordDialog,
+    handleSaveWord,
     openExampleDialog,
     openRootDialog,
     openDeleteRootDialog,
@@ -331,6 +376,9 @@ export function useWordDetail(wordId) {
     },
     setSelectedDeleteRootIdForTest: (value) => {
       selectedDeleteRootId.value = value;
+    },
+    setWordFormForTest: (value) => {
+      wordForm.value = value;
     },
   };
 }

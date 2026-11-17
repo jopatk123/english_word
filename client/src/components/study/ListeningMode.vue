@@ -1,6 +1,13 @@
 <template>
   <div class="flashcard-container">
     <div class="flashcard spelling-card">
+      <WordImage
+        v-if="card.word.hasImage"
+        :word-id="card.word.id || card.wordId"
+        :has-image="true"
+        :alt="`${card.word.name} 的记忆图片`"
+        variant="study"
+      />
       <div class="listening-toolbar">
         <SpeakButton :text="card.word.name" />
         <template v-if="sentenceExamples.length > 0">
@@ -20,14 +27,6 @@
       <div v-if="revealedSentenceTranslation" class="listening-audio-translation">
         {{ revealedSentenceTranslation }}
       </div>
-
-      <WordImage
-        v-if="answered && card.word.hasImage"
-        :word-id="card.word.id || card.wordId"
-        :has-image="true"
-        :alt="`${card.word.name} 的记忆图片`"
-        variant="study"
-      />
 
       <!-- 渐进式字母提示（仅在点击提示后显示） -->
       <div v-if="hintLevel > 0 && !answered" class="listening-hint">提示：{{ hint }}</div>

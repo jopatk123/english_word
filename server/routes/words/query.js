@@ -124,7 +124,13 @@ router.get('/', async (req, res) => {
     const queryOpts = {
       where,
       include: [rootInclude, reviewInclude],
-      order: [['create_time', 'DESC']],
+      // 词根详情按单词名字母序；其余列表仍按最新创建优先
+      order: rootId
+        ? [
+            [fn('LOWER', col('Word.name')), 'ASC'],
+            ['id', 'ASC'],
+          ]
+        : [['create_time', 'DESC']],
     };
     if (limit > 0) {
       queryOpts.limit = limit;

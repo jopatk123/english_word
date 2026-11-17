@@ -24,6 +24,9 @@
           <span v-if="word?.phonetic" class="phonetic">{{ word.phonetic }}</span>
           <SpeakButton v-if="word?.name" :text="word.name" />
           <span class="root-meaning">— {{ word?.meaning }}</span>
+          <el-button v-if="word" class="word-edit-btn" type="primary" link @click="openWordDialog"
+            >编辑</el-button
+          >
         </div>
       </template>
       <p class="remark-text">
@@ -93,6 +96,28 @@
         </div>
       </el-card>
     </div>
+
+    <!-- 单词表单对话框 -->
+    <el-dialog v-model="wordDialogVisible" title="编辑单词" width="500px" destroy-on-close>
+      <el-form :model="wordForm" label-width="80px">
+        <el-form-item label="单词" required>
+          <el-input v-model="wordForm.name" placeholder="如：reject" />
+        </el-form-item>
+        <el-form-item label="含义" required>
+          <el-input v-model="wordForm.meaning" placeholder="如：拒绝；排斥" />
+        </el-form-item>
+        <el-form-item label="音标">
+          <el-input v-model="wordForm.phonetic" placeholder="如：/rɪˈdʒekt/" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="wordForm.remark" type="textarea" :rows="2" placeholder="可选备注" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="wordDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveWord" :loading="savingWord">保存</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 例句表单对话框 -->
     <el-dialog
@@ -217,7 +242,12 @@
     editingExample,
     exampleForm,
     saving,
+    wordDialogVisible,
+    wordForm,
+    savingWord,
     regeneratingExampleId,
+    openWordDialog,
+    handleSaveWord,
     openExampleDialog,
     openRootDialog,
     openDeleteRootDialog,
@@ -229,6 +259,7 @@
     setWordForTest,
     setSelectedRootIdForTest,
     setSelectedDeleteRootIdForTest,
+    setWordFormForTest,
   } = useWordDetail(wordId);
 
   const previousRoute = computed(() => getRouteSource(route.fullPath));
@@ -257,9 +288,19 @@
     setWordForTest,
     setSelectedRootIdForTest,
     setSelectedDeleteRootIdForTest,
+    setWordFormForTest,
     handleAddRoot,
     handleDeleteRoot,
+    handleSaveWord,
     openRootDialog,
     openDeleteRootDialog,
+    openWordDialog,
   });
 </script>
+
+<style scoped>
+  .word-edit-btn {
+    margin-left: auto;
+    align-self: center;
+  }
+</style>

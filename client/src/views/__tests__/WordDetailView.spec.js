@@ -304,6 +304,33 @@ describe('WordDetailView', () => {
     });
   });
 
+  it('单词详情页可以直接编辑当前单词', async () => {
+    const wrapper = await createWrapper();
+    const editButton = wrapper.find('.word-edit-btn');
+
+    expect(editButton.exists()).toBe(true);
+    expect(editButton.text()).toBe('编辑');
+
+    await editButton.trigger('click');
+    wrapper.vm.setWordFormForTest({
+      name: 'stability',
+      meaning: '稳定性',
+      phonetic: '/stəˈbɪləti/',
+      remark: '新备注',
+    });
+    await wrapper.vm.handleSaveWord();
+    await flushPromises();
+
+    expect(updateWordMock).toHaveBeenCalledWith('1', {
+      name: 'stability',
+      meaning: '稳定性',
+      phonetic: '/stəˈbɪləti/',
+      remark: '新备注',
+    });
+    expect(getWordMock).toHaveBeenCalledTimes(2);
+    expect(elMessage.success).toHaveBeenCalledWith('更新成功');
+  });
+
   it('可以把当前单词添加到已有词根中', async () => {
     const wrapper = await createWrapper();
     wrapper.vm.setWordForTest(baseWord);

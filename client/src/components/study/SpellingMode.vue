@@ -1,17 +1,17 @@
 <template>
   <div class="flashcard-container">
     <div class="flashcard spelling-card">
-      <div class="card-meaning">{{ card.word.meaning }}</div>
-      <div v-if="card.word.roots?.length" class="card-root-tag">
-        词根：{{ card.word.roots.map((r) => `${r.name}（${r.meaning}）`).join('、') }}
-      </div>
       <WordImage
-        v-if="answered && card.word.hasImage"
+        v-if="card.word.hasImage"
         :word-id="card.word.id || card.wordId"
         :has-image="true"
         :alt="`${card.word.name} 的记忆图片`"
         variant="study"
       />
+      <div class="card-meaning">{{ card.word.meaning }}</div>
+      <div v-if="card.word.roots?.length" class="card-root-tag">
+        词根：{{ card.word.roots.map((r) => `${r.name}（${r.meaning}）`).join('、') }}
+      </div>
 
       <div class="spelling-input-area">
         <div class="spelling-input-row">
